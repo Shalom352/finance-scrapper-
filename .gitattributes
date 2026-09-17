@@ -1,0 +1,16 @@
+# UMOA Banking Intelligence — Git Line Endings
+# Normalize line endings to LF in the repository
+
+* text=auto eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+
+# Windows batch files must use CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf

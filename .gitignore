@@ -1,0 +1,99 @@
+# ============================================================
+# UMOA Banking Intelligence — .gitignore
+# ============================================================
+
+# ----------------------------
+# Environment & Secrets
+# ----------------------------
+.env
+.env.local
+.env.*.local
+*.env
+
+# ----------------------------
+# Python
+# ----------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.pyo
+
+# ----------------------------
+# Alembic
+# ----------------------------
+# Keep versions/ but ignore __pycache__
+backend/migrations/__pycache__/
+
+# ----------------------------
+# Next.js / Node
+# ----------------------------
+node_modules/
+.next/
+out/
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ----------------------------
+# OS
+# ----------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ----------------------------
+# IDEs
+# ----------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ----------------------------
+# Docker
+# ----------------------------
+# Keep docker-compose files, ignore generated
+docker-compose.override.yml
+
+# ----------------------------
+# Data & Downloads
+# ----------------------------
+backend/data/downloads/
+backend/data/raw/
+*.pdf
+
+# ----------------------------
+# Logs
+# ----------------------------
+*.log
+logs/
+
+# ----------------------------
+# Database (local SQLite for tests only)
+# ----------------------------
+*.db
+*.sqlite3

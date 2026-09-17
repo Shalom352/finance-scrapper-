@@ -1,0 +1,48 @@
+# ============================================================
+# UMOA Banking Intelligence — Docker Compose
+# ============================================================
+#
+# Services included:
+#   - postgres: PostgreSQL 16 database (required)
+#
+# Optional services (see docker-compose.override.yml.example):
+#   - pgadmin: PostgreSQL admin UI
+#
+# Usage:
+#   docker-compose up -d          # Start all services
+#   docker-compose down           # Stop all services
+#   docker-compose down -v        # Stop and remove volumes
+# ============================================================
+
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: umoa_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-umoa_banking}
+      POSTGRES_USER: ${POSTGRES_USER:-umoa_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-umoa_user} -d ${POSTGRES_DB:-umoa_banking}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - umoa_network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  umoa_network:
+    driver: bridge

@@ -1,0 +1,4 @@
+# UMOA Banking Intelligence — Database Init Scripts
+# This directory contains SQL scripts executed by PostgreSQL on first startup.
+# Scripts are run in alphabetical order.
+# Only add scripts here for initial database setup (extensions, etc.)

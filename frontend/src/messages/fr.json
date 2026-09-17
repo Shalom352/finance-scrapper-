@@ -1,0 +1,60 @@
+{
+  "metadata": {
+    "title": "UMOA Banking Intelligence",
+    "description": "Plateforme de données financières pour les banques de l'UMOA"
+  },
+  "nav": {
+    "home": "Accueil",
+    "institutions": "Institutions",
+    "documents": "Documents",
+    "rankings": "Classements",
+    "search": "Recherche"
+  },
+  "home": {
+    "hero": {
+      "title": "UMOA Banking Intelligence",
+      "subtitle": "Données financières des banques de l'Union Monétaire Ouest-Africaine",
+      "description": "Plateforme de collecte, structuration et exploitation des données financières des établissements bancaires des 8 pays de l'UMOA.",
+      "cta_explore": "Explorer les institutions",
+      "cta_learn": "En savoir plus"
+    },
+    "countries": {
+      "title": "Couverture géographique",
+      "subtitle": "8 pays membres de l'UMOA"
+    },
+    "status": {
+      "title": "Statut de la plateforme",
+      "phase": "Phase 0 — Foundation",
+      "description": "La plateforme est en cours de construction. Les données seront disponibles progressivement à partir de sources officielles vérifiables.",
+      "sources": "Sources officielles : BCEAO, Commission Bancaire de l'UMOA"
+    }
+  },
+  "data": {
+    "status": {
+      "extracted": "Extrait",
+      "needs_review": "À réviser",
+      "reviewed": "Révisé",
+      "verified": "Vérifié",
+      "rejected": "Rejeté"
+    },
+    "empty": {
+      "title": "Aucune donnée disponible",
+      "description": "Les données seront ajoutées à partir de sources officielles vérifiables."
+    }
+  },
+  "common": {
+    "loading": "Chargement…",
+    "error": "Une erreur est survenue",
+    "retry": "Réessayer",
+    "back": "Retour",
+    "source": "Source",
+    "period": "Période",
+    "unit": "Unité",
+    "page": "Page",
+    "status": "Statut"
+  },
+  "footer": {
+    "disclaimer": "Toutes les données proviennent de sources officielles. Aucune donnée n'est inventée ou estimée.",
+    "sources": "Sources : BCEAO, Commission Bancaire de l'UMOA"
+  }
+}

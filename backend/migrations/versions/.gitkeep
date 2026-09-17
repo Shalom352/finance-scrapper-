@@ -1,0 +1,6 @@
+# This directory contains Alembic migration versions.
+# Migration files are generated automatically by:
+#   alembic revision --autogenerate -m "description"
+#
+# Then applied with:
+#   alembic upgrade head

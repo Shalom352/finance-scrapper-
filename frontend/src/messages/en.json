@@ -1,0 +1,60 @@
+{
+  "metadata": {
+    "title": "UMOA Banking Intelligence",
+    "description": "Financial data platform for UMOA banks"
+  },
+  "nav": {
+    "home": "Home",
+    "institutions": "Institutions",
+    "documents": "Documents",
+    "rankings": "Rankings",
+    "search": "Search"
+  },
+  "home": {
+    "hero": {
+      "title": "UMOA Banking Intelligence",
+      "subtitle": "Financial data for banks of the West African Monetary Union",
+      "description": "Platform for collecting, structuring and analyzing financial data from banking institutions across the 8 UMOA member countries.",
+      "cta_explore": "Explore institutions",
+      "cta_learn": "Learn more"
+    },
+    "countries": {
+      "title": "Geographic coverage",
+      "subtitle": "8 UMOA member countries"
+    },
+    "status": {
+      "title": "Platform status",
+      "phase": "Phase 0 — Foundation",
+      "description": "The platform is under construction. Data will be progressively added from verifiable official sources.",
+      "sources": "Official sources: BCEAO, Commission Bancaire de l'UMOA"
+    }
+  },
+  "data": {
+    "status": {
+      "extracted": "Extracted",
+      "needs_review": "Needs review",
+      "reviewed": "Reviewed",
+      "verified": "Verified",
+      "rejected": "Rejected"
+    },
+    "empty": {
+      "title": "No data available",
+      "description": "Data will be added from verifiable official sources."
+    }
+  },
+  "common": {
+    "loading": "Loading…",
+    "error": "An error occurred",
+    "retry": "Retry",
+    "back": "Back",
+    "source": "Source",
+    "period": "Period",
+    "unit": "Unit",
+    "page": "Page",
+    "status": "Status"
+  },
+  "footer": {
+    "disclaimer": "All data comes from official sources. No data is invented or estimated.",
+    "sources": "Sources: BCEAO, Commission Bancaire de l'UMOA"
+  }
+}
