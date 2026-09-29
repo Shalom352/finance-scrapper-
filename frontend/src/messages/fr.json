@@ -1,60 +1,187 @@
 {
   "metadata": {
     "title": "UMOA Banking Intelligence",
-    "description": "Plateforme de données financières pour les banques de l'UMOA"
+    "description": "Plateforme d'intelligence financière pour les banques et régulateurs de l'UMOA"
   },
   "nav": {
-    "home": "Accueil",
+    "home": "Dashboard",
     "institutions": "Institutions",
+    "countries": "Pays UMOA",
+    "analytics": "Analyses & Ratios",
     "documents": "Documents",
-    "rankings": "Classements",
     "search": "Recherche"
   },
-  "home": {
-    "hero": {
-      "title": "UMOA Banking Intelligence",
-      "subtitle": "Données financières des banques de l'Union Monétaire Ouest-Africaine",
-      "description": "Plateforme de collecte, structuration et exploitation des données financières des établissements bancaires des 8 pays de l'UMOA.",
-      "cta_explore": "Explorer les institutions",
-      "cta_learn": "En savoir plus"
+  "dashboard": {
+    "title": "Tableau de Bord Sectoriel",
+    "subtitle": "Indicateurs clés du secteur bancaire de l'Union Monétaire Ouest-Africaine",
+    "kpi": {
+      "institutions": "Institutions Référencées",
+      "countries": "Pays Membres",
+      "documents": "Documents Sources",
+      "data_points": "Données Financières",
+      "verified_data": "Données Vérifiées",
+      "coverage": "Taux de Couverture UMOA"
     },
-    "countries": {
-      "title": "Couverture géographique",
-      "subtitle": "8 pays membres de l'UMOA"
+    "regional_aggregates": {
+      "title": "Agrégats Régionaux UMOA",
+      "subtitle": "Totaux consolidés sans double comptage pour le dernier exercice",
+      "total_assets": "Actifs Totaux",
+      "total_deposits": "Dépôts Clientèle",
+      "total_loans": "Créances Clientèle",
+      "total_equity": "Capitaux Propres",
+      "net_income": "Résultat Net",
+      "nbi": "Produit Net Bancaire"
     },
-    "status": {
-      "title": "Statut de la plateforme",
-      "phase": "Phase 0 — Foundation",
-      "description": "La plateforme est en cours de construction. Les données seront disponibles progressivement à partir de sources officielles vérifiables.",
-      "sources": "Sources officielles : BCEAO, Commission Bancaire de l'UMOA"
+    "quick_links": {
+      "explore_institutions": "Explorer les banques",
+      "view_analytics": "Consulter les ratios",
+      "view_countries": "Structure par pays"
     }
   },
-  "data": {
-    "status": {
-      "extracted": "Extrait",
-      "needs_review": "À réviser",
-      "reviewed": "Révisé",
-      "verified": "Vérifié",
-      "rejected": "Rejeté"
+  "institutions": {
+    "title": "Répertoire des Institutions",
+    "subtitle": "Établissements de crédit et institutions financières agréées de l'UMOA",
+    "search_placeholder": "Rechercher par nom d'établissement...",
+    "filter_country": "Tous les pays",
+    "filter_type": "Tous les types",
+    "filter_status": "Tous les statuts",
+    "columns": {
+      "name": "Établissement",
+      "country": "Pays",
+      "group": "Groupe Bancaire",
+      "type": "Type",
+      "status": "Statut",
+      "actions": "Fiche"
     },
-    "empty": {
-      "title": "Aucune donnée disponible",
-      "description": "Les données seront ajoutées à partir de sources officielles vérifiables."
+    "detail": {
+      "official_name": "Raison sociale officielle",
+      "commercial_name": "Nom commercial",
+      "regulatory_id": "Numéro d'agrément",
+      "website": "Site officiel",
+      "tabs": {
+        "overview": "Aperçu Financier",
+        "ratios": "Ratios & Performance",
+        "charts": "Évolution Historique",
+        "documents": "Documents Rattachés"
+      },
+      "kpi": {
+        "assets": "Total Actifs",
+        "deposits": "Dépôts Clients",
+        "loans": "Créances Clients",
+        "pnb": "PNB",
+        "net_income": "Résultat Net",
+        "equity": "Capitaux Propres"
+      },
+      "provenance_cta": "Consulter la provenance"
     }
+  },
+  "countries": {
+    "title": "Pays Membres de l'UMOA",
+    "subtitle": "Données agrégées et profondeur financière des 8 pays de l'Union",
+    "card": {
+      "institutions": "établissements agréés",
+      "total_assets": "Actifs consolidés",
+      "coverage": "Couverture"
+    },
+    "detail": {
+      "title": "Secteur Bancaire —",
+      "overview": "Synthèse Sectorielle",
+      "market_share_title": "Parts de Marché Nationales",
+      "market_share_subtitle": "Répartition des dépôts et actifs par établissement",
+      "institutions_title": "Banques du pays"
+    }
+  },
+  "analytics": {
+    "title": "Analyses Financières & Ratios",
+    "subtitle": "Indicateurs prudentiels, variations annuelles et comparateur sans biais",
+    "tabs": {
+      "ratios": "Ratios Bancaires",
+      "growth": "Croissance Annuelle (YoY)",
+      "aggregations": "Agrégats Sectoriels",
+      "compare": "Comparateur d'Établissements"
+    },
+    "ratios": {
+      "select_ratio": "Sélectionner un ratio",
+      "select_year": "Exercice",
+      "formula": "Formule :",
+      "rules": "Règles d'éligibilité :"
+    },
+    "growth": {
+      "select_metric": "Sélectionner une métrique",
+      "table": {
+        "institution": "Banque",
+        "metric": "Métrique",
+        "current_val": "Valeur t",
+        "previous_val": "Valeur t-1",
+        "abs_change": "Variation Absolue",
+        "growth_pct": "Croissance (%)"
+      }
+    },
+    "compare": {
+      "select_a": "Premier établissement",
+      "select_b": "Deuxième établissement",
+      "metric_label": "Métrique ou Ratio",
+      "compare_btn": "Comparer",
+      "result_title": "Résultat du face-à-face factuel"
+    }
+  },
+  "documents": {
+    "title": "Centre Documentaire Officiel",
+    "subtitle": "Rapports annuels, états financiers et publications réglementaires",
+    "filter_type": "Type de document",
+    "filter_year": "Année",
+    "columns": {
+      "title": "Document",
+      "institution": "Établissement",
+      "source": "Source",
+      "type": "Type",
+      "year": "Année",
+      "download": "Téléchargement",
+      "extraction": "Extraction"
+    }
+  },
+  "search": {
+    "title": "Recherche Globale",
+    "placeholder": "Rechercher une banque, un document, un pays ou une métrique...",
+    "results_for": "Résultats pour",
+    "institutions_found": "Institutions",
+    "documents_found": "Documents",
+    "sources_found": "Sources",
+    "empty": "Aucun résultat trouvé pour votre recherche."
+  },
+  "provenance": {
+    "title": "Inspecteur de Provenance Documentaire",
+    "subtitle": "Piste d'audit et chaîne de certification de la valeur",
+    "source": "Source officielle",
+    "document": "Document d'origine",
+    "page": "Page dans le document",
+    "period": "Exercice comptable",
+    "method": "Méthode d'extraction",
+    "raw_value": "Valeur brute originale",
+    "normalized_value": "Valeur normalisée",
+    "validator": "Validé par",
+    "components_title": "Composants ayant alimenté le calcul du ratio :"
+  },
+  "status": {
+    "verified": "Vérifié",
+    "reviewed": "Revu",
+    "extracted": "Extrait",
+    "needs_review": "À réviser",
+    "rejected": "Rejeté",
+    "unavailable": "Non disponible",
+    "partial": "Couverture Partielle"
   },
   "common": {
-    "loading": "Chargement…",
-    "error": "Une erreur est survenue",
+    "loading": "Chargement des données...",
+    "error": "Une erreur est survenue lors de la récupération des données.",
     "retry": "Réessayer",
     "back": "Retour",
-    "source": "Source",
-    "period": "Période",
-    "unit": "Unité",
-    "page": "Page",
-    "status": "Statut"
+    "empty": "Aucune donnée disponible pour cette sélection.",
+    "partial_coverage_warning": "Attention : ces chiffres correspondent à une couverture partielle du secteur.",
+    "ratio_unavailable_reason": "Raison de non-disponibilité :"
   },
   "footer": {
-    "disclaimer": "Toutes les données proviennent de sources officielles. Aucune donnée n'est inventée ou estimée.",
-    "sources": "Sources : BCEAO, Commission Bancaire de l'UMOA"
+    "disclaimer": "Toutes les données proviennent de publications officielles (BCEAO, Commission Bancaire, Rapports audités). Aucune extrapolation ni interpolation n'est effectuée.",
+    "sources": "Sources : BCEAO | Commission Bancaire de l'UMOA | Rapports Annuels"
   }
 }

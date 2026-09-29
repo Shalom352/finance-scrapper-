@@ -1,60 +1,187 @@
 {
   "metadata": {
     "title": "UMOA Banking Intelligence",
-    "description": "Financial data platform for UMOA banks"
+    "description": "Financial intelligence platform for West African Monetary Union banks and regulators"
   },
   "nav": {
-    "home": "Home",
+    "home": "Dashboard",
     "institutions": "Institutions",
+    "countries": "UMOA Countries",
+    "analytics": "Analytics & Ratios",
     "documents": "Documents",
-    "rankings": "Rankings",
     "search": "Search"
   },
-  "home": {
-    "hero": {
-      "title": "UMOA Banking Intelligence",
-      "subtitle": "Financial data for banks of the West African Monetary Union",
-      "description": "Platform for collecting, structuring and analyzing financial data from banking institutions across the 8 UMOA member countries.",
-      "cta_explore": "Explore institutions",
-      "cta_learn": "Learn more"
+  "dashboard": {
+    "title": "Sector Dashboard",
+    "subtitle": "Key financial indicators across the West African Monetary Union banking sector",
+    "kpi": {
+      "institutions": "Registered Institutions",
+      "countries": "Member Countries",
+      "documents": "Source Documents",
+      "data_points": "Financial Data Points",
+      "verified_data": "Certified Observations",
+      "coverage": "Regional UMOA Coverage"
     },
-    "countries": {
-      "title": "Geographic coverage",
-      "subtitle": "8 UMOA member countries"
+    "regional_aggregates": {
+      "title": "UMOA Regional Aggregates",
+      "subtitle": "Consolidated totals without double counting for latest reporting period",
+      "total_assets": "Total Assets",
+      "total_deposits": "Customer Deposits",
+      "total_loans": "Customer Loans",
+      "total_equity": "Equity",
+      "net_income": "Net Income",
+      "nbi": "Net Banking Income"
     },
-    "status": {
-      "title": "Platform status",
-      "phase": "Phase 0 — Foundation",
-      "description": "The platform is under construction. Data will be progressively added from verifiable official sources.",
-      "sources": "Official sources: BCEAO, Commission Bancaire de l'UMOA"
+    "quick_links": {
+      "explore_institutions": "Explore Banks",
+      "view_analytics": "View Financial Ratios",
+      "view_countries": "Country Structures"
     }
   },
-  "data": {
-    "status": {
-      "extracted": "Extracted",
-      "needs_review": "Needs review",
-      "reviewed": "Reviewed",
-      "verified": "Verified",
-      "rejected": "Rejected"
+  "institutions": {
+    "title": "Institutions Directory",
+    "subtitle": "Authorized credit institutions and financial entities in UMOA",
+    "search_placeholder": "Search bank by name...",
+    "filter_country": "All countries",
+    "filter_type": "All types",
+    "filter_status": "All statuses",
+    "columns": {
+      "name": "Institution",
+      "country": "Country",
+      "group": "Banking Group",
+      "type": "Type",
+      "status": "Status",
+      "actions": "Profile"
     },
-    "empty": {
-      "title": "No data available",
-      "description": "Data will be added from verifiable official sources."
+    "detail": {
+      "official_name": "Official Corporate Name",
+      "commercial_name": "Commercial Brand",
+      "regulatory_id": "Regulatory License ID",
+      "website": "Official Website",
+      "tabs": {
+        "overview": "Financial Overview",
+        "ratios": "Ratios & Performance",
+        "charts": "Historical Evolution",
+        "documents": "Linked Documents"
+      },
+      "kpi": {
+        "assets": "Total Assets",
+        "deposits": "Customer Deposits",
+        "loans": "Customer Loans",
+        "pnb": "NBI",
+        "net_income": "Net Income",
+        "equity": "Total Equity"
+      },
+      "provenance_cta": "Inspect Provenance"
     }
+  },
+  "countries": {
+    "title": "UMOA Member Countries",
+    "subtitle": "Aggregated banking data and financial depth across the 8 member states",
+    "card": {
+      "institutions": "licensed banks",
+      "total_assets": "Consolidated Assets",
+      "coverage": "Coverage"
+    },
+    "detail": {
+      "title": "Banking Sector —",
+      "overview": "Sector Summary",
+      "market_share_title": "National Market Shares",
+      "market_share_subtitle": "Breakdown of customer deposits and total assets by bank",
+      "institutions_title": "National Banks"
+    }
+  },
+  "analytics": {
+    "title": "Financial Analytics & Ratios",
+    "subtitle": "Prudential ratios, annual YoY growth, and objective head-to-head comparison",
+    "tabs": {
+      "ratios": "Banking Ratios",
+      "growth": "Annual Growth (YoY)",
+      "aggregations": "Sector Aggregates",
+      "compare": "Entity Comparison"
+    },
+    "ratios": {
+      "select_ratio": "Select a ratio",
+      "select_year": "Fiscal Year",
+      "formula": "Formula:",
+      "rules": "Eligibility rules:"
+    },
+    "growth": {
+      "select_metric": "Select a metric",
+      "table": {
+        "institution": "Bank",
+        "metric": "Metric",
+        "current_val": "Year t Value",
+        "previous_val": "Year t-1 Value",
+        "abs_change": "Absolute Change",
+        "growth_pct": "YoY Growth (%)"
+      }
+    },
+    "compare": {
+      "select_a": "First Institution",
+      "select_b": "Second Institution",
+      "metric_label": "Metric or Ratio",
+      "compare_btn": "Compare",
+      "result_title": "Factual Head-to-Head Comparison"
+    }
+  },
+  "documents": {
+    "title": "Official Document Repository",
+    "subtitle": "Audited annual reports, financial disclosures, and supervisory publications",
+    "filter_type": "Document Type",
+    "filter_year": "Year",
+    "columns": {
+      "title": "Document",
+      "institution": "Institution",
+      "source": "Source",
+      "type": "Type",
+      "year": "Year",
+      "download": "Download",
+      "extraction": "Extraction"
+    }
+  },
+  "search": {
+    "title": "Global Search",
+    "placeholder": "Search by institution, document, country or metric...",
+    "results_for": "Results for",
+    "institutions_found": "Institutions",
+    "documents_found": "Documents",
+    "sources_found": "Sources",
+    "empty": "No results found matching your query."
+  },
+  "provenance": {
+    "title": "Documentary Provenance Inspector",
+    "subtitle": "Audit trail and value certification chain",
+    "source": "Official Source",
+    "document": "Source Document",
+    "page": "Document Page",
+    "period": "Fiscal Period",
+    "method": "Extraction Method",
+    "raw_value": "Raw Published Value",
+    "normalized_value": "Normalized Value",
+    "validator": "Certified by",
+    "components_title": "Underlying components for this ratio calculation:"
+  },
+  "status": {
+    "verified": "Verified",
+    "reviewed": "Reviewed",
+    "extracted": "Extracted",
+    "needs_review": "Needs Review",
+    "rejected": "Rejected",
+    "unavailable": "Unavailable",
+    "partial": "Partial Coverage"
   },
   "common": {
-    "loading": "Loading…",
-    "error": "An error occurred",
+    "loading": "Loading data...",
+    "error": "An error occurred while fetching data.",
     "retry": "Retry",
     "back": "Back",
-    "source": "Source",
-    "period": "Period",
-    "unit": "Unit",
-    "page": "Page",
-    "status": "Status"
+    "empty": "No data available for this selection.",
+    "partial_coverage_warning": "Warning: These statistics represent partial sector coverage.",
+    "ratio_unavailable_reason": "Reason unavailable:"
   },
   "footer": {
-    "disclaimer": "All data comes from official sources. No data is invented or estimated.",
-    "sources": "Sources: BCEAO, Commission Bancaire de l'UMOA"
+    "disclaimer": "All financial data originates strictly from official supervisory publications and audited annual reports. Zero interpolation or synthetic estimations.",
+    "sources": "Sources: BCEAO | UMOA Banking Commission | Audited Financial Reports"
   }
 }

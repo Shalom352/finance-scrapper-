@@ -36,6 +36,8 @@ export async function generateMetadata({
   };
 }
 
+import { Shell } from "@/components/layout/Shell";
+
 export default async function LocaleLayout({
   children,
   params,
@@ -53,9 +55,9 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} className="dark">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-950 text-gray-100`}>
         <NextIntlClientProvider messages={messages}>
-          {children}
+          <Shell>{children}</Shell>
         </NextIntlClientProvider>
       </body>
     </html>
