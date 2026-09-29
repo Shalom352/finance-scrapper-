@@ -34,5 +34,14 @@ class PeriodMismatchError(RatioCalculationError):
     """Raised when synchronous components do not belong to the same period."""
 
 
+class ScopeMismatchError(RatioCalculationError):
+    """Raised when components mix accounting scopes (individual vs consolidated)."""
+
+
 class AggregationError(AnalyticsError):
     """Raised when a sector or regional aggregation encounters inconsistent or conflicting data."""
+
+
+def mismatch_kind(error: Exception) -> str:
+    """Reason prefix for a component compatibility failure ("scope" or "currency")."""
+    return "scope" if isinstance(error, ScopeMismatchError) else "currency"

@@ -1,7 +1,7 @@
 {
   "metadata": {
     "title": "UMOA Banking Intelligence",
-    "description": "Financial intelligence platform for West African Monetary Union banks and regulators"
+    "description": "Financial intelligence platform for WAEMU (UMOA) banks and regulators"
   },
   "nav": {
     "home": "Dashboard",
@@ -11,177 +11,392 @@
     "documents": "Documents",
     "search": "Search"
   },
-  "dashboard": {
-    "title": "Sector Dashboard",
-    "subtitle": "Key financial indicators across the West African Monetary Union banking sector",
-    "kpi": {
-      "institutions": "Registered Institutions",
-      "countries": "Member Countries",
-      "documents": "Source Documents",
-      "data_points": "Financial Data Points",
-      "verified_data": "Certified Observations",
-      "coverage": "Regional UMOA Coverage"
+  "sidebar": {
+    "notice_title": "Official sources",
+    "notice_body": "Data from BCEAO, UMOA Banking Commission publications and institutions' reports. Missing data is shown as \"—\"."
+  },
+  "topbar": {
+    "open_menu": "Open navigation menu",
+    "search_placeholder": "Search a bank, a document..."
+  },
+  "footer": {
+    "disclaimer": "Data from official publications. No extrapolation or interpolation: a missing value is shown as \"—\"."
+  },
+  "common": {
+    "error": "An error occurred while retrieving the data.",
+    "retry": "Retry",
+    "close": "Close",
+    "empty_title": "No data available",
+    "empty": "No observation matches the selected criteria.",
+    "fiscal_year": "Fiscal year",
+    "pagination": {
+      "range": "Showing {start} to {end} of {total} entries",
+      "previous": "Previous",
+      "next": "Next"
+    }
+  },
+  "status": {
+    "verified": "Verified",
+    "calculated_from_verified": "Calculated (verified data)",
+    "reviewed": "Reviewed",
+    "calculated": "Calculated",
+    "extracted": "Extracted",
+    "needs_review": "Needs review",
+    "conflict": "Divergent values",
+    "partial": "Partial",
+    "rejected": "Rejected",
+    "unavailable": "Unavailable",
+    "unknown": "Unknown",
+    "aria": "Quality status: {label}"
+  },
+  "institution_status": {
+    "active": "Active",
+    "closed": "Closed",
+    "in_liquidation": "In liquidation",
+    "merged": "Merged",
+    "unknown": "Unknown"
+  },
+  "document_download": {
+    "pending": "Pending",
+    "downloaded": "Downloaded",
+    "failed": "Failed"
+  },
+  "document_extraction": {
+    "pending": "Pending",
+    "extracted": "Extracted",
+    "failed": "Failed",
+    "skipped": "Skipped"
+  },
+  "document_types": {
+    "annual_report": "Annual report",
+    "financial_statement": "Financial statements",
+    "regulatory_report": "Regulatory report",
+    "press_release": "Press release",
+    "web_page": "Web page",
+    "other": "Other"
+  },
+  "metrics": {
+    "total_actifs": "Total assets",
+    "tresorerie": "Cash and cash equivalents",
+    "creances_clients": "Customer loans",
+    "creances_banques": "Interbank claims",
+    "immobilisations": "Fixed assets",
+    "autres_actifs": "Other assets",
+    "total_passifs": "Total liabilities",
+    "depots_clients": "Customer deposits",
+    "depots_banques": "Interbank deposits",
+    "emprunts_bancaires": "Bank borrowings",
+    "obligations_emises": "Debt securities issued",
+    "dettes_totales": "Total debt",
+    "autres_passifs": "Other liabilities",
+    "capitaux_propres": "Equity",
+    "produit_net_bancaire": "Net banking income",
+    "produits_totaux": "Total income",
+    "charges_totales": "Total expenses",
+    "resultat_exploitation": "Operating result",
+    "resultat_net": "Net result",
+    "chiffre_affaires": "Revenue",
+    "flux_exploitation": "Operating cash flow",
+    "flux_investissement": "Investing cash flow",
+    "flux_financement": "Financing cash flow",
+    "facilities_de_change": "FX facilities",
+    "taux_interet_moyen": "Average interest rate",
+    "endettement_actifs": "Debt-to-assets ratio"
+  },
+  "scope": {
+    "individual": "Individual accounts",
+    "consolidated": "Consolidated accounts"
+  },
+  "period_type": {
+    "annual": "Annual",
+    "semi_annual": "Semi-annual",
+    "quarterly": "Quarterly"
+  },
+  "country_names": {
+    "BJ": "Benin",
+    "BF": "Burkina Faso",
+    "CI": "Côte d'Ivoire",
+    "GW": "Guinea-Bissau",
+    "ML": "Mali",
+    "NE": "Niger",
+    "SN": "Senegal",
+    "TG": "Togo"
+  },
+  "coverage": {
+    "label": "Coverage",
+    "unknown": "Coverage not provided by the API",
+    "partial_warning": "Partial data: aggregates do not include every licensed institution."
+  },
+  "kpi": {
+    "total_assets": "Total assets",
+    "total_deposits": "Total deposits",
+    "total_loans": "Total loans"
+  },
+  "charts": {
+    "no_history": "no history available",
+    "no_data": "no data available",
+    "status": "Status",
+    "missing_years": "Years without data (line interrupted): {years}"
+  },
+  "tables": {
+    "financial": {
+      "empty": "No qualified financial data for this selection.",
+      "metric": "Metric",
+      "year": "Fiscal year",
+      "value": "Normalized value",
+      "status": "Status",
+      "audit": "Audit",
+      "audit_title": "View provenance",
+      "conflict": "Unverified divergent values"
     },
+    "ratios": {
+      "empty": "No ratio available for this selection.",
+      "code": "Code",
+      "name": "Ratio",
+      "year": "Fiscal year",
+      "formula": "Formula",
+      "value": "Value",
+      "status": "Status",
+      "components": "Components",
+      "components_count": "{count, plural, =0 {no component} one {# component} other {# components}}"
+    }
+  },
+  "provenance": {
+    "title": "Audit trail & traceability",
+    "loading": "Loading the source record...",
+    "error": "Unable to load the source record.",
+    "value_section": "Value",
+    "normalized_value": "Normalized value",
+    "normalized_unit": "Normalized unit",
+    "raw_value": "Published (original) value",
+    "period": "Period",
+    "scope": "Scope",
+    "source_section": "Documentary source",
+    "source": "Source",
+    "document": "Document",
+    "page": "Page",
+    "method": "Extraction method",
+    "confidence": "Extraction confidence",
+    "extracted_at": "Extracted on",
+    "verification_section": "Verification",
+    "status": "Status",
+    "validator": "Validated by",
+    "verified_at": "Verified on",
+    "notes": "Notes",
+    "calculated_value": "Calculated value",
+    "formula": "Applied formula",
+    "components_title": "Calculation components ({count})"
+  },
+  "dashboard": {
+    "title": "Sector dashboard",
+    "subtitle": "Key indicators of the West African Monetary Union banking sector, computed only from collected data.",
+    "kpi": {
+      "institutions": "Referenced institutions",
+      "countries": "Member countries",
+      "documents": "Source documents",
+      "data_points": "Financial data points",
+      "verified_data": "Verified data points",
+      "coverage": "UMOA coverage (total assets)"
+    },
+    "years_error": "Unable to determine the available fiscal years: no aggregate is displayed.",
+    "no_years": "No fiscal year available: no financial data has been collected yet.",
+    "partial_badge": "Partial coverage",
+    "structure_title": "Aggregated UMOA balance sheet structure",
+    "countries_title": "The 8 countries of the Union",
+    "countries_link": "See all countries →",
     "regional_aggregates": {
-      "title": "UMOA Regional Aggregates",
-      "subtitle": "Consolidated totals without double counting for latest reporting period",
-      "total_assets": "Total Assets",
-      "total_deposits": "Customer Deposits",
-      "total_loans": "Customer Loans",
+      "title": "UMOA regional aggregates",
+      "subtitle": "Totals without double counting for the selected fiscal year",
+      "total_assets": "Total assets",
+      "total_deposits": "Customer deposits",
+      "total_loans": "Customer loans",
       "total_equity": "Equity",
-      "net_income": "Net Income",
-      "nbi": "Net Banking Income"
+      "net_income": "Net result",
+      "nbi": "Net banking income"
     },
     "quick_links": {
-      "explore_institutions": "Explore Banks",
-      "view_analytics": "View Financial Ratios",
-      "view_countries": "Country Structures"
+      "explore_institutions": "Explore banks",
+      "view_analytics": "View ratios"
+    }
+  },
+  "countries": {
+    "title": "UMOA member countries",
+    "subtitle": "Sector aggregates and coverage for the 8 countries of the Union",
+    "years_error": "Unable to determine the available fiscal years.",
+    "no_years": "No fiscal year available: no financial data has been collected yet.",
+    "card": {
+      "institutions": "Institutions",
+      "coverage": "Coverage",
+      "open": "View sector →"
+    },
+    "detail": {
+      "unknown_country": "Country outside UMOA",
+      "back": "Back to member countries",
+      "coverage_label": "Sector completeness",
+      "no_years_title": "No fiscal year available",
+      "no_years": "No financial data collected for this country.",
+      "kpi_unavailable": "Aggregate unavailable for this metric",
+      "partial_badge": "Partial coverage",
+      "institutions_counted": "Institutions covered",
+      "institutions_counted_hint": "Contributors to total assets / licensed institutions",
+      "market_share_title": "National market shares",
+      "market_share_metric": "Metric",
+      "market_share_chart": "Market shares — {metric} (%)",
+      "market_share_empty": "No market share available for this metric and fiscal year.",
+      "col_institution": "Institution",
+      "col_share": "Share (%)",
+      "institutions_title": "Institutions in this country",
+      "institutions_empty": "No institution referenced.",
+      "scope_note": "Aggregates and market shares use individual annual accounts only."
     }
   },
   "institutions": {
-    "title": "Institutions Directory",
-    "subtitle": "Authorized credit institutions and financial entities in UMOA",
-    "search_placeholder": "Search bank by name...",
+    "title": "Institution directory",
+    "subtitle": "Credit institutions and financial institutions of the 8 UMOA countries",
+    "count": "{count, plural, =0 {no institution} one {# institution} other {# institutions}}",
+    "search_label": "Search",
+    "search_placeholder": "Institution name or keyword...",
+    "country_label": "Country",
     "filter_country": "All countries",
-    "filter_type": "All types",
+    "status_label": "Activity status",
     "filter_status": "All statuses",
+    "empty_title": "No institution found",
+    "empty": "No institution matches the selected filters.",
+    "reset": "Reset filters",
+    "open": "Open →",
     "columns": {
       "name": "Institution",
       "country": "Country",
-      "group": "Banking Group",
+      "group": "Banking group",
       "type": "Type",
       "status": "Status",
       "actions": "Profile"
     },
     "detail": {
-      "official_name": "Official Corporate Name",
-      "commercial_name": "Commercial Brand",
-      "regulatory_id": "Regulatory License ID",
-      "website": "Official Website",
+      "not_found_title": "Institution not found",
+      "not_found": "This institution does not exist or could not be loaded.",
+      "back": "Back to directory",
+      "commercial_name": "Trade name",
+      "group": "Group",
+      "regulatory_id": "License",
+      "website": "Official website",
+      "scope": "Scope",
+      "period_type": "Period",
+      "dataset_hint": "KPIs, table and charts use exactly this dataset (rejected data excluded).",
+      "kpi_title": "Fiscal year {year} indicators",
+      "kpi_title_none": "Indicators — no fiscal year available",
+      "conflict": "Divergent values",
+      "financials_title": "Normalized financial items",
+      "ratios_title": "Profitability and structure ratios",
+      "chart_title": "Trend — {metric}",
+      "documents_empty": "No document linked to this institution.",
       "tabs": {
-        "overview": "Financial Overview",
-        "ratios": "Ratios & Performance",
-        "charts": "Historical Evolution",
-        "documents": "Linked Documents"
-      },
-      "kpi": {
-        "assets": "Total Assets",
-        "deposits": "Customer Deposits",
-        "loans": "Customer Loans",
-        "pnb": "NBI",
-        "net_income": "Net Income",
-        "equity": "Total Equity"
-      },
-      "provenance_cta": "Inspect Provenance"
-    }
-  },
-  "countries": {
-    "title": "UMOA Member Countries",
-    "subtitle": "Aggregated banking data and financial depth across the 8 member states",
-    "card": {
-      "institutions": "licensed banks",
-      "total_assets": "Consolidated Assets",
-      "coverage": "Coverage"
-    },
-    "detail": {
-      "title": "Banking Sector —",
-      "overview": "Sector Summary",
-      "market_share_title": "National Market Shares",
-      "market_share_subtitle": "Breakdown of customer deposits and total assets by bank",
-      "institutions_title": "National Banks"
-    }
-  },
-  "analytics": {
-    "title": "Financial Analytics & Ratios",
-    "subtitle": "Prudential ratios, annual YoY growth, and objective head-to-head comparison",
-    "tabs": {
-      "ratios": "Banking Ratios",
-      "growth": "Annual Growth (YoY)",
-      "aggregations": "Sector Aggregates",
-      "compare": "Entity Comparison"
-    },
-    "ratios": {
-      "select_ratio": "Select a ratio",
-      "select_year": "Fiscal Year",
-      "formula": "Formula:",
-      "rules": "Eligibility rules:"
-    },
-    "growth": {
-      "select_metric": "Select a metric",
-      "table": {
-        "institution": "Bank",
-        "metric": "Metric",
-        "current_val": "Year t Value",
-        "previous_val": "Year t-1 Value",
-        "abs_change": "Absolute Change",
-        "growth_pct": "YoY Growth (%)"
+        "financials": "Financial statements",
+        "ratios": "Ratios",
+        "charts": "Charts",
+        "documents": "Documents"
       }
-    },
-    "compare": {
-      "select_a": "First Institution",
-      "select_b": "Second Institution",
-      "metric_label": "Metric or Ratio",
-      "compare_btn": "Compare",
-      "result_title": "Factual Head-to-Head Comparison"
     }
   },
   "documents": {
-    "title": "Official Document Repository",
-    "subtitle": "Audited annual reports, financial disclosures, and supervisory publications",
-    "filter_type": "Document Type",
-    "filter_year": "Year",
+    "title": "Document center",
+    "subtitle": "Collected annual reports, financial statements and regulatory publications",
+    "count": "{count, plural, =0 {no document} one {# document} other {# documents}}",
+    "filter_type": "Document type",
+    "all_types": "All types",
+    "filter_year": "Fiscal year",
+    "all_years": "All fiscal years",
+    "empty_title": "No document found",
+    "empty": "No publication matches the selected criteria.",
+    "reset": "Reset filters",
+    "open_institution": "View institution →",
+    "regional": "Regional (UMOA)",
     "columns": {
       "title": "Document",
       "institution": "Institution",
-      "source": "Source",
       "type": "Type",
-      "year": "Year",
+      "year": "Fiscal year",
       "download": "Download",
       "extraction": "Extraction"
     }
   },
   "search": {
-    "title": "Global Search",
-    "placeholder": "Search by institution, document, country or metric...",
-    "results_for": "Results for",
+    "title": "Global search",
+    "subtitle": "Collected institutions, banking groups, sources and documents.",
+    "placeholder": "Search a bank, a group, a source or a document...",
+    "submit": "Search",
+    "empty_title": "No results",
+    "empty": "No data matches \"{query}\".",
+    "results_for": "Results for \"{query}\"",
     "institutions_found": "Institutions",
     "documents_found": "Documents",
     "sources_found": "Sources",
-    "empty": "No results found matching your query."
+    "groups_found": "Banking groups",
+    "col_title": "Title",
+    "col_type": "Type",
+    "col_year": "Fiscal year"
   },
-  "provenance": {
-    "title": "Documentary Provenance Inspector",
-    "subtitle": "Audit trail and value certification chain",
-    "source": "Official Source",
-    "document": "Source Document",
-    "page": "Document Page",
-    "period": "Fiscal Period",
-    "method": "Extraction Method",
-    "raw_value": "Raw Published Value",
-    "normalized_value": "Normalized Value",
-    "validator": "Certified by",
-    "components_title": "Underlying components for this ratio calculation:"
+  "analytics": {
+    "title": "Financial analytics & ratios",
+    "subtitle": "Ratios, annual variations, sector aggregates and factual comparator — computed on demand, without interpolation.",
+    "fiscal_year": "Fiscal year",
+    "country_filter": "Country",
+    "all_countries": "All UMOA countries",
+    "no_years_title": "No fiscal year available",
+    "no_years": "No financial data collected for this selection.",
+    "tabs": {
+      "ratios": "Ratios",
+      "growth": "Annual growth",
+      "aggregations": "Sector aggregates",
+      "compare": "Comparator"
+    },
+    "ratios": {
+      "select_ratio": "Ratio",
+      "rules": "Eligibility rules:",
+      "formula": "Formula",
+      "table_title": "{ratio} — fiscal year {year}"
+    },
+    "growth": {
+      "select_metric": "Metric",
+      "period_hint": "Change of fiscal year {year} versus {previous}. Without a published {previous} fiscal year, the change stays unavailable.",
+      "empty_title": "No variation can be computed",
+      "empty": "The required consecutive fiscal years (t and t-1) are not available.",
+      "table": {
+        "institution": "Institution",
+        "country": "Country",
+        "current_val": "Value t",
+        "previous_val": "Value t-1",
+        "abs_change": "Absolute change",
+        "growth_pct": "Change (%)",
+        "status": "Status"
+      }
+    },
+    "aggregations": {
+      "select_metric": "Metric",
+      "empty_title": "No aggregate available",
+      "empty": "No aggregate for this metric and fiscal year."
+    },
+    "compare": {
+      "select_a": "Institution A",
+      "select_b": "Institution B",
+      "choose": "Choose an institution",
+      "metric_label": "Indicator",
+      "group_ratios": "Ratios",
+      "group_metrics": "Financial items",
+      "computing": "Computing...",
+      "compare_btn": "Compare",
+      "result_title": "Factual result — fiscal year {year}",
+      "difference": "Difference (A − B)",
+      "ratio_a_b": "Ratio A / B"
+    },
+    "scope_note": "Scope: individual annual accounts. Consolidated accounts are never mixed into the aggregates, ratios and growth shown here."
   },
-  "status": {
-    "verified": "Verified",
-    "reviewed": "Reviewed",
-    "extracted": "Extracted",
-    "needs_review": "Needs Review",
-    "rejected": "Rejected",
-    "unavailable": "Unavailable",
-    "partial": "Partial Coverage"
-  },
-  "common": {
-    "loading": "Loading data...",
-    "error": "An error occurred while fetching data.",
-    "retry": "Retry",
-    "back": "Back",
-    "empty": "No data available for this selection.",
-    "partial_coverage_warning": "Warning: These statistics represent partial sector coverage.",
-    "ratio_unavailable_reason": "Reason unavailable:"
-  },
-  "footer": {
-    "disclaimer": "All financial data originates strictly from official supervisory publications and audited annual reports. Zero interpolation or synthetic estimations.",
-    "sources": "Sources: BCEAO | UMOA Banking Commission | Audited Financial Reports"
+  "institution_types": {
+    "bank": "Bank",
+    "microfinance": "Microfinance",
+    "insurance": "Insurance",
+    "financial_holding": "Financial holding",
+    "development_bank": "Development bank",
+    "other": "Other"
   }
 }

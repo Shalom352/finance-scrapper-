@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 RatioStatus = Literal["calculated", "calculated_from_verified", "needs_review", "unavailable"]
 GrowthStatus = Literal["calculated", "calculated_from_verified", "needs_review", "unavailable"]
-AggregationStatus = Literal["calculated", "partial", "unavailable"]
+AggregationStatus = Literal["calculated", "partial", "needs_review", "unavailable"]
 ScopeType = Literal["country", "umoa"]
 ComparisonType = Literal[
     "institution_vs_institution",
@@ -29,6 +29,7 @@ class ComponentProvenance(BaseModel):
     metric_code: str
     period_year: int
     period_type: str = "annual"
+    scope: str | None = None
     value_normalized: Decimal | None = None
     currency: str | None = None
     source_id: str | None = None
@@ -67,6 +68,8 @@ class RatioCalculationResult(BaseModel):
     country_code: str | None = None
     period_year: int
     period_type: str = "annual"
+    # Accounting scope of every component ("individual" / "consolidated"); never mixed.
+    data_scope: str | None = None
     value: Decimal | None = None
     value_percent: float | None = None
     unit: str = "%"
@@ -87,6 +90,8 @@ class GrowthCalculationResult(BaseModel):
     country_code: str | None = None
     current_year: int
     previous_year: int
+    # Accounting scope of both years ("individual" / "consolidated"); never mixed.
+    data_scope: str | None = None
     current_value: Decimal | None = None
     previous_value: Decimal | None = None
     absolute_change: Decimal | None = None
@@ -109,10 +114,14 @@ class SectorAggregationResult(BaseModel):
     metric_code: str
     metric_label: str | None = None
     total_value: Decimal | None = None
-    currency: str = "XOF"
+    # Currency shared by every contribution; None when nothing was aggregated.
+    currency: str | None = None
+    # Sector aggregates only use one accounting scope and one period type (never mixed).
+    data_scope: str = "individual"
+    period_type: str = "annual"
     institution_count: int
     total_institutions: int
-    coverage_ratio: float
+    coverage_ratio: float | None = None
     is_partial: bool
     status: AggregationStatus
     contributing_institutions: list[str] = Field(default_factory=list)
@@ -128,11 +137,11 @@ class MarketShareResult(BaseModel):
     year: int
     metric_code: str
     institution_value: Decimal
-    sector_total_value: Decimal
-    market_share: float
-    market_share_percent: float
-    currency: str = "XOF"
-    coverage_ratio: float
+    sector_total_value: Decimal | None = None
+    market_share: float | None = None
+    market_share_percent: float | None = None
+    currency: str | None = None
+    coverage_ratio: float | None = None
     status: Literal["calculated", "needs_review", "unavailable"]
 
 

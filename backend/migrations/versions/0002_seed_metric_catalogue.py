@@ -18,6 +18,7 @@ Create Date: 2026-09-21
 
 """
 
+import uuid
 from collections.abc import Sequence
 from typing import Any
 
@@ -32,7 +33,8 @@ down_revision: str | None = "0001_initial_schema"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-# Columns to seed (id + audit timestamps handled separately).
+# Catalogue columns to seed; id and audit timestamps are added per row in upgrade()
+# (the schema has no server-side defaults for them, as in 0003 / 0004).
 _SEED_COLUMNS = (
     "code",
     "label_fr",
@@ -72,11 +74,17 @@ def upgrade() -> None:
         sa.column("is_debt_related", sa.Boolean),
         sa.column("display_order", sa.Integer),
         sa.column("description_synth", sa.Text),
+        sa.column("id", sa.String),
+        sa.column("created_at", sa.DateTime(timezone=True)),
+        sa.column("updated_at", sa.DateTime(timezone=True)),
     )
 
     rows: list[dict[str, Any]] = []
     for metric in V1_METRICS:
         row: dict[str, Any] = {col: metric.get(col) for col in _SEED_COLUMNS}
+        row["id"] = str(uuid.uuid4())
+        row["created_at"] = sa.func.now()
+        row["updated_at"] = sa.func.now()
         rows.append(row)
 
     insert_stmt = postgresql.insert(metric_table).values(rows).on_conflict_do_nothing(

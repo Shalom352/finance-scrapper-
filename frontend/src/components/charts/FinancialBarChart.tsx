@@ -1,39 +1,39 @@
 "use client";
 
 import React from "react";
-import { formatCompactCurrency, formatPercent } from "@/lib/formatters";
+import { useTranslations } from "next-intl";
+import { useFormatters } from "@/lib/useFormatters";
 
 export interface BarChartItem {
   label: string;
-  value: number;
+  /** null = unavailable: the item is listed with "—" and no bar. */
+  value: number | null;
   sublabel?: string;
-  color?: string;
 }
 
 interface FinancialBarChartProps {
   items: BarChartItem[];
   title?: string;
   isPercent?: boolean;
-  currency?: string;
+  currency?: string | null;
   className?: string;
 }
 
-export function FinancialBarChart({
-  items,
-  title,
-  isPercent = false,
-  currency = "XOF",
-  className = "",
-}: FinancialBarChartProps) {
-  if (!items || items.length === 0) {
+export function FinancialBarChart({ items, title, isPercent = false, currency = null, className = "" }: FinancialBarChartProps) {
+  const t = useTranslations("charts");
+  const fmt = useFormatters();
+  const known = items.filter((it): it is BarChartItem & { value: number } => it.value !== null);
+
+  if (known.length === 0) {
     return (
       <div className={`p-6 text-center text-xs text-gray-500 rounded-2xl border border-gray-800 ${className}`}>
-        Aucune donnée à afficher dans le graphique
+        {title ? `${title} — ` : ""}
+        {t("no_data")}
       </div>
     );
   }
 
-  const maxVal = Math.max(...items.map((it) => it.value), 0.0001);
+  const maxAbs = Math.max(...known.map((it) => Math.abs(it.value)), Number.EPSILON);
 
   return (
     <div className={`flex flex-col gap-3 rounded-2xl border border-gray-800 bg-gray-900/40 p-5 ${className}`}>
@@ -41,8 +41,8 @@ export function FinancialBarChart({
 
       <div className="space-y-3 pt-1">
         {items.map((item, idx) => {
-          const ratio = Math.min(Math.max(item.value / maxVal, 0), 1);
-          const pctWidth = (ratio * 100).toFixed(1);
+          const pctWidth = item.value === null ? 0 : (Math.abs(item.value) / maxAbs) * 100;
+          const negative = item.value !== null && item.value < 0;
 
           return (
             <div key={idx} className="flex flex-col gap-1">
@@ -51,17 +51,20 @@ export function FinancialBarChart({
                   {item.label}
                   {item.sublabel && <span className="text-gray-400 font-normal ml-1.5">({item.sublabel})</span>}
                 </span>
-                <span className="font-semibold text-emerald-400">
-                  {isPercent ? formatPercent(item.value, 1) : formatCompactCurrency(item.value, currency)}
+                <span className={`font-semibold ${negative ? "text-rose-400" : "text-emerald-400"}`}>
+                  {isPercent ? fmt.percent(item.value, 1) : fmt.compact(item.value, currency)}
                 </span>
               </div>
 
-              {/* Bar track */}
               <div className="w-full h-2 rounded-full bg-gray-800 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-teal-500 transition-all duration-500"
-                  style={{ width: `${pctWidth}%` }}
-                />
+                {item.value !== null && (
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      negative ? "bg-rose-500" : "bg-gradient-to-r from-emerald-600 to-teal-500"
+                    }`}
+                    style={{ width: `${pctWidth.toFixed(1)}%` }}
+                  />
+                )}
               </div>
             </div>
           );

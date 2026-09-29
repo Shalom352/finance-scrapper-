@@ -10,6 +10,8 @@ from typing import Any
 from scraping.analytics.eligibility import EligibilityEngine
 from scraping.analytics.exceptions import (
     CurrencyMismatchError,
+    ScopeMismatchError,
+    mismatch_kind,
 )
 from scraping.analytics.models import (
     RatioCalculationResult,
@@ -266,7 +268,8 @@ class RatioCalculator:
         # Check currency compatibility
         try:
             self.eligibility.validate_currency_compatibility(components)
-        except CurrencyMismatchError as e:
+            self.eligibility.validate_scope_compatibility(components)
+        except (CurrencyMismatchError, ScopeMismatchError) as e:
             return RatioCalculationResult(
                 ratio_code=definition.ratio_code,
                 ratio_name=definition.name_fr,
@@ -275,7 +278,7 @@ class RatioCalculator:
                 country_code=country_code,
                 period_year=year,
                 status="unavailable",
-                reason=f"currency_mismatch: {e}",
+                reason=f"{mismatch_kind(e)}_mismatch: {e}",
                 formula_used=definition.formula,
                 components=components,
             )
@@ -394,7 +397,8 @@ class RatioCalculator:
         # Validate currencies
         try:
             self.eligibility.validate_currency_compatibility(components)
-        except CurrencyMismatchError as e:
+            self.eligibility.validate_scope_compatibility(components)
+        except (CurrencyMismatchError, ScopeMismatchError) as e:
             return RatioCalculationResult(
                 ratio_code=definition.ratio_code,
                 ratio_name=definition.name_fr,
@@ -403,7 +407,7 @@ class RatioCalculator:
                 country_code=country_code,
                 period_year=year,
                 status="unavailable",
-                reason=f"currency_mismatch: {e}",
+                reason=f"{mismatch_kind(e)}_mismatch: {e}",
                 formula_used=definition.formula,
                 components=components,
             )

@@ -78,6 +78,7 @@ class DuplicateDetector:
             period_year=int(getattr(row, "period_year", 0)),
             period_type=str(getattr(row, "period_type", "annual")),
             period_label=safe_str(getattr(row, "period_label", None)),
+            scope=safe_str(getattr(row, "scope", None)),
             value_original=str(getattr(row, "value_original", "")),
             unit_original=safe_str(getattr(row, "unit_original", None)),
             currency_original=safe_str(getattr(row, "currency_original", None)),

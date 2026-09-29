@@ -1,18 +1,25 @@
 "use client";
 
 import React from "react";
-import type { FinancialDataPoint, RatioResult } from "@/types";
+import { useLocale, useTranslations } from "next-intl";
+import type { FinancialDataDetail, RatioResult } from "@/types";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import { formatCurrency, formatPercent } from "@/lib/formatters";
+import { MISSING, orMissing } from "@/lib/formatters";
+import { useFormatters } from "@/lib/useFormatters";
+import { useLabels } from "@/lib/useLabels";
+import { useFinancialDataDetail } from "@/lib/useFinancialDataDetail";
 
 interface ProvenancePanelProps {
-  dataPoint?: FinancialDataPoint | null;
+  /** Financial data row id: the panel loads the full record from the API. */
+  dataId?: string | null;
   ratioPoint?: RatioResult | null;
   onClose: () => void;
 }
 
-export function ProvenancePanel({ dataPoint, ratioPoint, onClose }: ProvenancePanelProps) {
-  if (!dataPoint && !ratioPoint) return null;
+export function ProvenancePanel({ dataId, ratioPoint, onClose }: ProvenancePanelProps) {
+  const t = useTranslations("provenance");
+  const tc = useTranslations("common");
+  if (!dataId && !ratioPoint) return null;
 
   return (
     <div
@@ -22,175 +29,190 @@ export function ProvenancePanel({ dataPoint, ratioPoint, onClose }: ProvenancePa
       aria-labelledby="provenance-title"
     >
       <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-gray-800 bg-gray-950 p-6 md:p-8 shadow-2xl">
-        {/* Header */}
         <div className="flex items-start justify-between pb-4 border-b border-gray-800">
-          <div>
-            <div className="inline-flex items-center gap-2 mb-1">
-              <span className="text-emerald-400 text-sm font-semibold tracking-wide uppercase">
-                Piste d&apos;audit & Traçabilité
-              </span>
-              {(dataPoint || ratioPoint) && (
-                <StatusBadge status={dataPoint?.status || ratioPoint?.status || "extracted"} />
-              )}
-            </div>
-            <h3 id="provenance-title" className="text-xl font-bold text-white">
-              {ratioPoint ? ratioPoint.ratio_name : dataPoint?.metric_code}
-            </h3>
-            <p className="text-xs text-gray-400 mt-0.5">
-              Exercice {dataPoint?.period_year || ratioPoint?.period_year} —{" "}
-              {dataPoint?.institution?.name || ratioPoint?.institution_name || "Institution"}
-            </p>
-          </div>
+          <span className="text-emerald-400 text-sm font-semibold tracking-wide uppercase">{t("title")}</span>
           <button
             onClick={onClose}
             className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
-            aria-label="Fermer le panneau de provenance"
+            aria-label={tc("close")}
           >
             ✕
           </button>
         </div>
 
-        {/* Content for Financial Data Point */}
-        {dataPoint && (
-          <div className="space-y-6 pt-6">
-            {/* Primary Value Block */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 rounded-2xl bg-gray-900/60 border border-gray-800">
-              <div>
-                <span className="text-[11px] text-gray-400 block mb-0.5">Valeur normalisée</span>
-                <span className="text-lg font-bold text-emerald-400">
-                  {formatCurrency(dataPoint.value_normalized, dataPoint.currency_normalized || "XOF")}
-                </span>
-              </div>
-              <div>
-                <span className="text-[11px] text-gray-400 block mb-0.5">Valeur brute publiée</span>
-                <span className="text-sm font-mono text-gray-200">
-                  {dataPoint.value_original} {dataPoint.unit_original || ""}
-                </span>
-              </div>
-              <div>
-                <span className="text-[11px] text-gray-400 block mb-0.5">Périmètre comptable</span>
-                <span className="text-sm capitalize text-gray-300">
-                  {dataPoint.scope === "individual" ? "Comptes sociaux (Individuel)" : "Comptes consolidés"}
-                </span>
-              </div>
-            </div>
+        {dataId && <DataPointProvenance dataId={dataId} />}
+        {!dataId && ratioPoint && <RatioProvenance ratio={ratioPoint} />}
 
-            {/* Documentary Metadata */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                Document source certifié
-              </h4>
-              <div className="p-4 rounded-2xl border border-gray-800 bg-gray-900/40 space-y-2 text-xs">
-                <div className="flex justify-between py-1 border-b border-gray-800/60">
-                  <span className="text-gray-400">Source officielle :</span>
-                  <span className="font-medium text-gray-200">{dataPoint.source?.name || dataPoint.source_id}</span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-gray-800/60">
-                  <span className="text-gray-400">Document :</span>
-                  <span className="font-medium text-gray-200">{dataPoint.document?.title || dataPoint.document_id}</span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-gray-800/60">
-                  <span className="text-gray-400">Numéro de page :</span>
-                  <span className="font-medium text-emerald-400">
-                    {dataPoint.page_number ? `Page ${dataPoint.page_number}` : "Non spécifiée"}
-                  </span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-gray-800/60">
-                  <span className="text-gray-400">Méthode d&apos;extraction :</span>
-                  <span className="font-mono text-gray-300">{dataPoint.extraction_method}</span>
-                </div>
-                {dataPoint.verified_by && (
-                  <div className="flex justify-between py-1">
-                    <span className="text-gray-400">Validateur humain :</span>
-                    <span className="font-medium text-emerald-400">{dataPoint.verified_by}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {dataPoint.notes && (
-              <div className="p-3 rounded-xl bg-gray-900 border border-gray-800 text-xs text-gray-400">
-                <span className="font-medium text-gray-300 block mb-1">Notes d&apos;extraction :</span>
-                {dataPoint.notes}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Content for Ratio Result */}
-        {ratioPoint && (
-          <div className="space-y-6 pt-6">
-            {/* Primary Ratio Value */}
-            <div className="p-5 rounded-2xl bg-gray-900/60 border border-gray-800 flex items-center justify-between">
-              <div>
-                <span className="text-xs text-gray-400 block mb-1">Valeur calculée</span>
-                <span className="text-2xl font-black text-emerald-400">
-                  {ratioPoint.value_percent !== null && ratioPoint.value_percent !== undefined
-                    ? formatPercent(ratioPoint.value_percent, 2)
-                    : "N/A"}
-                </span>
-                {ratioPoint.reason && (
-                  <span className="text-xs text-amber-400 block mt-1">
-                    {ratioPoint.reason}
-                  </span>
-                )}
-              </div>
-              <div className="text-right">
-                <span className="text-xs text-gray-400 block mb-1">Formule appliquée</span>
-                <code className="text-xs px-2.5 py-1 rounded bg-gray-950 border border-gray-800 text-emerald-300 font-mono">
-                  {ratioPoint.formula_used}
-                </code>
-              </div>
-            </div>
-
-            {/* Constituent Components Tree */}
-            <div>
-              <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                Composants du calcul ({ratioPoint.components.length})
-              </h4>
-              <div className="space-y-3">
-                {ratioPoint.components.map((comp, idx) => (
-                  <div
-                    key={idx}
-                    className="p-4 rounded-2xl border border-gray-800 bg-gray-900/40 text-xs space-y-1.5"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-gray-200">{comp.metric_code}</span>
-                        <span className="text-gray-400">({comp.period_year})</span>
-                        {comp.role && (
-                          <span className="px-1.5 py-0.5 rounded bg-gray-800 text-[10px] text-gray-400 uppercase">
-                            {comp.role}
-                          </span>
-                        )}
-                      </div>
-                      <StatusBadge status={comp.status} size="sm" />
-                    </div>
-
-                    <div className="flex items-center justify-between pt-1">
-                      <span className="text-gray-400">
-                        {comp.source_name || comp.source_id || "Source"}
-                        {comp.page_number && ` • Page ${comp.page_number}`}
-                      </span>
-                      <span className="font-semibold text-emerald-400 text-sm">
-                        {formatCurrency(comp.value_normalized, comp.currency || "XOF")}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Footer */}
         <div className="mt-8 pt-4 border-t border-gray-800 flex justify-end">
           <button
             onClick={onClose}
             className="px-5 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-white text-xs font-medium transition-colors"
           >
-            Fermer
+            {tc("close")}
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Row({ label, value, testId }: { label: string; value: React.ReactNode; testId?: string }) {
+  return (
+    <div className="flex justify-between gap-4 py-1.5 border-b border-gray-800/60 last:border-0">
+      <span className="text-gray-400 shrink-0">{label}</span>
+      <span className="font-medium text-gray-200 text-right break-all" data-testid={testId}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function DataPointProvenance({ dataId }: { dataId: string }) {
+  const t = useTranslations("provenance");
+  const tc = useTranslations("common");
+  const fmt = useFormatters();
+  const labels = useLabels();
+  const locale = useLocale();
+  const { state: detail, retry } = useFinancialDataDetail(dataId);
+
+  if (detail.status === "error") {
+    return (
+      <div role="alert" className="pt-6 space-y-3 text-xs text-rose-300">
+        <p>{t("error")}</p>
+        <button onClick={retry} className="px-3 py-1.5 rounded-lg border border-rose-700 text-rose-200">
+          {tc("retry")}
+        </button>
+      </div>
+    );
+  }
+
+  if (detail.status !== "ready") {
+    return <p className="pt-6 text-xs text-gray-400">{t("loading")}</p>;
+  }
+
+  const d: FinancialDataDetail = detail.data;
+  const metricLabel = d.metric ? (locale === "en" ? d.metric.label_en : d.metric.label_fr) : labels.metric(d.metric_code);
+  const period = [d.period_year, labels.periodType(d.period_type), d.period_label].filter(Boolean).join(" · ");
+  const original = [d.value_original, d.unit_original, d.currency_original].filter(Boolean).join(" ");
+
+  return (
+    <div className="space-y-6 pt-6">
+      <div>
+        <div className="flex items-center gap-2 mb-1">
+          <h3 id="provenance-title" className="text-xl font-bold text-white">
+            {metricLabel}
+          </h3>
+          <StatusBadge status={d.status} />
+        </div>
+        <p className="text-xs text-gray-400">{orMissing(d.institution?.name_official)}</p>
+      </div>
+
+      <section className="p-4 rounded-2xl border border-gray-800 bg-gray-900/40 text-xs">
+        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{t("value_section")}</h4>
+        <Row label={t("normalized_value")} value={fmt.currency(d.value_normalized, d.currency_normalized)} testId="prov-normalized" />
+        <Row label={t("normalized_unit")} value={orMissing(d.unit_normalized)} />
+        <Row label={t("raw_value")} value={orMissing(original)} testId="prov-original" />
+        <Row label={t("period")} value={orMissing(period)} />
+        <Row label={t("scope")} value={orMissing(labels.scope(d.scope))} />
+      </section>
+
+      <section className="p-4 rounded-2xl border border-gray-800 bg-gray-900/40 text-xs">
+        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{t("source_section")}</h4>
+        <Row label={t("source")} value={orMissing(d.source?.name)} testId="prov-source" />
+        <Row
+          label={t("document")}
+          testId="prov-document"
+          value={
+            d.document?.url ? (
+              <a href={d.document.url} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline">
+                {d.document.title} ↗
+              </a>
+            ) : (
+              orMissing(d.document?.title)
+            )
+          }
+        />
+        <Row label={t("page")} value={orMissing(d.page_number)} testId="prov-page" />
+        <Row label={t("method")} value={orMissing(d.extraction_method)} />
+        <Row
+          label={t("confidence")}
+          value={d.confidence_score === null ? MISSING : fmt.percent(d.confidence_score * 100, 1)}
+          testId="prov-confidence"
+        />
+        <Row label={t("extracted_at")} value={fmt.date(d.extracted_at)} />
+      </section>
+
+      <section className="p-4 rounded-2xl border border-gray-800 bg-gray-900/40 text-xs">
+        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{t("verification_section")}</h4>
+        <Row label={t("status")} value={<StatusBadge status={d.status} size="sm" />} />
+        <Row label={t("validator")} value={orMissing(d.verified_by)} />
+        <Row label={t("verified_at")} value={fmt.date(d.verified_at)} />
+        <Row label={t("notes")} value={orMissing(d.notes)} />
+      </section>
+    </div>
+  );
+}
+
+function RatioProvenance({ ratio }: { ratio: RatioResult }) {
+  const t = useTranslations("provenance");
+  const fmt = useFormatters();
+  const labels = useLabels();
+
+  return (
+    <div className="space-y-6 pt-6">
+      <div>
+        <div className="flex items-center gap-2 mb-1">
+          <h3 id="provenance-title" className="text-xl font-bold text-white">
+            {ratio.ratio_name}
+          </h3>
+          <StatusBadge status={ratio.status} />
+        </div>
+        <p className="text-xs text-gray-400">
+          {ratio.period_year} — {orMissing(ratio.institution_name)}
+        </p>
+      </div>
+
+      <div className="p-5 rounded-2xl bg-gray-900/60 border border-gray-800 flex items-center justify-between gap-4">
+        <div>
+          <span className="text-xs text-gray-400 block mb-1">{t("calculated_value")}</span>
+          <span className="text-2xl font-black text-emerald-400">{fmt.percent(ratio.value_percent, 2)}</span>
+          {ratio.reason && <span className="text-xs text-amber-400 block mt-1">{ratio.reason}</span>}
+        </div>
+        <div className="text-right">
+          <span className="text-xs text-gray-400 block mb-1">{t("formula")}</span>
+          <code className="text-xs px-2.5 py-1 rounded bg-gray-950 border border-gray-800 text-emerald-300 font-mono">
+            {ratio.formula_used}
+          </code>
+        </div>
+      </div>
+
+      <div>
+        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+          {t("components_title", { count: ratio.components.length })}
+        </h4>
+        <div className="space-y-3">
+          {ratio.components.map((comp, idx) => (
+            <div key={idx} className="p-4 rounded-2xl border border-gray-800 bg-gray-900/40 text-xs space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-gray-200">{labels.metric(comp.metric_code)}</span>
+                  <span className="text-gray-400">({comp.period_year})</span>
+                  {comp.role && (
+                    <span className="px-1.5 py-0.5 rounded bg-gray-800 text-[10px] text-gray-400 uppercase">{comp.role}</span>
+                  )}
+                </div>
+                <StatusBadge status={comp.status} size="sm" />
+              </div>
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-gray-400">
+                  {orMissing(comp.source_name)} · {t("page")} {orMissing(comp.page_number)}
+                </span>
+                <span className="font-semibold text-emerald-400 text-sm">
+                  {fmt.currency(comp.value_normalized, comp.currency)}
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

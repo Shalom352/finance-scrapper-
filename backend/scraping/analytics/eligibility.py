@@ -10,6 +10,7 @@ from typing import Any
 from scraping.analytics.exceptions import (
     CurrencyMismatchError,
     PeriodMismatchError,
+    ScopeMismatchError,
 )
 from scraping.analytics.models import (
     ComponentProvenance,
@@ -99,8 +100,9 @@ class EligibilityEngine:
             metric_code=obs.metric_code,
             period_year=obs.period_year,
             period_type=obs.period_type,
+            scope=obs.scope,
             value_normalized=obs.value_normalized,
-            currency=obs.currency_normalized or obs.currency_original or "XOF",
+            currency=obs.currency_normalized or obs.currency_original,
             source_id=obs.source_id,
             source_name=obs.source_name,
             document_id=obs.document_id,
@@ -152,6 +154,17 @@ class EligibilityEngine:
         if len(currencies) > 1:
             raise CurrencyMismatchError(
                 f"Incompatible currencies in ratio components: {', '.join(currencies)}"
+            )
+
+    def validate_scope_compatibility(
+        self,
+        components: list[ComponentProvenance],
+    ) -> None:
+        """Ensure all components share the same accounting scope (never individual + consolidated)."""
+        scopes = {c.scope for c in components if c.scope}
+        if len(scopes) > 1:
+            raise ScopeMismatchError(
+                f"Incompatible accounting scopes in components: {', '.join(sorted(scopes))}"
             )
 
     def validate_period_compatibility(

@@ -13,7 +13,7 @@ from sqlalchemy.orm import selectinload
 from app.models.country import Country
 from app.models.financial_data import FinancialData
 from app.models.institution import Institution
-from scraping.analytics.aggregation import SectorAggregator
+from scraping.analytics.aggregation import SECTOR_SCOPE, SectorAggregator
 from scraping.analytics.growth_calculator import CORE_GROWTH_METRICS, GrowthCalculator
 from scraping.analytics.models import (
     ComparisonResult,
@@ -26,6 +26,10 @@ from scraping.analytics.ratio_calculator import RATIO_DEFINITIONS, RatioCalculat
 from scraping.analytics.sector_analysis import SectorAnalyzer
 from scraping.consolidation.duplicate_detector import DuplicateDetector
 from scraping.consolidation.models import ObservationSummary
+
+# Ratios, growth and sector aggregates are annual indicators (RATIO_DEFINITIONS frequency="annual"):
+# semi-annual or quarterly observations must never be mixed into them.
+ANNUAL = "annual"
 
 
 class AnalyticsService:
@@ -47,6 +51,7 @@ class AnalyticsService:
         ratio_code: str | None = None,
         year: int | None = None,
         status: str | None = None,
+        data_scope: str = SECTOR_SCOPE,
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[RatioCalculationResult], int]:
@@ -68,7 +73,7 @@ class AnalyticsService:
             inst_query = inst_query.where(Institution.id == institution_id)
         if country_code:
             inst_query = inst_query.join(Institution.country).where(
-                func.upper(Country.iso_code_2) == country_code.upper()
+                func.upper(Country.code) == country_code.upper()
             )
 
         institutions = (await db.execute(inst_query)).scalars().all()
@@ -87,6 +92,8 @@ class AnalyticsService:
             )
             .where(
                 FinancialData.institution_id.in_(inst_ids),
+                FinancialData.period_type == ANNUAL,
+                FinancialData.scope == data_scope,
                 FinancialData.deleted_at.is_(None),
             )
         )
@@ -109,7 +116,7 @@ class AnalyticsService:
             else:
                 years_to_calc = sorted({o.period_year for o in inst_obs}, reverse=True)
 
-            c_code = inst.country.iso_code_2 if inst.country else None
+            c_code = inst.country.code if inst.country else None
 
             for y in years_to_calc:
                 for r_code in target_codes:
@@ -118,9 +125,10 @@ class AnalyticsService:
                         institution_id=i_id,
                         year=y,
                         observations=inst_obs,
-                        institution_name=inst.name,
+                        institution_name=inst.name_official,
                         country_code=c_code,
                     )
+                    res.data_scope = data_scope
                     if status and res.status != status:
                         continue
                     all_results.append(res)
@@ -138,6 +146,7 @@ class AnalyticsService:
         metric_code: str | None = None,
         year: int | None = None,
         status: str | None = None,
+        data_scope: str = SECTOR_SCOPE,
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[GrowthCalculationResult], int]:
@@ -151,7 +160,7 @@ class AnalyticsService:
             inst_query = inst_query.where(Institution.id == institution_id)
         if country_code:
             inst_query = inst_query.join(Institution.country).where(
-                func.upper(Country.iso_code_2) == country_code.upper()
+                func.upper(Country.code) == country_code.upper()
             )
 
         institutions = (await db.execute(inst_query)).scalars().all()
@@ -170,6 +179,8 @@ class AnalyticsService:
             .where(
                 FinancialData.institution_id.in_(inst_ids),
                 FinancialData.metric_code.in_(target_metrics),
+                FinancialData.period_type == ANNUAL,
+                FinancialData.scope == data_scope,
                 FinancialData.deleted_at.is_(None),
             )
         )
@@ -190,7 +201,7 @@ class AnalyticsService:
             else:
                 years_to_calc = sorted({o.period_year for o in inst_obs}, reverse=True)
 
-            c_code = inst.country.iso_code_2 if inst.country else None
+            c_code = inst.country.code if inst.country else None
 
             for y in years_to_calc:
                 for m_code in target_metrics:
@@ -199,9 +210,10 @@ class AnalyticsService:
                         institution_id=i_id,
                         year=y,
                         observations=inst_obs,
-                        institution_name=inst.name,
+                        institution_name=inst.name_official,
                         country_code=c_code,
                     )
+                    res.data_scope = data_scope
                     if status and res.status != status:
                         continue
                     all_results.append(res)
@@ -222,11 +234,15 @@ class AnalyticsService:
     ) -> list[SectorAggregationResult]:
         """
         Compute country or regional UMOA totals with institutional deduplication.
+
+        Only individual annual accounts are aggregated (SECTOR_SCOPE): consolidated accounts
+        would double count subsidiaries already reported individually.
         """
+        data_scope = SECTOR_SCOPE
         # Fetch country metadata
         c_query = select(Country)
         if country_code:
-            c_query = c_query.where(func.upper(Country.iso_code_2) == country_code.upper())
+            c_query = c_query.where(func.upper(Country.code) == country_code.upper())
 
         countries = (await db.execute(c_query)).scalars().all()
         if not countries:
@@ -255,6 +271,8 @@ class AnalyticsService:
                     Institution.country_id == country.id,
                     FinancialData.metric_code == metric_code,
                     FinancialData.period_year == year,
+                    FinancialData.period_type == ANNUAL,
+                    FinancialData.scope == data_scope,
                     FinancialData.deleted_at.is_(None),
                 )
             )
@@ -264,7 +282,7 @@ class AnalyticsService:
             tot_inst = counts_by_country_id.get(country.id, 0)
 
             c_agg = self.sector_aggregator.aggregate_country(
-                country_code=country.iso_code_2,
+                country_code=country.code,
                 year=year,
                 metric_code=metric_code,
                 observations=parsed_obs,
@@ -295,8 +313,9 @@ class AnalyticsService:
         metric_code: str = "depots_clients",
     ) -> tuple[SectorAggregationResult | None, list[MarketShareResult]]:
         """
-        Calculate market shares for all institutions in a country.
+        Calculate market shares for all institutions in a country (individual annual accounts).
         """
+        data_scope = SECTOR_SCOPE
         country_aggs = await self.get_aggregations(
             db, year=year, metric_code=metric_code, country_code=country_code, scope="country"
         )
@@ -306,7 +325,7 @@ class AnalyticsService:
         sec_agg = country_aggs[0]
 
         # Fetch individual institutions and their authoritative values
-        c_query = select(Country).where(func.upper(Country.iso_code_2) == country_code.upper())
+        c_query = select(Country).where(func.upper(Country.code) == country_code.upper())
         country = (await db.execute(c_query)).scalar_one_or_none()
         if not country:
             return sec_agg, []
@@ -325,6 +344,8 @@ class AnalyticsService:
                 Institution.country_id == country.id,
                 FinancialData.metric_code == metric_code,
                 FinancialData.period_year == year,
+                FinancialData.period_type == ANNUAL,
+                FinancialData.scope == data_scope,
                 FinancialData.deleted_at.is_(None),
             )
         )
@@ -334,22 +355,61 @@ class AnalyticsService:
         for r in rows:
             obs_by_inst[r.institution_id].append(self.duplicate_detector.observation_from_orm(r))
 
+        # Shares are computed only for institutions that contributed to the sector total, so
+        # conflicts, rejected / needs_review rows and currency issues can never produce a share,
+        # and the shares always refer to the same total. No total → no shares.
+        contributing = set(sec_agg.contributing_institutions)
         shares: list[MarketShareResult] = []
+        if sec_agg.total_value is None:
+            return sec_agg, shares
         for inst in institutions:
+            if inst.id not in contributing:
+                continue
             cand = obs_by_inst.get(inst.id, [])
-            best, _ = self.sector_aggregator.eligibility.select_authoritative_observation(cand)
-            if best and best.value_normalized is not None:
+            best, conflict = self.sector_aggregator.eligibility.select_authoritative_observation(cand)
+            if best and not conflict and best.value_normalized is not None:
                 ms = self.sector_analyzer.calculate_market_share(
                     institution_id=inst.id,
                     institution_value=best.value_normalized,
                     sector_aggregation=sec_agg,
-                    institution_name=inst.name,
+                    institution_name=inst.name_official,
                 )
                 shares.append(ms)
 
         # Sort market shares descending
-        shares.sort(key=lambda s: s.market_share, reverse=True)
+        shares.sort(key=lambda s: s.market_share or 0.0, reverse=True)
         return sec_agg, shares
+
+    async def _authoritative_metric_value(
+        self,
+        db: AsyncSession,
+        institution_id: str,
+        metric_code: str,
+        year: int,
+        data_scope: str = SECTOR_SCOPE,
+    ):
+        """Authoritative annual value of one metric in one scope, or None if absent or in conflict."""
+        query = (
+            select(FinancialData)
+            .options(
+                selectinload(FinancialData.source),
+                selectinload(FinancialData.document),
+            )
+            .where(
+                FinancialData.institution_id == institution_id,
+                FinancialData.metric_code == metric_code,
+                FinancialData.period_year == year,
+                FinancialData.period_type == ANNUAL,
+                FinancialData.scope == data_scope,
+                FinancialData.deleted_at.is_(None),
+            )
+        )
+        rows = (await db.execute(query)).scalars().all()
+        candidates = [self.duplicate_detector.observation_from_orm(r) for r in rows]
+        best, conflict = self.sector_aggregator.eligibility.select_authoritative_observation(candidates)
+        if best is None or conflict:
+            return None
+        return best.value_normalized
 
     async def compare_entities(
         self,
@@ -360,6 +420,7 @@ class AnalyticsService:
         entity_b: str,
         metric_or_ratio: str,
         year: int,
+        data_scope: str = SECTOR_SCOPE,
     ) -> ComparisonResult:
         """
         Execute factual comparison between two entities.
@@ -367,33 +428,25 @@ class AnalyticsService:
         if comparison_type == "institution_vs_institution":
             inst_a = (await db.execute(select(Institution).where(Institution.id == entity_a))).scalar_one_or_none()
             inst_b = (await db.execute(select(Institution).where(Institution.id == entity_b))).scalar_one_or_none()
-            name_a = inst_a.name if inst_a else entity_a
-            name_b = inst_b.name if inst_b else entity_b
+            name_a = inst_a.name_official if inst_a else entity_a
+            name_b = inst_b.name_official if inst_b else entity_b
 
             # Try ratio first
             r_def = self.ratio_calculator.get_definition(metric_or_ratio)
             if r_def:
-                r_a, _ = await self.get_ratios(db, institution_id=entity_a, ratio_code=metric_or_ratio, year=year)
-                r_b, _ = await self.get_ratios(db, institution_id=entity_b, ratio_code=metric_or_ratio, year=year)
+                r_a, _ = await self.get_ratios(
+                    db, institution_id=entity_a, ratio_code=metric_or_ratio, year=year, data_scope=data_scope
+                )
+                r_b, _ = await self.get_ratios(
+                    db, institution_id=entity_b, ratio_code=metric_or_ratio, year=year, data_scope=data_scope
+                )
                 val_a = r_a[0].value_percent if r_a and r_a[0].value_percent is not None else None
                 val_b = r_b[0].value_percent if r_b and r_b[0].value_percent is not None else None
                 unit = "%"
             else:
-                # Query metric
-                q_a = select(FinancialData.value_normalized).where(
-                    FinancialData.institution_id == entity_a,
-                    FinancialData.metric_code == metric_or_ratio,
-                    FinancialData.period_year == year,
-                    FinancialData.deleted_at.is_(None),
-                )
-                q_b = select(FinancialData.value_normalized).where(
-                    FinancialData.institution_id == entity_b,
-                    FinancialData.metric_code == metric_or_ratio,
-                    FinancialData.period_year == year,
-                    FinancialData.deleted_at.is_(None),
-                )
-                val_a = (await db.execute(q_a)).scalars().first()
-                val_b = (await db.execute(q_b)).scalars().first()
+                # Authoritative annual value per institution (rejected excluded, conflicts → None)
+                val_a = await self._authoritative_metric_value(db, entity_a, metric_or_ratio, year, data_scope)
+                val_b = await self._authoritative_metric_value(db, entity_b, metric_or_ratio, year, data_scope)
                 unit = "XOF"
 
             return self.sector_analyzer.compare_institutions(

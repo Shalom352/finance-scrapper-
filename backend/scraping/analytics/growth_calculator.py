@@ -8,7 +8,7 @@ from decimal import Decimal
 from typing import Any
 
 from scraping.analytics.eligibility import EligibilityEngine
-from scraping.analytics.exceptions import CurrencyMismatchError
+from scraping.analytics.exceptions import CurrencyMismatchError, ScopeMismatchError, mismatch_kind
 from scraping.analytics.models import (
     GrowthCalculationResult,
 )
@@ -93,7 +93,8 @@ class GrowthCalculator:
         # Currency mismatch check
         try:
             self.eligibility.validate_currency_compatibility(components)
-        except CurrencyMismatchError as e:
+            self.eligibility.validate_scope_compatibility(components)
+        except (CurrencyMismatchError, ScopeMismatchError) as e:
             return GrowthCalculationResult(
                 metric_code=metric_code,
                 metric_label=metric_label,
@@ -103,7 +104,7 @@ class GrowthCalculator:
                 current_year=year,
                 previous_year=prev_year,
                 status="unavailable",
-                reason=f"currency_mismatch: {e}",
+                reason=f"{mismatch_kind(e)}_mismatch: {e}",
                 components=components,
             )
 

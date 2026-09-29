@@ -4,184 +4,399 @@
     "description": "Plateforme d'intelligence financière pour les banques et régulateurs de l'UMOA"
   },
   "nav": {
-    "home": "Dashboard",
+    "home": "Tableau de bord",
     "institutions": "Institutions",
     "countries": "Pays UMOA",
     "analytics": "Analyses & Ratios",
     "documents": "Documents",
     "search": "Recherche"
   },
-  "dashboard": {
-    "title": "Tableau de Bord Sectoriel",
-    "subtitle": "Indicateurs clés du secteur bancaire de l'Union Monétaire Ouest-Africaine",
-    "kpi": {
-      "institutions": "Institutions Référencées",
-      "countries": "Pays Membres",
-      "documents": "Documents Sources",
-      "data_points": "Données Financières",
-      "verified_data": "Données Vérifiées",
-      "coverage": "Taux de Couverture UMOA"
+  "sidebar": {
+    "notice_title": "Sources officielles",
+    "notice_body": "Données issues des publications BCEAO, Commission Bancaire de l'UMOA et rapports des établissements. Une donnée absente est affichée « — »."
+  },
+  "topbar": {
+    "open_menu": "Ouvrir le menu de navigation",
+    "search_placeholder": "Rechercher une banque, un document..."
+  },
+  "footer": {
+    "disclaimer": "Données issues de publications officielles. Aucune extrapolation ni interpolation : une valeur absente est affichée « — »."
+  },
+  "common": {
+    "error": "Une erreur est survenue lors de la récupération des données.",
+    "retry": "Réessayer",
+    "close": "Fermer",
+    "empty_title": "Aucune donnée disponible",
+    "empty": "Aucune observation ne correspond aux critères sélectionnés.",
+    "fiscal_year": "Exercice",
+    "pagination": {
+      "range": "Affichage de {start} à {end} sur {total} entrées",
+      "previous": "Précédent",
+      "next": "Suivant"
+    }
+  },
+  "status": {
+    "verified": "Vérifié",
+    "calculated_from_verified": "Calculé (données vérifiées)",
+    "reviewed": "Revu",
+    "calculated": "Calculé",
+    "extracted": "Extrait",
+    "needs_review": "À réviser",
+    "conflict": "Valeurs divergentes",
+    "partial": "Partiel",
+    "rejected": "Rejeté",
+    "unavailable": "Indisponible",
+    "unknown": "Inconnu",
+    "aria": "Statut de qualité : {label}"
+  },
+  "institution_status": {
+    "active": "En activité",
+    "closed": "Fermé",
+    "in_liquidation": "En liquidation",
+    "merged": "Fusionné",
+    "unknown": "Inconnu"
+  },
+  "document_download": {
+    "pending": "En attente",
+    "downloaded": "Téléchargé",
+    "failed": "Échec"
+  },
+  "document_extraction": {
+    "pending": "En attente",
+    "extracted": "Extrait",
+    "failed": "Échec",
+    "skipped": "Ignoré"
+  },
+  "document_types": {
+    "annual_report": "Rapport annuel",
+    "financial_statement": "États financiers",
+    "regulatory_report": "Rapport réglementaire",
+    "press_release": "Communiqué",
+    "web_page": "Page web",
+    "other": "Autre"
+  },
+  "metrics": {
+    "total_actifs": "Total actifs",
+    "tresorerie": "Trésorerie",
+    "creances_clients": "Créances clients",
+    "creances_banques": "Créances banques",
+    "immobilisations": "Immobilisations",
+    "autres_actifs": "Autres actifs",
+    "total_passifs": "Total passifs",
+    "depots_clients": "Dépôts clients",
+    "depots_banques": "Dépôts banques",
+    "emprunts_bancaires": "Emprunts bancaires",
+    "obligations_emises": "Obligations émises",
+    "dettes_totales": "Dettes totales",
+    "autres_passifs": "Autres passifs",
+    "capitaux_propres": "Capitaux propres",
+    "produit_net_bancaire": "Produit net bancaire",
+    "produits_totaux": "Produits totaux",
+    "charges_totales": "Charges totales",
+    "resultat_exploitation": "Résultat d'exploitation",
+    "resultat_net": "Résultat net",
+    "chiffre_affaires": "Chiffre d'affaires",
+    "flux_exploitation": "Flux d'exploitation",
+    "flux_investissement": "Flux d'investissement",
+    "flux_financement": "Flux de financement",
+    "facilities_de_change": "Facilités de change",
+    "taux_interet_moyen": "Taux d'intérêt moyen",
+    "endettement_actifs": "Endettement sur actifs"
+  },
+  "scope": {
+    "individual": "Comptes individuels",
+    "consolidated": "Comptes consolidés"
+  },
+  "period_type": {
+    "annual": "Annuel",
+    "semi_annual": "Semestriel",
+    "quarterly": "Trimestriel"
+  },
+  "country_names": {
+    "BJ": "Bénin",
+    "BF": "Burkina Faso",
+    "CI": "Côte d'Ivoire",
+    "GW": "Guinée-Bissau",
+    "ML": "Mali",
+    "NE": "Niger",
+    "SN": "Sénégal",
+    "TG": "Togo"
+  },
+  "coverage": {
+    "label": "Couverture",
+    "unknown": "Couverture non communiquée par l'API",
+    "partial_warning": "Données partielles : les agrégats n'englobent pas tous les établissements agréés."
+  },
+  "kpi": {
+    "total_assets": "Total actifs",
+    "total_deposits": "Total dépôts",
+    "total_loans": "Total crédits"
+  },
+  "charts": {
+    "no_history": "aucun historique disponible",
+    "no_data": "aucune donnée disponible",
+    "status": "Statut",
+    "missing_years": "Années sans donnée (tracé interrompu) : {years}"
+  },
+  "tables": {
+    "financial": {
+      "empty": "Aucune donnée financière qualifiée pour cette sélection.",
+      "metric": "Métrique",
+      "year": "Exercice",
+      "value": "Valeur normalisée",
+      "status": "Statut",
+      "audit": "Audit",
+      "audit_title": "Consulter la provenance",
+      "conflict": "Valeurs divergentes non vérifiées"
     },
+    "ratios": {
+      "empty": "Aucun ratio disponible pour cette sélection.",
+      "code": "Code",
+      "name": "Ratio",
+      "year": "Exercice",
+      "formula": "Formule",
+      "value": "Valeur",
+      "status": "Statut",
+      "components": "Composants",
+      "components_count": "{count, plural, =0 {aucun composant} one {# composant} other {# composants}}"
+    }
+  },
+  "provenance": {
+    "title": "Piste d'audit & traçabilité",
+    "loading": "Chargement de l'enregistrement source...",
+    "error": "Impossible de charger l'enregistrement source.",
+    "value_section": "Valeur",
+    "normalized_value": "Valeur normalisée",
+    "normalized_unit": "Unité normalisée",
+    "raw_value": "Valeur publiée (originale)",
+    "period": "Période",
+    "scope": "Périmètre",
+    "source_section": "Source documentaire",
+    "source": "Source",
+    "document": "Document",
+    "page": "Page",
+    "method": "Méthode d'extraction",
+    "confidence": "Confiance d'extraction",
+    "extracted_at": "Extrait le",
+    "verification_section": "Vérification",
+    "status": "Statut",
+    "validator": "Validé par",
+    "verified_at": "Vérifié le",
+    "notes": "Notes",
+    "calculated_value": "Valeur calculée",
+    "formula": "Formule appliquée",
+    "components_title": "Composants du calcul ({count})"
+  },
+  "dashboard": {
+    "title": "Tableau de bord sectoriel",
+    "subtitle": "Indicateurs clés du secteur bancaire de l'Union Monétaire Ouest-Africaine, issus exclusivement des données collectées.",
+    "kpi": {
+      "institutions": "Institutions référencées",
+      "countries": "Pays membres",
+      "documents": "Documents sources",
+      "data_points": "Données financières",
+      "verified_data": "Données vérifiées",
+      "coverage": "Couverture UMOA (total actifs)"
+    },
+    "years_error": "Impossible de déterminer les exercices disponibles : aucun agrégat n'est affiché.",
+    "no_years": "Aucun exercice disponible : aucune donnée financière n'a encore été collectée.",
+    "partial_badge": "Couverture partielle",
+    "structure_title": "Structure du bilan agrégé UMOA",
+    "countries_title": "Les 8 pays de l'Union",
+    "countries_link": "Voir tous les pays →",
     "regional_aggregates": {
-      "title": "Agrégats Régionaux UMOA",
-      "subtitle": "Totaux consolidés sans double comptage pour le dernier exercice",
-      "total_assets": "Actifs Totaux",
-      "total_deposits": "Dépôts Clientèle",
-      "total_loans": "Créances Clientèle",
-      "total_equity": "Capitaux Propres",
-      "net_income": "Résultat Net",
-      "nbi": "Produit Net Bancaire"
+      "title": "Agrégats régionaux UMOA",
+      "subtitle": "Totaux sans double comptage pour l'exercice sélectionné",
+      "total_assets": "Actifs totaux",
+      "total_deposits": "Dépôts clientèle",
+      "total_loans": "Créances clientèle",
+      "total_equity": "Capitaux propres",
+      "net_income": "Résultat net",
+      "nbi": "Produit net bancaire"
     },
     "quick_links": {
       "explore_institutions": "Explorer les banques",
-      "view_analytics": "Consulter les ratios",
-      "view_countries": "Structure par pays"
+      "view_analytics": "Consulter les ratios"
+    }
+  },
+  "countries": {
+    "title": "Pays membres de l'UMOA",
+    "subtitle": "Agrégats sectoriels et couverture des 8 pays de l'Union",
+    "years_error": "Impossible de déterminer les exercices disponibles.",
+    "no_years": "Aucun exercice disponible : aucune donnée financière n'a encore été collectée.",
+    "card": {
+      "institutions": "Établissements",
+      "coverage": "Couverture",
+      "open": "Consulter le secteur →"
+    },
+    "detail": {
+      "unknown_country": "Pays hors UMOA",
+      "back": "Retour aux pays membres",
+      "coverage_label": "Complétude sectorielle",
+      "no_years_title": "Aucun exercice disponible",
+      "no_years": "Aucune donnée financière collectée pour ce pays.",
+      "kpi_unavailable": "Agrégat indisponible pour cette métrique",
+      "partial_badge": "Couverture partielle",
+      "institutions_counted": "Établissements couverts",
+      "institutions_counted_hint": "Contributeurs au total actifs / établissements agréés",
+      "market_share_title": "Parts de marché nationales",
+      "market_share_metric": "Métrique",
+      "market_share_chart": "Parts de marché — {metric} (%)",
+      "market_share_empty": "Aucune part de marché disponible pour cette métrique et cet exercice.",
+      "col_institution": "Établissement",
+      "col_share": "Part (%)",
+      "institutions_title": "Établissements du pays",
+      "institutions_empty": "Aucun établissement référencé.",
+      "scope_note": "Agrégats et parts de marché calculés sur les comptes individuels annuels uniquement."
     }
   },
   "institutions": {
-    "title": "Répertoire des Institutions",
-    "subtitle": "Établissements de crédit et institutions financières agréées de l'UMOA",
-    "search_placeholder": "Rechercher par nom d'établissement...",
+    "title": "Répertoire des institutions",
+    "subtitle": "Établissements de crédit et institutions financières des 8 pays de l'UMOA",
+    "count": "{count, plural, =0 {aucun établissement} one {# établissement} other {# établissements}}",
+    "search_label": "Recherche",
+    "search_placeholder": "Nom d'établissement ou mot-clé...",
+    "country_label": "Pays",
     "filter_country": "Tous les pays",
-    "filter_type": "Tous les types",
+    "status_label": "Statut d'activité",
     "filter_status": "Tous les statuts",
+    "empty_title": "Aucune institution trouvée",
+    "empty": "Aucun établissement ne correspond aux filtres sélectionnés.",
+    "reset": "Réinitialiser les filtres",
+    "open": "Consulter →",
     "columns": {
       "name": "Établissement",
       "country": "Pays",
-      "group": "Groupe Bancaire",
+      "group": "Groupe bancaire",
       "type": "Type",
       "status": "Statut",
       "actions": "Fiche"
     },
     "detail": {
-      "official_name": "Raison sociale officielle",
+      "not_found_title": "Institution introuvable",
+      "not_found": "Cet établissement n'existe pas ou n'a pas pu être chargé.",
+      "back": "Retour au répertoire",
       "commercial_name": "Nom commercial",
-      "regulatory_id": "Numéro d'agrément",
+      "group": "Groupe",
+      "regulatory_id": "Agrément",
       "website": "Site officiel",
+      "scope": "Périmètre",
+      "period_type": "Période",
+      "dataset_hint": "KPI, tableau et graphiques utilisent exactement ce jeu de données (données rejetées exclues).",
+      "kpi_title": "Indicateurs de l'exercice {year}",
+      "kpi_title_none": "Indicateurs — aucun exercice disponible",
+      "conflict": "Valeurs divergentes",
+      "financials_title": "Postes comptables normalisés",
+      "ratios_title": "Ratios de rentabilité et de structure",
+      "chart_title": "Évolution — {metric}",
+      "documents_empty": "Aucun document rattaché à cet établissement.",
       "tabs": {
-        "overview": "Aperçu Financier",
-        "ratios": "Ratios & Performance",
-        "charts": "Évolution Historique",
-        "documents": "Documents Rattachés"
-      },
-      "kpi": {
-        "assets": "Total Actifs",
-        "deposits": "Dépôts Clients",
-        "loans": "Créances Clients",
-        "pnb": "PNB",
-        "net_income": "Résultat Net",
-        "equity": "Capitaux Propres"
-      },
-      "provenance_cta": "Consulter la provenance"
-    }
-  },
-  "countries": {
-    "title": "Pays Membres de l'UMOA",
-    "subtitle": "Données agrégées et profondeur financière des 8 pays de l'Union",
-    "card": {
-      "institutions": "établissements agréés",
-      "total_assets": "Actifs consolidés",
-      "coverage": "Couverture"
-    },
-    "detail": {
-      "title": "Secteur Bancaire —",
-      "overview": "Synthèse Sectorielle",
-      "market_share_title": "Parts de Marché Nationales",
-      "market_share_subtitle": "Répartition des dépôts et actifs par établissement",
-      "institutions_title": "Banques du pays"
-    }
-  },
-  "analytics": {
-    "title": "Analyses Financières & Ratios",
-    "subtitle": "Indicateurs prudentiels, variations annuelles et comparateur sans biais",
-    "tabs": {
-      "ratios": "Ratios Bancaires",
-      "growth": "Croissance Annuelle (YoY)",
-      "aggregations": "Agrégats Sectoriels",
-      "compare": "Comparateur d'Établissements"
-    },
-    "ratios": {
-      "select_ratio": "Sélectionner un ratio",
-      "select_year": "Exercice",
-      "formula": "Formule :",
-      "rules": "Règles d'éligibilité :"
-    },
-    "growth": {
-      "select_metric": "Sélectionner une métrique",
-      "table": {
-        "institution": "Banque",
-        "metric": "Métrique",
-        "current_val": "Valeur t",
-        "previous_val": "Valeur t-1",
-        "abs_change": "Variation Absolue",
-        "growth_pct": "Croissance (%)"
+        "financials": "États financiers",
+        "ratios": "Ratios",
+        "charts": "Graphiques",
+        "documents": "Documents"
       }
-    },
-    "compare": {
-      "select_a": "Premier établissement",
-      "select_b": "Deuxième établissement",
-      "metric_label": "Métrique ou Ratio",
-      "compare_btn": "Comparer",
-      "result_title": "Résultat du face-à-face factuel"
     }
   },
   "documents": {
-    "title": "Centre Documentaire Officiel",
-    "subtitle": "Rapports annuels, états financiers et publications réglementaires",
+    "title": "Centre documentaire",
+    "subtitle": "Rapports annuels, états financiers et publications réglementaires collectés",
+    "count": "{count, plural, =0 {aucun document} one {# document} other {# documents}}",
     "filter_type": "Type de document",
-    "filter_year": "Année",
+    "all_types": "Tous les types",
+    "filter_year": "Exercice",
+    "all_years": "Tous les exercices",
+    "empty_title": "Aucun document trouvé",
+    "empty": "Aucune publication ne correspond aux critères sélectionnés.",
+    "reset": "Réinitialiser les filtres",
+    "open_institution": "Voir l'établissement →",
+    "regional": "Régional (UMOA)",
     "columns": {
       "title": "Document",
       "institution": "Établissement",
-      "source": "Source",
       "type": "Type",
-      "year": "Année",
+      "year": "Exercice",
       "download": "Téléchargement",
       "extraction": "Extraction"
     }
   },
   "search": {
-    "title": "Recherche Globale",
-    "placeholder": "Rechercher une banque, un document, un pays ou une métrique...",
-    "results_for": "Résultats pour",
+    "title": "Recherche globale",
+    "subtitle": "Institutions, groupes bancaires, sources et documents collectés.",
+    "placeholder": "Rechercher une banque, un groupe, une source ou un document...",
+    "submit": "Rechercher",
+    "empty_title": "Aucun résultat",
+    "empty": "Aucune donnée ne correspond à « {query} ».",
+    "results_for": "Résultats pour « {query} »",
     "institutions_found": "Institutions",
     "documents_found": "Documents",
     "sources_found": "Sources",
-    "empty": "Aucun résultat trouvé pour votre recherche."
+    "groups_found": "Groupes bancaires",
+    "col_title": "Titre",
+    "col_type": "Type",
+    "col_year": "Exercice"
   },
-  "provenance": {
-    "title": "Inspecteur de Provenance Documentaire",
-    "subtitle": "Piste d'audit et chaîne de certification de la valeur",
-    "source": "Source officielle",
-    "document": "Document d'origine",
-    "page": "Page dans le document",
-    "period": "Exercice comptable",
-    "method": "Méthode d'extraction",
-    "raw_value": "Valeur brute originale",
-    "normalized_value": "Valeur normalisée",
-    "validator": "Validé par",
-    "components_title": "Composants ayant alimenté le calcul du ratio :"
+  "analytics": {
+    "title": "Analyses financières & ratios",
+    "subtitle": "Ratios, variations annuelles, agrégats sectoriels et comparateur factuel — calculés à la demande, sans interpolation.",
+    "fiscal_year": "Exercice",
+    "country_filter": "Pays",
+    "all_countries": "Tous les pays UMOA",
+    "no_years_title": "Aucun exercice disponible",
+    "no_years": "Aucune donnée financière collectée pour cette sélection.",
+    "tabs": {
+      "ratios": "Ratios",
+      "growth": "Croissance annuelle",
+      "aggregations": "Agrégats sectoriels",
+      "compare": "Comparateur"
+    },
+    "ratios": {
+      "select_ratio": "Ratio",
+      "rules": "Règles d'éligibilité :",
+      "formula": "Formule",
+      "table_title": "{ratio} — exercice {year}"
+    },
+    "growth": {
+      "select_metric": "Métrique",
+      "period_hint": "Variation de l'exercice {year} par rapport à {previous}. Sans exercice {previous} publié, la variation reste indisponible.",
+      "empty_title": "Aucune variation calculable",
+      "empty": "Les exercices consécutifs nécessaires (t et t-1) ne sont pas disponibles.",
+      "table": {
+        "institution": "Établissement",
+        "country": "Pays",
+        "current_val": "Valeur t",
+        "previous_val": "Valeur t-1",
+        "abs_change": "Variation absolue",
+        "growth_pct": "Variation (%)",
+        "status": "Statut"
+      }
+    },
+    "aggregations": {
+      "select_metric": "Métrique",
+      "empty_title": "Aucun agrégat disponible",
+      "empty": "Aucun agrégat pour cette métrique et cet exercice."
+    },
+    "compare": {
+      "select_a": "Établissement A",
+      "select_b": "Établissement B",
+      "choose": "Choisir un établissement",
+      "metric_label": "Indicateur",
+      "group_ratios": "Ratios",
+      "group_metrics": "Postes financiers",
+      "computing": "Calcul en cours...",
+      "compare_btn": "Comparer",
+      "result_title": "Résultat factuel — exercice {year}",
+      "difference": "Écart (A − B)",
+      "ratio_a_b": "Rapport A / B"
+    },
+    "scope_note": "Périmètre : comptes individuels annuels. Les comptes consolidés ne sont jamais mélangés aux agrégats, ratios et croissances affichés ici."
   },
-  "status": {
-    "verified": "Vérifié",
-    "reviewed": "Revu",
-    "extracted": "Extrait",
-    "needs_review": "À réviser",
-    "rejected": "Rejeté",
-    "unavailable": "Non disponible",
-    "partial": "Couverture Partielle"
-  },
-  "common": {
-    "loading": "Chargement des données...",
-    "error": "Une erreur est survenue lors de la récupération des données.",
-    "retry": "Réessayer",
-    "back": "Retour",
-    "empty": "Aucune donnée disponible pour cette sélection.",
-    "partial_coverage_warning": "Attention : ces chiffres correspondent à une couverture partielle du secteur.",
-    "ratio_unavailable_reason": "Raison de non-disponibilité :"
-  },
-  "footer": {
-    "disclaimer": "Toutes les données proviennent de publications officielles (BCEAO, Commission Bancaire, Rapports audités). Aucune extrapolation ni interpolation n'est effectuée.",
-    "sources": "Sources : BCEAO | Commission Bancaire de l'UMOA | Rapports Annuels"
+  "institution_types": {
+    "bank": "Banque",
+    "microfinance": "Microfinance",
+    "insurance": "Assurance",
+    "financial_holding": "Holding financière",
+    "development_bank": "Banque de développement",
+    "other": "Autre"
   }
 }

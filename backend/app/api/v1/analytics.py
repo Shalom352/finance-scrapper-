@@ -4,6 +4,8 @@ UMOA Banking Intelligence — Analytics REST API Router
 Endpoints for on-demand calculation of financial ratios, YoY growth rates,
 sector aggregations, and comparative market analysis.
 """
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,6 +49,9 @@ async def get_ratios(
     ratio_code: str | None = Query(None, description="Filter by ratio code (ROA, ROE, DEPOTS_ACTIFS, CREDITS_DEPOTS, DETTES_ACTIFS, COST_TO_INCOME)"),
     year: int | None = Query(None, description="Filter by fiscal year"),
     status: str | None = Query(None, description="Filter by status (calculated, calculated_from_verified, needs_review, unavailable)"),
+    data_scope: Literal["individual", "consolidated"] = Query(
+        "individual", description="Accounting scope (never mixed): individual or consolidated"
+    ),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     db: AsyncSession = Depends(get_db_session),
@@ -60,6 +65,7 @@ async def get_ratios(
         ratio_code=ratio_code,
         year=year,
         status=status,
+        data_scope=data_scope,
         limit=page_size,
         offset=offset,
     )
@@ -86,6 +92,9 @@ async def get_growth(
     metric_code: str | None = Query(None, description="Filter by metric code (e.g. total_actifs, depots_clients, resultat_net)"),
     year: int | None = Query(None, description="Filter by fiscal year (current year t)"),
     status: str | None = Query(None, description="Filter by calculation status"),
+    data_scope: Literal["individual", "consolidated"] = Query(
+        "individual", description="Accounting scope (never mixed): individual or consolidated"
+    ),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     db: AsyncSession = Depends(get_db_session),
@@ -99,6 +108,7 @@ async def get_growth(
         metric_code=metric_code,
         year=year,
         status=status,
+        data_scope=data_scope,
         limit=page_size,
         offset=offset,
     )
@@ -186,6 +196,9 @@ async def compare_entities(
     entity_b: str = Query(..., description="Second entity identifier (bank ID or 'UMOA')"),
     metric_or_ratio: str = Query(..., description="Metric code or ratio code to compare"),
     year: int = Query(..., description="Fiscal year"),
+    data_scope: Literal["individual", "consolidated"] = Query(
+        "individual", description="Accounting scope (never mixed): individual or consolidated"
+    ),
     db: AsyncSession = Depends(get_db_session),
 ) -> ComparisonResponse:
     """Perform a factual comparison between financial entities."""
@@ -196,5 +209,6 @@ async def compare_entities(
         entity_b=entity_b,
         metric_or_ratio=metric_or_ratio,
         year=year,
+        data_scope=data_scope,
     )
     return ComparisonResponse.model_validate(result)

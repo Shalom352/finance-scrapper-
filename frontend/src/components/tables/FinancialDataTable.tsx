@@ -1,27 +1,38 @@
 "use client";
 
 import React, { useState } from "react";
-import type { FinancialDataPoint } from "@/types";
-import { formatCurrency } from "@/lib/formatters";
+import { useTranslations } from "next-intl";
+import type { QualifiedObservation } from "@/lib/series";
+import { MISSING } from "@/lib/formatters";
+import { useFormatters } from "@/lib/useFormatters";
+import { useLabels } from "@/lib/useLabels";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { ProvenancePanel } from "@/components/provenance/ProvenancePanel";
 
 interface FinancialDataTableProps {
-  dataPoints: FinancialDataPoint[];
+  /** Qualified observations (see qualifyObservations) — same dataset as KPIs and charts. */
+  observations: QualifiedObservation[];
   title?: string;
   className?: string;
 }
 
-export function FinancialDataTable({ dataPoints, title, className = "" }: FinancialDataTableProps) {
-  const [selectedPoint, setSelectedPoint] = useState<FinancialDataPoint | null>(null);
+export function FinancialDataTable({ observations, title, className = "" }: FinancialDataTableProps) {
+  const t = useTranslations("tables.financial");
+  const fmt = useFormatters();
+  const labels = useLabels();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  if (!dataPoints || dataPoints.length === 0) {
+  if (observations.length === 0) {
     return (
       <div className={`p-8 text-center text-xs text-gray-500 rounded-2xl border border-gray-800 ${className}`}>
-        Aucune donnée financière enregistrée pour cette sélection.
+        {t("empty")}
       </div>
     );
   }
+
+  const rows = [...observations].sort(
+    (a, b) => b.period_year - a.period_year || a.metric_code.localeCompare(b.metric_code),
+  );
 
   return (
     <>
@@ -35,53 +46,37 @@ export function FinancialDataTable({ dataPoints, title, className = "" }: Financ
         <table className="w-full text-left text-xs border-collapse">
           <thead>
             <tr className="border-b border-gray-800 bg-gray-900/60 text-gray-400 font-semibold uppercase tracking-wider">
-              <th className="py-3 px-4">Métrique</th>
-              <th className="py-3 px-4">Exercice</th>
-              <th className="py-3 px-4 text-right">Valeur Normalisée</th>
-              <th className="py-3 px-4">Source & Document</th>
-              <th className="py-3 px-4 text-center">Statut</th>
-              <th className="py-3 px-4 text-center">Audit</th>
+              <th className="py-3 px-4">{t("metric")}</th>
+              <th className="py-3 px-4">{t("year")}</th>
+              <th className="py-3 px-4 text-right">{t("value")}</th>
+              <th className="py-3 px-4 text-center">{t("status")}</th>
+              <th className="py-3 px-4 text-center">{t("audit")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800/60">
-            {dataPoints.map((pt) => (
-              <tr
-                key={pt.id}
-                className="hover:bg-gray-800/30 transition-colors group cursor-pointer"
-                onClick={() => setSelectedPoint(pt)}
-              >
-                <td className="py-3.5 px-4 font-semibold text-gray-200">
-                  {pt.metric_code}
-                </td>
-                <td className="py-3.5 px-4 text-gray-300">
-                  {pt.period_year} {pt.period_type !== "annual" ? `(${pt.period_type})` : ""}
-                </td>
+            {rows.map((o) => (
+              <tr key={`${o.metric_code}-${o.period_year}`} className="hover:bg-gray-800/30 transition-colors group">
+                <td className="py-3.5 px-4 font-semibold text-gray-200">{labels.metric(o.metric_code)}</td>
+                <td className="py-3.5 px-4 text-gray-300">{o.period_year}</td>
                 <td className="py-3.5 px-4 text-right font-bold text-emerald-400">
-                  {formatCurrency(pt.value_normalized, pt.currency_normalized || "XOF")}
-                </td>
-                <td className="py-3.5 px-4 text-gray-400 max-w-[200px] truncate">
-                  <span className="text-gray-300 block truncate">
-                    {pt.source?.name || pt.source_id}
-                  </span>
-                  <span className="text-[11px] text-gray-500 block truncate">
-                    {pt.document?.title || pt.document_id}
-                    {pt.page_number ? ` • p. ${pt.page_number}` : ""}
-                  </span>
+                  {o.conflict ? MISSING : fmt.currency(o.value, o.currency)}
+                  {o.conflict && <span className="block text-[11px] font-normal text-amber-400">{t("conflict")}</span>}
                 </td>
                 <td className="py-3.5 px-4 text-center">
-                  <StatusBadge status={pt.status} size="sm" />
+                  <StatusBadge status={o.conflict ? "conflict" : o.status} size="sm" />
                 </td>
                 <td className="py-3.5 px-4 text-center">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedPoint(pt);
-                    }}
-                    className="p-1 rounded-lg bg-gray-800 group-hover:bg-emerald-600 text-gray-300 group-hover:text-white transition-colors text-xs"
-                    title="Consulter la piste d'audit"
-                  >
-                    🔍
-                  </button>
+                  {o.data_id ? (
+                    <button
+                      onClick={() => setSelectedId(o.data_id)}
+                      className="p-1 px-2 rounded-lg bg-gray-800 group-hover:bg-emerald-600 text-gray-300 group-hover:text-white transition-colors text-xs"
+                      title={t("audit_title")}
+                    >
+                      🔍
+                    </button>
+                  ) : (
+                    MISSING
+                  )}
                 </td>
               </tr>
             ))}
@@ -89,9 +84,7 @@ export function FinancialDataTable({ dataPoints, title, className = "" }: Financ
         </table>
       </div>
 
-      {selectedPoint && (
-        <ProvenancePanel dataPoint={selectedPoint} onClose={() => setSelectedPoint(null)} />
-      )}
+      {selectedId && <ProvenancePanel dataId={selectedId} onClose={() => setSelectedId(null)} />}
     </>
   );
 }

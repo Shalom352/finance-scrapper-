@@ -31,6 +31,10 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    # Alembic creates alembic_version.version_num as VARCHAR(32); revision ids such as
+    # "0003_seed_countries_and_constraints" (35 chars) would not fit on PostgreSQL.
+    op.execute("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(64)")
+
     # countries
     op.create_table(
         "countries",

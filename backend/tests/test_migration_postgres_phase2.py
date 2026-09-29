@@ -227,15 +227,9 @@ def test_migration_upgrade_creates_catalogue_and_constraints(scratch_db: str) ->
     iid = str(uuid.uuid4())
     did = str(uuid.uuid4())
 
-    asyncio.run(
-        _execute(
-            dsn,
-            "INSERT INTO countries (id, code, name_fr, name_en, is_active, "
-            "created_at, updated_at) VALUES ($1, 'CI', 'Côte d''Ivoire', "
-            "'Ivory Coast', true, now(), now())",
-            cid,
-        )
-    )
+    # Migration 0003 seeds the 8 UMOA countries: reuse the seeded CI row.
+    cid = asyncio.run(_fetchval(dsn, "SELECT id FROM countries WHERE code = 'CI'"))
+    assert cid is not None
     asyncio.run(
         _execute(
             dsn,
@@ -250,7 +244,7 @@ def test_migration_upgrade_creates_catalogue_and_constraints(scratch_db: str) ->
             dsn,
             "INSERT INTO institutions (id, name_official, institution_type, "
             "country_id, status, created_at, updated_at) VALUES ($1, 'Test "
-            "Bank', 'commercial_bank', $2, 'active', now(), now())",
+            "Bank', 'bank', $2, 'active', now(), now())",
             iid,
             cid,
         )
@@ -361,7 +355,15 @@ def test_migration_upgrade_creates_catalogue_and_constraints(scratch_db: str) ->
         )
     )
 
-    # 5. Downgrade back to base (schema fully reversible).
+    # 5. Downgrade back to base (schema fully reversible). The seed downgrades (0003/0004)
+    #    refuse to delete referenced rows (FK RESTRICT), so remove this test's own rows first.
+    for stmt in (
+        "DELETE FROM financial_data",
+        "DELETE FROM documents",
+        "DELETE FROM institutions",
+        "DELETE FROM sources WHERE name = 'Test source'",
+    ):
+        asyncio.run(_execute(dsn, stmt))
     _run_alembic("downgrade")
 
     gone = asyncio.run(

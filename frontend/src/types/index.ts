@@ -1,8 +1,10 @@
 /**
  * UMOA Banking Intelligence — TypeScript Types
  *
- * Shared types used across the frontend application.
- * Mirrors the backend Pydantic schemas (v1 + analytics).
+ * Mirrors the backend Pydantic schemas (app/schemas/*, app/api/v1/search.py).
+ * Pydantic v2 serializes Decimal fields as JSON strings: api.ts converts them
+ * to `number | null` on reception, so every monetary field below is numeric.
+ * A missing value is always `null` — never 0.
  */
 
 // ============================================================
@@ -25,191 +27,162 @@ export type RatioStatus =
   | "needs_review"
   | "unavailable";
 
+export type PeriodType = "annual" | "semi_annual" | "quarterly";
+export type DataScope = "individual" | "consolidated";
+
 // ============================================================
 // UMOA Geography
 // ============================================================
 
 export type UMOACountryCode = "BJ" | "BF" | "CI" | "GW" | "ML" | "NE" | "SN" | "TG";
 
+/** Backend `CountryList` — the ISO code is exposed as `code`. */
 export interface Country {
   id: string;
-  iso_code_2?: string;
-  code?: UMOACountryCode;
+  code: string;
   name_fr: string;
   name_en: string;
-  capital_fr?: string;
-  capital_en?: string;
-  flag_emoji?: string;
+  flag_emoji?: string | null;
   is_active: boolean;
-  institutions_count?: number;
 }
 
 // ============================================================
-// Sources
+// Sources & Groups
 // ============================================================
-
-export interface Source {
-  id: string;
-  name: string;
-  short_name?: string;
-  publisher?: string;
-  url?: string;
-  source_type: "regulatory" | "central_bank" | "bank" | "banking_group" | "government" | "financial_market" | "secondary";
-  priority: number;
-  country_code?: string;
-  language?: string;
-  description?: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
 
 export interface SourceList {
   id: string;
   name: string;
-  short_name?: string;
+  short_name?: string | null;
   source_type: string;
   priority: number;
-  country_code?: string;
+  country_code?: string | null;
   is_active: boolean;
+}
+
+export interface BankingGroupList {
+  id: string;
+  name: string;
+  short_name?: string | null;
+  headquarter_country_code?: string | null;
 }
 
 // ============================================================
 // Institutions
 // ============================================================
 
-export interface BankingGroupList {
-  id: string;
-  name: string;
-  short_name?: string;
-  headquarter_country_code?: string;
-}
-
 export interface Institution {
   id: string;
-  name_official?: string;
-  name?: string;
-  name_commercial?: string;
+  name_official: string;
+  name_commercial?: string | null;
   institution_type: string;
   country_id: string;
-  country?: Country;
-  banking_group_id?: string;
-  banking_group?: BankingGroupList;
-  regulatory_id?: string;
-  website_url?: string;
-  status: "active" | "closed" | "in_liquidation" | "merged" | "unknown";
-  description?: string;
-  data_notes?: string;
-  source_id?: string;
-  source?: SourceList;
-  created_at: string;
-  updated_at: string;
-  data_count?: number;
-  latest_year?: number;
+  country?: Country | null;
+  banking_group_id?: string | null;
+  banking_group?: BankingGroupList | null;
+  regulatory_id?: string | null;
+  website_url?: string | null;
+  status: string;
+  description?: string | null;
+  data_notes?: string | null;
+  source_id?: string | null;
+  source?: SourceList | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // ============================================================
 // Documents
 // ============================================================
 
-export type DocumentType =
-  | "annual_report"
-  | "financial_statement"
-  | "regulatory_report"
-  | "press_release"
-  | "web_page"
-  | "other";
-
+/** Backend `DocumentList`. Nested source/institution only exist on `DocumentRead`. */
 export interface Document {
   id: string;
   title: string;
-  document_type: DocumentType;
-  institution_id?: string;
-  institution?: Institution;
+  document_type: string;
+  institution_id?: string | null;
   source_id: string;
-  source?: Source;
-  url?: string;
-  file_hash?: string;
-  file_size?: number;
-  storage_path?: string;
-  download_status: "pending" | "downloaded" | "failed";
-  page_count?: number;
-  extraction_status: "pending" | "extracted" | "failed" | "skipped";
-  extracted_at?: string;
-  published_at?: string;
-  period_year?: number;
-  period_type?: "annual" | "semi_annual" | "quarterly";
-  language?: string;
-  collected_at?: string;
-  error_message?: string;
-  created_at: string;
-  updated_at: string;
+  url?: string | null;
+  period_year?: number | null;
+  period_type?: string | null;
+  language?: string | null;
+  download_status: string;
+  extraction_status: string;
 }
 
 // ============================================================
 // Financial Data
 // ============================================================
 
-export type ExtractionMethod = "pdf_table" | "pdf_text" | "ocr" | "web_html" | "manual";
-
+/** Backend `FinancialDataList` — no provenance fields in list responses. */
 export interface FinancialDataPoint {
   id: string;
   institution_id: string;
-  institution?: Institution;
-  source_id: string;
-  source?: Source;
-  document_id: string;
-  document?: Document;
   metric_code: string;
-  scope: "individual" | "consolidated";
-  period_type: "annual" | "semi_annual" | "quarterly";
+  scope: DataScope | string;
+  period_type: PeriodType | string;
   period_year: number;
-  period_label?: string;
-
-  // Raw extracted value
+  period_label?: string | null;
   value_original: string;
-  unit_original?: string;
-  currency_original?: string;
-
-  // Normalized value
-  value_normalized?: number;
-  unit_normalized?: string;
-  currency_normalized?: string;
-
-  // Provenance
-  page_number?: number;
-  extraction_method: ExtractionMethod;
-  confidence_score?: number;
-  status: DataStatus;
-
-  notes?: string;
-  extracted_at?: string;
-  verified_at?: string;
-  verified_by?: string;
-  created_at: string;
-  updated_at: string;
+  unit_original?: string | null;
+  currency_original?: string | null;
+  value_normalized: number | null;
+  unit_normalized?: string | null;
+  currency_normalized?: string | null;
+  extraction_method: string;
+  status: DataStatus | string;
 }
 
-export interface MetricDefinition {
-  id?: string;
+export interface MetricList {
+  id: string;
   code: string;
   label_fr: string;
   label_en: string;
-  definition_fr: string;
-  definition_en: string;
   statement_type: string;
   category: string;
-  value_type: "amount" | "percentage" | "ratio" | "rate";
-  currency_type: "monetary" | "non_monetary";
+  value_type: string;
+  currency_type: string;
   is_calculated: boolean;
   is_active: boolean;
   is_debt_related: boolean;
   display_order: number;
-  description_synth?: string;
+}
+
+/** Backend `FinancialDataRead` — `GET /api/v1/financial-data/{id}`. Full provenance. */
+export interface FinancialDataDetail extends FinancialDataPoint {
+  source_id: string;
+  document_id: string;
+  page_number: number | null;
+  confidence_score: number | null;
+  notes: string | null;
+  extracted_at: string | null;
+  verified_at: string | null;
+  verified_by: string | null;
+  created_at: string;
+  updated_at: string;
+  institution: Institution | null;
+  source: SourceList | null;
+  document: Document | null;
+  metric: MetricList | null;
+}
+
+/** Backend `InstitutionCoverageResponse` — `GET /api/v1/financial-data/coverage`. */
+export interface InstitutionCoverage {
+  institution_id: string;
+  institution_name: string;
+  country_code: string;
+  first_year: number | null;
+  last_year: number | null;
+  available_years: number[];
+  missing_years: number[];
+  coverage_ratio: number | null;
+  metrics_available_count: number;
+  documents_available_count: number;
+  data_points_count: number;
 }
 
 // ============================================================
-// Phase 7 Analytics & Ratios
+// Analytics & Ratios
 // ============================================================
 
 export interface ComponentProvenance {
@@ -217,14 +190,15 @@ export interface ComponentProvenance {
   metric_code: string;
   period_year: number;
   period_type: string;
-  value_normalized?: number;
-  currency?: string;
-  source_id?: string;
-  source_name?: string;
-  document_id?: string;
-  page_number?: number;
+  scope?: string | null;
+  value_normalized: number | null;
+  currency?: string | null;
+  source_id?: string | null;
+  source_name?: string | null;
+  document_id?: string | null;
+  page_number?: number | null;
   status: string;
-  role?: string;
+  role?: string | null;
 }
 
 export interface RatioDefinition {
@@ -247,15 +221,16 @@ export interface RatioResult {
   ratio_code: string;
   ratio_name: string;
   institution_id: string;
-  institution_name?: string;
-  country_code?: string;
+  institution_name?: string | null;
+  country_code?: string | null;
   period_year: number;
   period_type: string;
-  value?: number;
-  value_percent?: number;
+  data_scope?: string | null;
+  value: number | null;
+  value_percent: number | null;
   unit: string;
-  status: RatioStatus;
-  reason?: string;
+  status: RatioStatus | string;
+  reason?: string | null;
   formula_used: string;
   components: ComponentProvenance[];
   calculated_at: string;
@@ -263,54 +238,58 @@ export interface RatioResult {
 
 export interface GrowthResult {
   metric_code: string;
-  metric_label?: string;
+  metric_label?: string | null;
   institution_id: string;
-  institution_name?: string;
-  country_code?: string;
+  institution_name?: string | null;
+  country_code?: string | null;
   current_year: number;
   previous_year: number;
-  current_value?: number;
-  previous_value?: number;
-  absolute_change?: number;
-  growth_rate?: number;
-  growth_percent?: number;
-  currency?: string;
+  data_scope?: string | null;
+  current_value: number | null;
+  previous_value: number | null;
+  absolute_change: number | null;
+  growth_rate: number | null;
+  growth_percent: number | null;
+  currency?: string | null;
   status: string;
-  reason?: string;
+  reason?: string | null;
   components: ComponentProvenance[];
   calculated_at: string;
 }
 
 export interface SectorAggregation {
-  scope: "country" | "umoa";
-  country_code?: string;
-  country_name?: string;
+  scope: "country" | "umoa" | string;
+  country_code?: string | null;
+  country_name?: string | null;
   year: number;
   metric_code: string;
-  metric_label?: string;
-  total_value?: number;
-  currency: string;
+  metric_label?: string | null;
+  total_value: number | null;
+  currency: string | null;
+  /** Accounting scope aggregated (Phase 8C: always "individual"). */
+  data_scope?: string;
+  period_type?: string;
   institution_count: number;
   total_institutions: number;
-  coverage_ratio: number;
+  coverage_ratio: number | null;
   is_partial: boolean;
   status: string;
   contributing_institutions: string[];
-  notes?: string;
+  notes?: string | null;
 }
 
 export interface MarketShare {
   institution_id: string;
-  institution_name?: string;
+  institution_name?: string | null;
   country_code: string;
   year: number;
   metric_code: string;
-  institution_value: number;
-  sector_total_value: number;
-  market_share: number;
-  market_share_percent: number;
-  currency: string;
-  coverage_ratio: number;
+  institution_value: number | null;
+  sector_total_value: number | null;
+  market_share: number | null;
+  market_share_percent: number | null;
+  currency: string | null;
+  coverage_ratio: number | null;
   status: string;
 }
 
@@ -325,11 +304,11 @@ export interface ComparisonResult {
   entity_b: string;
   metric_or_ratio: string;
   year: number;
-  value_a?: number;
-  value_b?: number;
-  unit?: string;
-  difference?: number;
-  ratio_a_to_b?: number;
+  value_a: number | null;
+  value_b: number | null;
+  unit?: string | null;
+  difference: number | null;
+  ratio_a_to_b: number | null;
   description: string;
 }
 
@@ -337,14 +316,14 @@ export interface ComparisonResult {
 // Search & API Responses
 // ============================================================
 
+/** Backend `SearchResults` (app/api/v1/search.py) — no metrics are indexed. */
 export interface SearchResults {
   query: string;
   total: number;
   institutions: Institution[];
   banking_groups: BankingGroupList[];
-  sources: Source[];
+  sources: SourceList[];
   documents: Document[];
-  metrics?: MetricDefinition[];
 }
 
 export interface HealthResponse {
@@ -353,13 +332,6 @@ export interface HealthResponse {
   version: string;
   env: string;
   timestamp: string;
-  database?: {
-    status: "ok" | "error";
-    host: string;
-    port: number;
-    db: string;
-    error?: string;
-  };
 }
 
 export interface PaginatedResponse<T> {

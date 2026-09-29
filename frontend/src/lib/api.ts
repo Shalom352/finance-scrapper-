@@ -1,18 +1,23 @@
 /**
- * UMOA Banking Intelligence — Comprehensive API Client
+ * UMOA Banking Intelligence — API Client
  *
- * Fully typed client communicating with FastAPI backend (/api/v1/*).
+ * Typed client for the FastAPI backend (/api/v1/*).
+ *
+ * Pydantic v2 serializes Decimal fields as JSON strings ("3450000.00").
+ * Every numeric field is converted here with `toNumberOrNull`, so the UI
+ * never receives a string and never turns a missing value into 0.
  */
 
 import type {
   ComparisonResult,
-  Country,
+  ComponentProvenance,
   Document,
+  FinancialDataDetail,
   FinancialDataPoint,
   GrowthResult,
-  HealthResponse,
   Institution,
-  MetricDefinition,
+  InstitutionCoverage,
+  MarketShare,
   PaginatedResponse,
   RatioDefinition,
   RatioResult,
@@ -22,6 +27,11 @@ import type {
 } from "@/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+/** Backend hard limit on `page_size` for every paginated route. */
+const MAX_PAGE_SIZE = 100;
+/** Safety bound for pagination loops (100 pages × 100 rows). */
+const MAX_PAGES = 100;
 
 export class ApiError extends Error {
   constructor(
@@ -33,17 +43,11 @@ export class ApiError extends Error {
   }
 }
 
-async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+async function apiFetch<T>(path: string): Promise<T> {
   const url = `${API_BASE}${path}`;
 
   try {
-    const response = await fetch(url, {
-      headers: {
-        "Content-Type": "application/json",
-        ...options?.headers,
-      },
-      ...options,
-    });
+    const response = await fetch(url, { headers: { "Content-Type": "application/json" } });
 
     if (!response.ok) {
       const text = await response.text().catch(() => "Unknown error");
@@ -53,32 +57,85 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     return (await response.json()) as T;
   } catch (err) {
     if (err instanceof ApiError) throw err;
-    throw new ApiError(500, err instanceof Error ? err.message : "Network error");
+    throw new ApiError(0, err instanceof Error ? err.message : "Network error");
   }
 }
 
-// ============================================================
-// Health
-// ============================================================
-
-export async function getHealth(): Promise<HealthResponse> {
-  return apiFetch<HealthResponse>("/health");
+function buildQuery(params: Record<string, string | number | boolean | null | undefined>): string {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === "") continue;
+    query.set(key, String(value));
+  }
+  const qs = query.toString();
+  return qs ? `?${qs}` : "";
 }
 
-export async function getFullHealth(): Promise<HealthResponse> {
-  return apiFetch<HealthResponse>("/api/v1/health");
-}
-
 // ============================================================
-// Countries
+// Numeric normalization
 // ============================================================
 
-export async function getCountries(): Promise<PaginatedResponse<Country>> {
-  return apiFetch<PaginatedResponse<Country>>("/api/v1/countries");
+/** Convert a JSON number or Decimal string to a finite number; anything else is `null`. */
+export function toNumberOrNull(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
 }
 
-export async function getCountryById(id: string): Promise<Country> {
-  return apiFetch<Country>(`/api/v1/countries/${id}`);
+function numericFields<T>(obj: T, fields: (keyof T)[]): T {
+  const out = { ...obj };
+  for (const f of fields) {
+    (out as Record<keyof T, unknown>)[f] = toNumberOrNull(obj[f]);
+  }
+  return out;
+}
+
+const normalizeDataPoint = <T extends FinancialDataPoint>(p: T): T =>
+  numericFields(p, ["value_normalized"] as (keyof T)[]);
+
+const normalizeComponent = (c: ComponentProvenance): ComponentProvenance =>
+  numericFields(c, ["value_normalized"]);
+
+const normalizeRatio = (r: RatioResult): RatioResult => ({
+  ...numericFields(r, ["value", "value_percent"]),
+  components: (r.components ?? []).map(normalizeComponent),
+});
+
+const normalizeGrowth = (g: GrowthResult): GrowthResult => ({
+  ...numericFields(g, ["current_value", "previous_value", "absolute_change", "growth_rate", "growth_percent"]),
+  components: (g.components ?? []).map(normalizeComponent),
+});
+
+const normalizeAggregation = (a: SectorAggregation): SectorAggregation =>
+  numericFields(a, ["total_value", "coverage_ratio"]);
+
+const normalizeMarketShare = (m: MarketShare): MarketShare =>
+  numericFields(m, [
+    "institution_value",
+    "sector_total_value",
+    "market_share",
+    "market_share_percent",
+    "coverage_ratio",
+  ]);
+
+const normalizeDetail = (d: FinancialDataDetail): FinancialDataDetail =>
+  numericFields(normalizeDataPoint(d), ["confidence_score"]);
+
+function mapPage<T>(page: PaginatedResponse<T>, fn: (item: T) => T): PaginatedResponse<T> {
+  return { ...page, items: (page.items ?? []).map(fn) };
+}
+
+/** Fetch every page of a paginated route until `has_next` is false. */
+async function fetchAllPages<T>(
+  fetchPage: (page: number) => Promise<PaginatedResponse<T>>,
+): Promise<T[]> {
+  const all: T[] = [];
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const res = await fetchPage(page);
+    all.push(...(res.items ?? []));
+    if (!res.has_next) return all;
+  }
+  throw new ApiError(0, "Pagination limit exceeded");
 }
 
 // ============================================================
@@ -89,23 +146,19 @@ export async function getInstitutions(params?: {
   page?: number;
   page_size?: number;
   country_code?: string;
-  banking_group_id?: string;
   status?: string;
   search?: string;
 }): Promise<PaginatedResponse<Institution>> {
-  const query = new URLSearchParams();
-  if (params?.page) query.set("page", String(params.page));
-  if (params?.page_size) query.set("page_size", String(params.page_size));
-  if (params?.country_code) query.set("country_code", params.country_code);
-  if (params?.banking_group_id) query.set("banking_group_id", params.banking_group_id);
-  if (params?.status) query.set("status", params.status);
-  if (params?.search) query.set("search", params.search);
+  return apiFetch<PaginatedResponse<Institution>>(`/api/v1/institutions${buildQuery({ ...params })}`);
+}
 
-  return apiFetch<PaginatedResponse<Institution>>(`/api/v1/institutions?${query}`);
+/** Every institution (all pages) — used where a complete list is required, e.g. the comparator. */
+export async function getInstitutionsAll(params?: { country_code?: string }): Promise<Institution[]> {
+  return fetchAllPages((page) => getInstitutions({ ...params, page, page_size: MAX_PAGE_SIZE }));
 }
 
 export async function getInstitutionById(id: string): Promise<Institution> {
-  return apiFetch<Institution>(`/api/v1/institutions/${id}`);
+  return apiFetch<Institution>(`/api/v1/institutions/${encodeURIComponent(id)}`);
 }
 
 // ============================================================
@@ -116,60 +169,74 @@ export async function getDocuments(params?: {
   page?: number;
   page_size?: number;
   institution_id?: string;
-  source_id?: string;
   document_type?: string;
   period_year?: number;
-  download_status?: string;
 }): Promise<PaginatedResponse<Document>> {
-  const query = new URLSearchParams();
-  if (params?.page) query.set("page", String(params.page));
-  if (params?.page_size) query.set("page_size", String(params.page_size));
-  if (params?.institution_id) query.set("institution_id", params.institution_id);
-  if (params?.source_id) query.set("source_id", params.source_id);
-  if (params?.document_type) query.set("document_type", params.document_type);
-  if (params?.period_year) query.set("period_year", String(params.period_year));
-  if (params?.download_status) query.set("download_status", params.download_status);
-
-  return apiFetch<PaginatedResponse<Document>>(`/api/v1/documents?${query}`);
+  return apiFetch<PaginatedResponse<Document>>(`/api/v1/documents${buildQuery({ ...params })}`);
 }
 
-export async function getDocumentById(id: string): Promise<Document> {
-  return apiFetch<Document>(`/api/v1/documents/${id}`);
+/** Fiscal years that actually have documents, newest first (scans every document page). */
+export async function getDocumentYears(): Promise<number[]> {
+  const docs = await fetchAllPages((page) => getDocuments({ page, page_size: MAX_PAGE_SIZE }));
+  const years = new Set<number>();
+  for (const d of docs) if (typeof d.period_year === "number") years.add(d.period_year);
+  return [...years].sort((a, b) => b - a);
 }
 
 // ============================================================
 // Financial Data
 // ============================================================
 
-export async function getFinancialData(params?: {
-  page?: number;
-  page_size?: number;
+export interface FinancialDataQuery {
   institution_id?: string;
   metric_code?: string;
+  period_type?: string;
   period_year?: number;
+  scope?: string;
   status?: string;
-}): Promise<PaginatedResponse<FinancialDataPoint>> {
-  const query = new URLSearchParams();
-  if (params?.page) query.set("page", String(params.page));
-  if (params?.page_size) query.set("page_size", String(params.page_size));
-  if (params?.institution_id) query.set("institution_id", params.institution_id);
-  if (params?.metric_code) query.set("metric_code", params.metric_code);
-  if (params?.period_year) query.set("period_year", String(params.period_year));
-  if (params?.status) query.set("status", params.status);
-
-  return apiFetch<PaginatedResponse<FinancialDataPoint>>(`/api/v1/financial-data?${query}`);
 }
 
-export async function getFinancialDataById(id: string): Promise<FinancialDataPoint> {
-  return apiFetch<FinancialDataPoint>(`/api/v1/financial-data/${id}`);
+export async function getFinancialData(
+  params?: FinancialDataQuery & { page?: number; page_size?: number },
+): Promise<PaginatedResponse<FinancialDataPoint>> {
+  const res = await apiFetch<PaginatedResponse<FinancialDataPoint>>(
+    `/api/v1/financial-data${buildQuery({ ...params })}`,
+  );
+  return mapPage(res, normalizeDataPoint);
 }
 
-export async function getMetricDefinitions(): Promise<PaginatedResponse<MetricDefinition>> {
-  return apiFetch<PaginatedResponse<MetricDefinition>>("/api/v1/metrics");
+/** Every financial data row matching the filters (no silent truncation at 100 rows). */
+export async function getFinancialDataAll(params: FinancialDataQuery): Promise<FinancialDataPoint[]> {
+  return fetchAllPages((page) => getFinancialData({ ...params, page, page_size: MAX_PAGE_SIZE }));
+}
+
+/** Full provenance record — `GET /api/v1/financial-data/{id}` (backend `FinancialDataRead`). */
+export async function getFinancialDataById(id: string): Promise<FinancialDataDetail> {
+  const res = await apiFetch<FinancialDataDetail>(`/api/v1/financial-data/${encodeURIComponent(id)}`);
+  return normalizeDetail(res);
+}
+
+export async function getCoverage(params?: { country_code?: string; institution_id?: string }): Promise<InstitutionCoverage[]> {
+  return fetchAllPages((page) =>
+    apiFetch<PaginatedResponse<InstitutionCoverage>>(
+      `/api/v1/financial-data/coverage${buildQuery({ ...params, page, page_size: MAX_PAGE_SIZE })}`,
+    ),
+  );
+}
+
+/**
+ * Fiscal years for which the backend holds financial data, newest first.
+ * Derived from `/financial-data/coverage` `available_years` — never invented.
+ */
+export async function getAvailableYears(params?: { country_code?: string }): Promise<number[]> {
+  const coverage = await getCoverage(params);
+  const years = new Set<number>();
+  for (const c of coverage) for (const y of c.available_years ?? []) years.add(y);
+  return [...years].sort((a, b) => b - a);
 }
 
 // ============================================================
-// Phase 7 Analytics
+// Analytics
 // ============================================================
 
 export async function getRatioDefinitions(): Promise<RatioDefinition[]> {
@@ -184,17 +251,10 @@ export async function getRatios(params?: {
   ratio_code?: string;
   year?: number;
   status?: string;
+  data_scope?: string;
 }): Promise<PaginatedResponse<RatioResult>> {
-  const query = new URLSearchParams();
-  if (params?.page) query.set("page", String(params.page));
-  if (params?.page_size) query.set("page_size", String(params.page_size));
-  if (params?.institution_id) query.set("institution_id", params.institution_id);
-  if (params?.country_code) query.set("country_code", params.country_code);
-  if (params?.ratio_code) query.set("ratio_code", params.ratio_code);
-  if (params?.year) query.set("year", String(params.year));
-  if (params?.status) query.set("status", params.status);
-
-  return apiFetch<PaginatedResponse<RatioResult>>(`/api/v1/analytics/ratios?${query}`);
+  const res = await apiFetch<PaginatedResponse<RatioResult>>(`/api/v1/analytics/ratios${buildQuery({ ...params })}`);
+  return mapPage(res, normalizeRatio);
 }
 
 export async function getGrowth(params?: {
@@ -204,48 +264,32 @@ export async function getGrowth(params?: {
   country_code?: string;
   metric_code?: string;
   year?: number;
-  status?: string;
+  data_scope?: string;
 }): Promise<PaginatedResponse<GrowthResult>> {
-  const query = new URLSearchParams();
-  if (params?.page) query.set("page", String(params.page));
-  if (params?.page_size) query.set("page_size", String(params.page_size));
-  if (params?.institution_id) query.set("institution_id", params.institution_id);
-  if (params?.country_code) query.set("country_code", params.country_code);
-  if (params?.metric_code) query.set("metric_code", params.metric_code);
-  if (params?.year) query.set("year", String(params.year));
-  if (params?.status) query.set("status", params.status);
-
-  return apiFetch<PaginatedResponse<GrowthResult>>(`/api/v1/analytics/growth?${query}`);
+  const res = await apiFetch<PaginatedResponse<GrowthResult>>(`/api/v1/analytics/growth${buildQuery({ ...params })}`);
+  return mapPage(res, normalizeGrowth);
 }
 
 export async function getAggregations(params: {
   year: number;
-  metric_code?: string;
+  metric_code: string;
   country_code?: string;
   scope?: "country" | "umoa";
-  include_needs_review?: boolean;
 }): Promise<SectorAggregation[]> {
-  const query = new URLSearchParams();
-  query.set("year", String(params.year));
-  if (params.metric_code) query.set("metric_code", params.metric_code);
-  if (params.country_code) query.set("country_code", params.country_code);
-  if (params.scope) query.set("scope", params.scope);
-  if (params.include_needs_review) query.set("include_needs_review", "true");
-
-  return apiFetch<SectorAggregation[]>(`/api/v1/analytics/aggregations?${query}`);
+  const res = await apiFetch<SectorAggregation[]>(`/api/v1/analytics/aggregations${buildQuery({ ...params })}`);
+  return (res ?? []).map(normalizeAggregation);
 }
 
 export async function getSectorStructure(params: {
   country_code: string;
   year: number;
-  metric_code?: string;
+  metric_code: string;
 }): Promise<SectorStructure> {
-  const query = new URLSearchParams();
-  query.set("country_code", params.country_code);
-  query.set("year", String(params.year));
-  if (params.metric_code) query.set("metric_code", params.metric_code);
-
-  return apiFetch<SectorStructure>(`/api/v1/analytics/sector?${query}`);
+  const res = await apiFetch<SectorStructure>(`/api/v1/analytics/sector${buildQuery({ ...params })}`);
+  return {
+    aggregation: normalizeAggregation(res.aggregation),
+    market_shares: (res.market_shares ?? []).map(normalizeMarketShare),
+  };
 }
 
 export async function getComparison(params: {
@@ -254,15 +298,10 @@ export async function getComparison(params: {
   entity_b: string;
   metric_or_ratio: string;
   year: number;
+  data_scope?: string;
 }): Promise<ComparisonResult> {
-  const query = new URLSearchParams();
-  query.set("comparison_type", params.comparison_type);
-  query.set("entity_a", params.entity_a);
-  query.set("entity_b", params.entity_b);
-  query.set("metric_or_ratio", params.metric_or_ratio);
-  query.set("year", String(params.year));
-
-  return apiFetch<ComparisonResult>(`/api/v1/analytics/compare?${query}`);
+  const res = await apiFetch<ComparisonResult>(`/api/v1/analytics/compare${buildQuery({ ...params })}`);
+  return numericFields(res, ["value_a", "value_b", "difference", "ratio_a_to_b"]);
 }
 
 // ============================================================
@@ -270,6 +309,5 @@ export async function getComparison(params: {
 // ============================================================
 
 export async function searchGlobal(q: string): Promise<SearchResults> {
-  const query = new URLSearchParams({ q });
-  return apiFetch<SearchResults>(`/api/v1/search?${query}`);
+  return apiFetch<SearchResults>(`/api/v1/search${buildQuery({ q })}`);
 }

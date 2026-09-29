@@ -12,6 +12,7 @@ interface SidebarProps {
 export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const t = useTranslations("nav");
+  const tSide = useTranslations("sidebar");
 
   const navItems = [
     { href: "/", label: t("home"), icon: "📊" },
@@ -71,10 +72,10 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       <div className="p-3.5 rounded-2xl bg-gray-900/60 border border-gray-800 text-[11px] text-gray-400">
         <div className="flex items-center gap-2 text-emerald-400 font-semibold mb-1">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span>Données Certifiées</span>
+          <span>{tSide("notice_title")}</span>
         </div>
         <p className="leading-relaxed text-gray-400">
-          Sources officielles : BCEAO & Commission Bancaire de l&apos;UMOA.
+          {tSide("notice_body")}
         </p>
       </div>
     </div>

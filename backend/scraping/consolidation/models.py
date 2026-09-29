@@ -44,6 +44,8 @@ class ObservationSummary(BaseModel):
     period_year: int
     period_type: str = "annual"
     period_label: str | None = None
+    # Accounting scope ("individual" / "consolidated"); None when unknown.
+    scope: str | None = None
     value_original: str
     unit_original: str | None = None
     currency_original: str | None = None

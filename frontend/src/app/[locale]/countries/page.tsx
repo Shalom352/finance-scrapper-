@@ -1,146 +1,133 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { Link } from "@/i18n/navigation";
-import { getTranslations } from "next-intl/server";
-import { getAggregations, getInstitutions } from "@/lib/api";
-import { formatCompactCurrency } from "@/lib/formatters";
+import { getLocale, getTranslations } from "next-intl/server";
+import { getAggregations, getAvailableYears, getInstitutions } from "@/lib/api";
+import { formatCompactCurrency, formatNumber, MISSING } from "@/lib/formatters";
+import { parseYearParam, resolveYear } from "@/lib/url";
+import { COUNTRY_FLAGS, UMOA_COUNTRY_CODES } from "@/lib/countries";
+import { resolveKpi, SECTOR_KPI_BINDINGS } from "@/lib/countryKpis";
 import { CoverageIndicator } from "@/components/common/CoverageIndicator";
+import { YearSelect } from "@/components/common/YearSelect";
+import type { SectorAggregation } from "@/types";
 
-interface CountryCardData {
-  code: string;
-  name: string;
-  flag: string;
-  capital: string;
-  institutionsCount: number;
-  totalAssets: number | null;
-  totalDeposits: number | null;
-  coverageRatio: number;
-  isPartial: boolean;
-}
+const CARD_BINDINGS = SECTOR_KPI_BINDINGS.filter((b) => b.labelKey !== "total_loans");
 
-const STATIC_COUNTRIES_META = [
-  { code: "CI", name: "Côte d'Ivoire", flag: "🇨🇮", capital: "Abidjan" },
-  { code: "SN", name: "Sénégal", flag: "🇸🇳", capital: "Dakar" },
-  { code: "BF", name: "Burkina Faso", flag: "🇧🇫", capital: "Ouagadougou" },
-  { code: "ML", name: "Mali", flag: "🇲🇱", capital: "Bamako" },
-  { code: "TG", name: "Togo", flag: "🇹🇬", capital: "Lomé" },
-  { code: "BJ", name: "Bénin", flag: "🇧🇯", capital: "Cotonou" },
-  { code: "NE", name: "Niger", flag: "🇳🇪", capital: "Niamey" },
-  { code: "GW", name: "Guinée-Bissau", flag: "🇬🇼", capital: "Bissau" },
-];
-
-export default async function CountriesListPage() {
+export default async function CountriesListPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const t = await getTranslations("countries");
+  const tKpi = await getTranslations("kpi");
+  const tCountries = await getTranslations("country_names");
+  const locale = await getLocale();
+  const { year: yearParam } = await searchParams;
 
-  // Fetch country aggregates and institutions counts
-  const countryCards: CountryCardData[] = [];
+  const years = await getAvailableYears().catch(() => null);
+  const availableYears = years ?? [];
+  const year = resolveYear(parseYearParam(yearParam), availableYears);
 
-  for (const c of STATIC_COUNTRIES_META) {
-    let instCount = 0;
-    let assets: number | null = null;
-    let deposits: number | null = null;
-    let coverage = 0.85;
-    let isPartial = true;
-
-    try {
-      const [insts, aggAssets, aggDeposits] = await Promise.all([
-        getInstitutions({ country_code: c.code, page_size: 1 }).catch(() => null),
-        getAggregations({ year: 2024, metric_code: "total_actifs", country_code: c.code }).catch(() => null),
-        getAggregations({ year: 2024, metric_code: "depots_clients", country_code: c.code }).catch(() => null),
+  const cards = await Promise.all(
+    UMOA_COUNTRY_CODES.map(async (code) => {
+      const [institutionsCount, ...aggs] = await Promise.all([
+        getInstitutions({ country_code: code, page_size: 1 })
+          .then((r) => r.total)
+          .catch(() => null),
+        ...CARD_BINDINGS.map((b) =>
+          year === null
+            ? Promise.resolve<SectorAggregation[] | null>(null)
+            : getAggregations({ year, metric_code: b.metric_code, country_code: code }).catch(() => null),
+        ),
       ]);
-
-      if (insts) instCount = insts.total;
-      if (aggAssets && aggAssets.length > 0 && aggAssets[0].total_value !== null) {
-        assets = Number(aggAssets[0].total_value);
-        coverage = aggAssets[0].coverage_ratio;
-        isPartial = aggAssets[0].is_partial;
-      }
-      if (aggDeposits && aggDeposits.length > 0 && aggDeposits[0].total_value !== null) {
-        deposits = Number(aggDeposits[0].total_value);
-      }
-    } catch {
-      // Offline fallback
-    }
-
-    countryCards.push({
-      code: c.code,
-      name: c.name,
-      flag: c.flag,
-      capital: c.capital,
-      institutionsCount: instCount || 15,
-      totalAssets: assets,
-      totalDeposits: deposits,
-      coverageRatio: coverage,
-      isPartial,
-    });
-  }
+      const flat = (aggs as (SectorAggregation[] | null)[]).flatMap((a) => a ?? []);
+      return {
+        code,
+        institutionsCount: institutionsCount as number | null,
+        kpis: CARD_BINDINGS.map((b) => ({ binding: b, agg: year === null ? null : resolveKpi(b, year, flat) })),
+      };
+    }),
+  );
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
-          {t("title")}
-        </h1>
-        <p className="text-xs text-gray-400 mt-1">{t("subtitle")}</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">{t("title")}</h1>
+          <p className="text-xs text-gray-400 mt-1">{t("subtitle")}</p>
+        </div>
+        <Suspense fallback={null}>
+          <YearSelect years={availableYears} value={year} />
+        </Suspense>
       </div>
 
-      {/* Grid of the 8 Countries */}
+      {years === null && (
+        <div role="alert" className="p-4 rounded-2xl border border-rose-800/60 bg-rose-950/30 text-sm text-rose-200">
+          {t("years_error")}
+        </div>
+      )}
+      {years !== null && year === null && (
+        <p className="p-4 rounded-2xl border border-dashed border-gray-800 text-sm text-gray-400">{t("no_years")}</p>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {countryCards.map((c) => (
-          <Link
-            key={c.code}
-            href={`/countries/${c.code}`}
-            className="group flex flex-col justify-between p-6 rounded-3xl border border-gray-800 bg-gray-900/40 hover:border-emerald-600/60 hover:bg-gray-900 transition-all shadow-lg"
-          >
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-4xl group-hover:scale-110 transition-transform">
-                  {c.flag}
-                </span>
-                <span className="px-2.5 py-0.5 rounded-lg border border-gray-700 bg-gray-800 text-xs font-mono font-bold text-gray-300">
-                  {c.code}
-                </span>
-              </div>
-
-              <h3 className="text-lg font-bold text-white group-hover:text-emerald-400 transition-colors">
-                {c.name}
-              </h3>
-              <p className="text-xs text-gray-500 mb-4">Capitale : {c.capital}</p>
-
-              <div className="space-y-2 py-3 border-t border-b border-gray-800/80 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Établissements :</span>
-                  <span className="font-semibold text-gray-200">{c.institutionsCount}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Actifs totaux :</span>
-                  <span className="font-bold text-emerald-400">
-                    {c.totalAssets !== null ? formatCompactCurrency(c.totalAssets) : "—"}
+        {cards.map((c) => {
+          const assets = c.kpis.find((k) => k.binding.labelKey === "total_assets")?.agg ?? null;
+          return (
+            <Link
+              key={c.code}
+              href={year === null ? `/countries/${c.code}` : `/countries/${c.code}?year=${year}`}
+              className="group flex flex-col justify-between p-6 rounded-3xl border border-gray-800 bg-gray-900/40 hover:border-emerald-600/60 hover:bg-gray-900 transition-all shadow-lg"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-4xl group-hover:scale-110 transition-transform">{COUNTRY_FLAGS[c.code]}</span>
+                  <span className="px-2.5 py-0.5 rounded-lg border border-gray-700 bg-gray-800 text-xs font-mono font-bold text-gray-300">
+                    {c.code}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Dépôts clientèle :</span>
-                  <span className="font-semibold text-gray-300">
-                    {c.totalDeposits !== null ? formatCompactCurrency(c.totalDeposits) : "—"}
+
+                <h3 className="text-lg font-bold text-white group-hover:text-emerald-400 transition-colors mb-4">
+                  {tCountries(c.code)}
+                </h3>
+
+                <div className="space-y-2 py-3 border-t border-b border-gray-800/80 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">{t("card.institutions")}</span>
+                    <span className="font-semibold text-gray-200">
+                      {c.institutionsCount === null ? MISSING : formatNumber(c.institutionsCount, locale)}
+                    </span>
+                  </div>
+                  {c.kpis.map(({ binding, agg }) => (
+                    <div key={binding.labelKey} className="flex justify-between">
+                      <span className="text-gray-400">
+                        {tKpi(binding.labelKey)}
+                        {year !== null ? ` (${year})` : ""}
+                      </span>
+                      <span className="font-bold text-emerald-400">
+                        {formatCompactCurrency(agg?.total_value, agg?.currency, locale)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-4 pt-2">
+                <CoverageIndicator
+                  coverageRatio={assets?.coverage_ratio}
+                  isPartial={assets?.is_partial}
+                  representedCount={assets?.institution_count}
+                  totalCount={assets?.total_institutions}
+                  label={t("card.coverage")}
+                />
+                <div className="flex justify-end mt-3">
+                  <span className="text-xs font-semibold text-emerald-400 group-hover:translate-x-1 transition-transform">
+                    {t("card.open")}
                   </span>
                 </div>
               </div>
-            </div>
-
-            <div className="mt-4 pt-2">
-              <CoverageIndicator
-                coverageRatio={c.coverageRatio}
-                label="Complétude"
-                showWarningIfPartial={false}
-              />
-              <div className="flex justify-end mt-3">
-                <span className="text-xs font-semibold text-emerald-400 group-hover:translate-x-1 transition-transform">
-                  Consulter le secteur →
-                </span>
-              </div>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
