@@ -6,7 +6,7 @@ Provides:
   GET /api/v1/health → Database connectivity
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import text
@@ -31,7 +31,7 @@ async def health_check() -> dict:
         "app": "UMOA Banking Intelligence",
         "version": "0.1.0",
         "env": settings.app_env,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 
@@ -67,5 +67,5 @@ async def full_health_check(
             "db": settings.postgres_db,
             **({"error": db_error} if db_error else {}),
         },
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }

@@ -8,7 +8,7 @@ Never hardcode secrets or environment-specific values here.
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, PostgresDsn, computed_field, model_validator
+from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,7 +19,11 @@ class Settings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        # Search for the env file in the backend directory first, then at the
+        # repository root (docker-compose reads the root .env). This makes the
+        # same credentials available whether commands run from ``backend/``
+        # (pytest, alembic) or the repository root.
+        env_file=(".env", "../.env"),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",

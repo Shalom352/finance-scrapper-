@@ -24,5 +24,8 @@ python-dotenv==1.0.1
 # Logging
 structlog==24.4.0
 
+# PDF Processing
+pymupdf==1.28.2
+
 # Utilities
 python-dateutil==2.9.0

@@ -9,15 +9,15 @@ This is the main application factory. It:
 - Handles application lifecycle (startup/shutdown)
 """
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.v1.health import router as health_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger
-from app.api.v1.health import router as health_router
 
 # Initialize logging before anything else
 configure_logging()
@@ -78,6 +78,31 @@ def create_app() -> FastAPI:
     # Routers
     # ------------------------------------------------------------------
     app.include_router(health_router)
+
+    from app.api.v1.analytics import router as analytics_router
+    from app.api.v1.banking_groups import router as banking_groups_router
+    from app.api.v1.countries import router as countries_router
+    from app.api.v1.documents import router as documents_router
+    from app.api.v1.financial_data import router as financial_data_router
+    from app.api.v1.institutions import router as institutions_router
+    from app.api.v1.metrics import router as metrics_router
+    from app.api.v1.rankings import router as rankings_router
+    from app.api.v1.search import router as search_router
+    from app.api.v1.sources import router as sources_router
+
+    app.include_router(countries_router)
+    app.include_router(sources_router)
+    app.include_router(banking_groups_router)
+    app.include_router(institutions_router)
+    app.include_router(metrics_router)
+    app.include_router(documents_router)
+    app.include_router(financial_data_router)
+    app.include_router(rankings_router)
+    app.include_router(search_router)
+    app.include_router(analytics_router)
+
+    from app.core.exceptions import register_exception_handlers
+    register_exception_handlers(app)
 
     return app
 
