@@ -21,16 +21,28 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 # Add backend directory to sys.path so we can import app modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+# ============================================================
+# Import all models so Alembic can detect them on Base.metadata.
+# Without these imports the metadata would be empty and
+# ``alembic revision --autogenerate`` would produce a useless
+# (blank or partial) migration.
+# The ``app.models`` package re-exports every ORM class; importing
+# it is enough to register all tables on ``Base.metadata``.
+# Importing explicit names below also serves as a guard: if a model
+# module is removed/renamed, this import fails loudly.
+# ============================================================
+import app.models  # noqa: F401  (registers every table on Base.metadata)
 from app.core.config import get_settings
 from app.db.base import Base
-
-# ============================================================
-# Import all models here so Alembic can detect them
-# Models will be added as phases progress
-# ============================================================
-# from app.models.institution import Institution  # Phase 1
-# from app.models.document import Document        # Phase 2
-# ============================================================
+from app.models import (  # noqa: F401
+    BankingGroup,
+    Country,
+    Document,
+    FinancialData,
+    Institution,
+    MetricDefinition,
+    Source,
+)
 
 # Alembic Config object (gives access to alembic.ini values)
 config = context.config
