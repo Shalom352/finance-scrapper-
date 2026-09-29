@@ -65,21 +65,30 @@ Postes publiés : comparaison sur comptes individuels annuels (règle Phase 8C) 
 
 Ratios et variations : aucune méthode d'agrégation n'existe et aucune n'a été inventée → `status = unavailable`, `reason = aggregate_not_supported`, totaux et parts `null`. L'interface affiche « Indisponible » et « Non disponible pour cet indicateur », sans aucune ligne chiffrée.
 
-## 4. Résultats des tests (mesurés à la clôture)
+## 4. Tests
 
+Dernière exécution réelle, sur l'état commité de la Phase 9 (`aac953f`).
 Environnement : Windows, Python 3.11.9, pytest 8.3.3 ; PostgreSQL 16.15 réel (conteneur Docker `umoa_postgres`, joint via `127.0.0.1`).
+
+- `npm run lint` : 0 erreur, 0 avertissement
+- `npm run build` : succès
+- `npm test` : 79/79 tests passed (6 fichiers)
+- `pytest` : 330 passed, 0 failed, 0 skipped, 0 xfailed, 0 xpassed, 0 erreur de collecte, 6 warnings — 24,43 s
+- PostgreSQL integration : 30/30 passed (Phase 2 : 1, Phase 8C : 14, Phase 9 : 15/15)
+- Ruff : 28 erreurs préexistantes, 0 nouvelle erreur dans les fichiers touchés
 
 ### Backend — `POSTGRES_HOST=127.0.0.1 pytest`
 
 | Mesure | Valeur |
 |---|---|
-| Tests collectés | **330** |
+| Tests collectés | **330** (0 erreur de collecte) |
 | Réussis | **330** |
 | Échoués | 0 |
 | Ignorés (skipped) | 0 |
+| xfailed / xpassed | 0 / 0 |
 | Erreurs | 0 |
 | Avertissements | 6 |
-| Durée | 11,60 s |
+| Durée | 24,43 s |
 | Code de sortie | 0 |
 
 Répartition par fichier :
@@ -143,7 +152,7 @@ Rendu Chrome headless des pages `/fr` et `/en` (classements national et UMOA, va
 ## 6. Défauts détectés et corrigés pendant la phase
 
 - Collision de clé de traduction `comparisons.country` (libellé et groupe) → renommée `country_label`.
-- Caractères « retour arrière » (au lieu de `\b`) introduits par l'échappement shell dans deux regex de test, dont le test backend de vocabulaire interdit qui ne vérifiait donc pas `best`, `worst`, `pire`, `buy`, `sell`, `top bank`. Corrigé et vérifié ; aucun caractère de contrôle ne subsiste dans les sources.
+- Caractères « retour arrière » (au lieu de `\b`) introduits par l'échappement shell dans deux regex de test, dont le test backend de vocabulaire interdit qui ne vérifiait donc pas `best`, `worst`, `pire`, `buy`, `sell`, `top bank`. Corrigé ; aucun caractère de contrôle ne subsiste dans les sources. Contrôle réel des regex backend (`test_phase9_rankings_unit.py`) et frontend (`contract.test.ts`) : `best bank`, `la pire`, `buy`, `sell`, `top bank` détectés ; `bestow`, `Topic` non détectés.
 - `docs/specification-v1.md` décrivait l'ancien contrat de `/rankings` (`verified` seul, erreur `400` sur devises). Aligné sur le contrat validé en Phase 9.
 
 ## 7. Limitations
