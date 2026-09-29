@@ -18,6 +18,8 @@ FastAPI (API REST)
 Next.js (Dashboard / Recherche / Classements)
 ```
 
+> Référence de vérité : `docs/specification-v1.md`. En cas de divergence, la spécification prévaut.
+
 ---
 
 ## Composants
@@ -44,15 +46,15 @@ backend/
 │   │   ├── base.py           # SQLAlchemy DeclarativeBase
 │   │   ├── engine.py         # Création de l'engine async
 │   │   └── session.py        # Factory de sessions
-│   ├── models/               # Modèles SQLAlchemy (Phase 1+)
-│   ├── schemas/              # Schémas Pydantic (Phase 1+)
-│   ├── services/             # Logique métier (Phase 1+)
+│   ├── models/               # Modèles SQLAlchemy
+│   ├── schemas/              # Schémas Pydantic
+│   ├── services/             # Logique métier
 │   └── api/
 │       └── v1/               # Endpoints versionnés
-├── scraping/                 # Pipeline de scraping (Phase 2+)
+├── scraping/                 # Pipeline de scraping (Phase 4+)
 │   ├── discovery/            # Détection de nouveaux documents
 │   ├── download/             # Téléchargement, hash, dédup
-│   ├── parsing/              # Extraction PDF (PyMuPDF, pdfplumber)
+│   ├── parsing/              # Extraction PDF / HTML
 │   ├── normalization/        # Standardisation des valeurs
 │   └── validation/           # Contrôle qualité
 ├── migrations/               # Migrations Alembic
@@ -62,15 +64,28 @@ backend/
 
 #### API versioning
 
-Tous les endpoints sont préfixés `/api/v1/`. Le versioning permet d'évoluer sans casser les clients existants.
+Tous les endpoints métier sont préfixés `/api/v1/`. Les routes sont canoniques **sans slash final**.
 
 ```
 GET /health                     → Statut de l'application
-GET /api/v1/                    → Version de l'API
-GET /api/v1/institutions/       → Liste des institutions (Phase 1)
-GET /api/v1/documents/          → Documents téléchargés (Phase 2)
-GET /api/v1/financial-data/     → Données financières (Phase 3)
+GET /api/v1/health              → Statut complet (incl. base de données)
+
+GET /api/v1/countries           → Pays UMOA
+GET /api/v1/sources             → Sources officielles
+GET /api/v1/banking-groups      → Groupes bancaires
+GET /api/v1/metrics             → Catalogue des métriques (26)
+GET /api/v1/metrics/{code}      → Détail d'une métrique
+GET /api/v1/institutions        → Liste des institutions
+GET /api/v1/institutions/{id}   → Détail d'une institution
+GET /api/v1/documents           → Documents collectés
+GET /api/v1/documents/{id}      → Détail d'un document
+GET /api/v1/financial-data      → Données financières (avec provenance)
+GET /api/v1/financial-data/{id} → Détail d'une donnée financière
+GET /api/v1/rankings            → Classements (données verified uniquement)
+GET /api/v1/search              → Recherche multi-entités
 ```
+
+Contrat complet (filtres, pagination, erreurs) : voir `docs/specification-v1.md` §18.
 
 ---
 
@@ -86,29 +101,83 @@ GET /api/v1/financial-data/     → Données financières (Phase 3)
 - `created_at` et `updated_at` sur chaque table
 - Soft delete via `deleted_at` nullable (jamais de suppression physique de données financières)
 - Toute donnée financière porte la traçabilité complète (voir ci-dessous)
+- Les 26 métriques de la V1 sont définies dans la table `metric_definitions` (voir `docs/specification-v1.md` §6–§9)
+
+#### Modèles
+
+**Référentiels (existants)** : `Country`, `Source`, `BankingGroup`, `Institution`.
+
+**Métier (V1)** :
+
+- `metric_definitions` — catalogue officiel des métriques (`code` UNIQUE ; `financial_data.metric_code` y fait référence)
+- `documents` — documents collectés (`source_id` NOT NULL ; `file_hash` UNIQUE lorsqu'il est renseigné ; stockage adressé par contenu)
+- `financial_data` — données financières (`institution_id`, `source_id`, `document_id`, `metric_code`, `value_original` NOT NULL)
+
+#### Unités et devises — distinction stricte
+
+**L'unité et la devise sont deux concepts distincts.** Ne jamais utiliser la devise comme substitut de l'unité.
+
+`financial_data` conserve six champs :
+
+```
+value_original,   unit_original,   currency_original
+value_normalized, unit_normalized, currency_normalized
+```
+
+Règle de normalisation par `value_type` :
+
+- `amount`      → `unit_normalized = "absolute"`, `value_normalized = value_original × multiplicateur`
+- `percentage`  → `unit_normalized = "%"`
+- `ratio`       → `unit_normalized = "ratio"`
+- `rate`        → `unit_normalized = "%"`
+
+Multiplicateurs unitaires (`amount`) : `absolute/unit` ×1 · `thousand` ×1 000 · `million` ×1 000 000 · `milliard/billion` ×1 000 000 000.
+
+**Aucune conversion de devise en V1 : `currency_normalized = currency_original`.**
 
 #### Traçabilité obligatoire des données financières
 
 ```
-source_id         → quelle source officielle
-document_id       → quel document
-page_number       → quelle page du document
-period_year       → année de référence
-period_type       → 'annual' | 'semi-annual' | 'quarterly'
-value_original    → valeur telle qu'extraite (string)
-unit_original     → unité originale (ex: "millions FCFA")
-value_normalized  → valeur normalisée (Decimal)
-unit_normalized   → unité normalisée (ex: "FCFA")
-extraction_method → 'pdf_table' | 'pdf_text' | 'ocr' | 'manual'
-status            → 'extracted' | 'needs_review' | 'reviewed' | 'verified' | 'rejected'
-confidence_score  → 0.0 à 1.0
+institution_id      → quelle institution
+source_id           → quelle source officielle
+document_id         → quel document (NOT NULL)
+page_number         → quelle page du document
+period_type         → 'annual' | 'semi_annual' | 'quarterly'
+period_year         → année de référence
+period_label        → libellé contrôlé (ex: "2024", "S1 2024", "T1 2024")
+metric_code         → code de la métrique (FK metric_definitions.code)
+scope               → 'individual' | 'consolidated'
+value_original      → valeur telle qu'extraite (string)
+unit_original       → unité originale (ex: "million")
+currency_original   → devise originale (ex: "XOF", "USD" ; NULL si non monétaire)
+value_normalized    → valeur normalisée (Decimal)
+unit_normalized     → unité normalisée ("absolute" | "%" | "ratio")
+currency_normalized → devise normalisée (= currency_original en V1)
+extraction_method   → 'pdf_table' | 'pdf_text' | 'ocr' | 'web_html' | 'manual'
+status              → 'extracted' | 'needs_review' | 'reviewed' | 'verified' | 'rejected'
+confidence_score    → 0.0 à 1.0
 ```
+
+#### Scopes V1
+
+`financial_data.institution_id` étant NOT NULL, seuls les scopes rattachables à une institution sont autorisés :
+
+```
+individual   → données publiées pour une institution isolée
+consolidated → données publiées pour l'entité consolidante (rattachées à l'institution déclarante)
+```
+
+Les agrégats `country`, `sector`, `umoa` ne sont **pas** stockés comme `financial_data` ; ils sont calculés à partir des données institutionnelles.
+
+#### Versionnement des documents
+
+Une nouvelle version ou correction d'un document ne remplace jamais l'ancienne : elle produit un **nouveau Document** avec ses propres `financial_data`. La provenance historique n'est jamais modifiée rétroactivement. Pas de `supersedes_document_id` en V1.
 
 ---
 
 ### Frontend — `frontend/`
 
-**Framework** : Next.js 14 (App Router)
+**Framework** : Next.js (App Router)
 **Langage** : TypeScript
 **Styling** : Tailwind CSS
 **i18n** : next-intl (bilingue fr/en)
@@ -120,7 +189,8 @@ frontend/src/
 ├── app/
 │   ├── [locale]/             # Routing i18n
 │   │   ├── layout.tsx
-│   │   └── page.tsx
+│   │   ├── page.tsx
+│   │   └── ...
 │   └── globals.css
 ├── components/               # Composants réutilisables
 │   ├── ui/                   # Composants de base
@@ -135,12 +205,30 @@ frontend/src/
     └── index.ts              # Types TypeScript partagés
 ```
 
+#### Routes V1
+
+```
+/[locale]                     (Dashboard)
+/[locale]/institutions
+/[locale]/institutions/[id]
+/[locale]/documents
+/[locale]/documents/[id]
+/[locale]/financial-data
+/[locale]/rankings
+/[locale]/search
+```
+
 #### Internationalisation
 
-- URL locale : `/fr/dashboard`, `/en/dashboard`
-- Langue par défaut : français (`fr`)
-- Langue supportée : anglais (`en`)
+- URL locale : `/fr/...`, `/en/...`
+- Langue par défaut : français (`fr`) ; langue supportée : anglais (`en`)
 - Toutes les chaînes de l'interface passent par le système de traductions
+
+#### Affichage et comparabilité
+
+- **Provenance** et **statut** affichés partout où une donnée est présentée.
+- **Comparaison** uniquement entre données comparables (même métrique, période, scope, type de période, unité, devise normalisée).
+- Les **rankings** n'utilisent que les données `verified` et une devise unique.
 
 #### Authentification (future)
 
@@ -167,13 +255,14 @@ L'architecture est préparée pour l'ajout d'authentification sans reconstructio
 
 ## Règles d'architecture
 
-1. **Séparation des couches** : scraping ≠ extraction ≠ API ≠ UI
+1. **Séparation des couches** : scraping ≠ parsing ≠ normalization ≠ validation ≠ API ≠ UI
 2. **Pipeline scraping** : discovery → download → storage → parsing → normalization → validation (chaque étape isolée)
 3. **Traçabilité** : aucune donnée financière sans provenance complète
-4. **Versioning API** : tous les endpoints sous `/api/v1/`
+4. **Versioning API** : tous les endpoints métier sous `/api/v1/`, sans slash final
 5. **Configuration** : 100% via variables d'environnement, aucun secret dans le code
 6. **Migrations** : toute modification du schéma via Alembic
 7. **Tests** : tout code nouveau doit avoir des tests associés
+8. **Aucune donnée inventée** : voir `docs/dev-rules.md` et `docs/specification-v1.md`
 
 ---
 
@@ -181,8 +270,8 @@ L'architecture est préparée pour l'ajout d'authentification sans reconstructio
 
 L'architecture est conçue pour supporter :
 
-**V2** : ajout du module `backend/ai/` (LLM integration, document classification, NLP search)
+**V2** : conversion FX (taux, date, source, méthode), ratios calculés et formules, module `backend/ai/` (LLM, classification de documents, recherche NLP)
 
-**V3** : ajout des modules `backend/transactions/` et `backend/relationships/` pour M&A, obligations, actionnaires
+**V3** : modules `backend/transactions/` et `backend/relationships/` pour M&A, obligations, actionnaires
 
 Aucune reconstruction architecturale majeure ne sera nécessaire.

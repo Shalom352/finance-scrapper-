@@ -5,15 +5,18 @@ Provides shared fixtures for all tests.
 """
 
 import os
-import pytest
-from httpx import AsyncClient, ASGITransport
 
-# Set test environment before importing app modules
+import pytest
+from httpx import ASGITransport, AsyncClient
+
+# Ensure a deterministic test environment before importing app modules.
+# POSTGRES_PASSWORD is normally provided via the shared .env (root). A fallback
+# is only applied so DB-free tests can import the settings without a real DB.
 os.environ.setdefault("APP_ENV", "development")
-os.environ.setdefault("POSTGRES_PASSWORD", "test_password")
+os.environ.setdefault("POSTGRES_PASSWORD", "umoa_dev_2024!")
 os.environ.setdefault("POSTGRES_HOST", "localhost")
 os.environ.setdefault("POSTGRES_PORT", "5432")
-os.environ.setdefault("POSTGRES_DB", "umoa_banking_test")
+os.environ.setdefault("POSTGRES_DB", "umoa_banking")
 os.environ.setdefault("POSTGRES_USER", "umoa_user")
 
 from app.main import create_app
