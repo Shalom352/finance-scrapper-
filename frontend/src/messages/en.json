@@ -11,7 +11,8 @@
     "documents": "Documents",
     "search": "Search",
     "rankings": "Rankings",
-    "comparisons": "Comparisons"
+    "comparisons": "Comparisons",
+    "financial_data": "Financial data"
   },
   "sidebar": {
     "notice_title": "Official sources",
@@ -556,5 +557,57 @@
     "source_values": "{count, plural, one {# value} other {# values}}",
     "documents_title": "Linked documents",
     "documents_empty": "No document linked to this institution."
+  },
+  "data_explorer": {
+    "title": "UMOA financial data",
+    "subtitle": "Every stored financial observation, filterable, with its source.",
+    "note_rows": "Each row is an observation as stored: no currency conversion, no total, no average. Rejected observations are not listed as valid data.",
+    "note_value_sort": "Sorted by value: rows are grouped by currency; values in different currencies are not compared.",
+    "count": "{total, plural, =0 {No observation} one {# observation} other {# observations}}",
+    "empty_title": "No data available",
+    "empty_hint": "No observation matches these filters.",
+    "filters": {
+      "country": "Country",
+      "institution": "Institution",
+      "institution_placeholder": "Search an institution…",
+      "remove_institution": "Remove {name}",
+      "indicator": "Indicator",
+      "year": "Year",
+      "period_type": "Period type",
+      "scope": "Scope",
+      "currency": "Currency",
+      "status": "Status",
+      "status_all_valid": "All (rejected excluded)",
+      "all": "All"
+    },
+    "table": {
+      "institution": "Institution",
+      "country": "Country",
+      "indicator": "Indicator",
+      "year": "Year",
+      "period_type": "Period",
+      "scope": "Scope",
+      "value": "Value",
+      "unit": "Unit",
+      "currency": "Currency",
+      "status": "Status",
+      "source": "Source",
+      "source_title": "Show full provenance",
+      "page": "p. {page}"
+    },
+    "qualification": {
+      "authoritative": "Retained value",
+      "superseded": "Another observation retained",
+      "conflict": "Unresolved divergent values",
+      "needs_review": "Not certified (needs review)",
+      "rejected": "Rejected — not used",
+      "missing_value": "Value not provided"
+    },
+    "export": {
+      "button": "Export to CSV",
+      "running": "Exporting…",
+      "too_large": "Export unavailable — refine your filters (maximum {max} rows).",
+      "error": "The export failed."
+    }
   }
 }

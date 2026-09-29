@@ -23,6 +23,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -82,6 +83,10 @@ class FinancialData(Base):
             "status != 'verified' OR (verified_at IS NOT NULL AND verified_by IS NOT NULL)",
             name="ck_financial_data_verified_requires_validator",
         ),
+        # --- Data explorer access paths (Phase 11, migration 0005) ---
+        Index("ix_financial_data_period_scope_year", "period_type", "scope", "period_year"),
+        Index("ix_financial_data_logical_key", "institution_id", "metric_code", "period_year", "period_type", "scope"),
+        Index("ix_financial_data_currency_value", "currency_normalized", "value_normalized"),
     )
 
     # --- Provenance (all mandatory) ---

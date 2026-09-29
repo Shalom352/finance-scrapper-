@@ -14,6 +14,8 @@ import type {
   CountryComparison,
   Document,
   FinancialDataDetail,
+  FinancialDataExplorerItem,
+  FinancialDataFacets,
   FinancialDataPoint,
   GrowthResult,
   Institution,
@@ -213,6 +215,51 @@ export async function getFinancialData(
     `/api/v1/financial-data${buildQuery({ ...params })}`,
   );
   return mapPage(res, normalizeDataPoint);
+}
+
+// Data explorer (Phase 11) — same list route, extended filters / sort / provenance summary.
+
+export type ExplorerSort = "institution" | "country" | "indicator" | "year" | "value";
+
+export interface FinancialDataExplorerQuery extends FinancialDataQuery {
+  institution_ids?: string[];
+  country_code?: string;
+  currency_normalized?: string;
+  sort?: ExplorerSort;
+  order?: "asc" | "desc";
+}
+
+/** Explorer params: rejected rows are never listed as valid data (only on an explicit status filter). */
+function explorerQuery({ institution_ids, ...rest }: FinancialDataExplorerQuery) {
+  return { ...rest, institution_ids: institution_ids?.join(","), include_rejected: false };
+}
+
+export async function getFinancialDataExplorer(
+  params: FinancialDataExplorerQuery & { page?: number; page_size?: number },
+): Promise<PaginatedResponse<FinancialDataExplorerItem>> {
+  const res = await apiFetch<PaginatedResponse<FinancialDataExplorerItem>>(
+    `/api/v1/financial-data${buildQuery(explorerQuery(params))}`,
+  );
+  return mapPage(res, normalizeDataPoint);
+}
+
+export async function getFinancialDataFacets(): Promise<FinancialDataFacets> {
+  return apiFetch<FinancialDataFacets>("/api/v1/financial-data/facets");
+}
+
+export type CsvExportResult = { status: "ok"; blob: Blob } | { status: "too_large" };
+
+/** CSV of the filtered rows (backend-bounded). HTTP 413 → too_large: refine the filters. */
+export async function exportFinancialDataCsv(params: FinancialDataExplorerQuery): Promise<CsvExportResult> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}/api/v1/financial-data/export${buildQuery(explorerQuery(params))}`);
+  } catch (err) {
+    throw new ApiError(0, err instanceof Error ? err.message : "Network error");
+  }
+  if (response.status === 413) return { status: "too_large" };
+  if (!response.ok) throw new ApiError(response.status, await response.text().catch(() => "Unknown error"));
+  return { status: "ok", blob: await response.blob() };
 }
 
 /** Every financial data row matching the filters (no silent truncation at 100 rows). */

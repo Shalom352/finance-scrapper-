@@ -11,7 +11,8 @@
     "documents": "Documents",
     "search": "Recherche",
     "rankings": "Classements",
-    "comparisons": "Comparaisons"
+    "comparisons": "Comparaisons",
+    "financial_data": "Données financières"
   },
   "sidebar": {
     "notice_title": "Sources officielles",
@@ -556,5 +557,57 @@
     "source_values": "{count, plural, one {# valeur} other {# valeurs}}",
     "documents_title": "Documents rattachés",
     "documents_empty": "Aucun document rattaché à cet établissement."
+  },
+  "data_explorer": {
+    "title": "Données financières UMOA",
+    "subtitle": "Toutes les observations financières enregistrées, filtrables, avec leur source.",
+    "note_rows": "Chaque ligne est une observation telle qu'enregistrée : aucune conversion de devise, aucun total, aucune moyenne. Les observations rejetées ne sont pas listées comme données valides.",
+    "note_value_sort": "Tri par valeur : les lignes sont regroupées par devise ; les valeurs de devises différentes ne sont pas comparées.",
+    "count": "{total, plural, =0 {Aucune observation} one {# observation} other {# observations}}",
+    "empty_title": "Aucune donnée disponible",
+    "empty_hint": "Aucune observation ne correspond à ces filtres.",
+    "filters": {
+      "country": "Pays",
+      "institution": "Institution",
+      "institution_placeholder": "Rechercher une institution…",
+      "remove_institution": "Retirer {name}",
+      "indicator": "Indicateur",
+      "year": "Année",
+      "period_type": "Type de période",
+      "scope": "Périmètre",
+      "currency": "Devise",
+      "status": "Statut",
+      "status_all_valid": "Tous (hors rejetés)",
+      "all": "Tous"
+    },
+    "table": {
+      "institution": "Institution",
+      "country": "Pays",
+      "indicator": "Indicateur",
+      "year": "Année",
+      "period_type": "Période",
+      "scope": "Périmètre",
+      "value": "Valeur",
+      "unit": "Unité",
+      "currency": "Devise",
+      "status": "Statut",
+      "source": "Source",
+      "source_title": "Afficher la provenance complète",
+      "page": "p. {page}"
+    },
+    "qualification": {
+      "authoritative": "Valeur retenue",
+      "superseded": "Autre observation retenue",
+      "conflict": "Valeurs divergentes non résolues",
+      "needs_review": "Non certifiée (à réviser)",
+      "rejected": "Rejetée — non utilisée",
+      "missing_value": "Valeur non renseignée"
+    },
+    "export": {
+      "button": "Exporter en CSV",
+      "running": "Export en cours…",
+      "too_large": "Export indisponible — affinez vos filtres (maximum {max} lignes).",
+      "error": "L'export a échoué."
+    }
   }
 }

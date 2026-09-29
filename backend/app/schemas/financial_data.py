@@ -28,6 +28,34 @@ class FinancialDataList(BaseModel):
     status: str
     model_config = {"from_attributes": True}
 
+class FinancialDataExplorerItem(FinancialDataList):
+    """List row enriched for the data explorer (Phase 11): names, provenance summary and
+    the row's position in the existing authority rule. The value is exactly as stored."""
+
+    institution_name: str | None = None
+    country_code: str | None = None
+    source_id: str | None = None
+    source_name: str | None = None
+    document_id: str | None = None
+    document_title: str | None = None
+    page_number: int | None = None
+    # authoritative | superseded | conflict | needs_review | rejected | missing_value
+    qualification: str | None = None
+    # For a superseded row: the authoritative observation of the same key.
+    authoritative_data_id: str | None = None
+
+
+class FinancialDataFacets(BaseModel):
+    """Values really present in the stored observations (feed the explorer filters)."""
+
+    period_years: list[int]
+    period_types: list[str]
+    scopes: list[str]
+    currencies: list[str]
+    statuses: list[str]
+    metric_codes: list[str]
+
+
 class FinancialDataRead(BaseModel):
     id: str
     institution_id: str

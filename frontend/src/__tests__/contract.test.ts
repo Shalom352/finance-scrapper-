@@ -120,8 +120,8 @@ describe("no qualitative or investment vocabulary (Phase 9)", () => {
     expect(hits).toEqual([]);
   });
 
-  it("ranking, comparison and institution explorer UI code contains no forbidden wording", () => {
-    const ui = files.filter((f) => /rankings|comparisons|institutions/.test(f.path));
+  it("ranking, comparison, institution and financial data explorer UI code contains no forbidden wording", () => {
+    const ui = files.filter((f) => /rankings|comparisons|institutions|financial-data/.test(f.path));
     expect(ui.length).toBeGreaterThan(0);
     const hits = ui.filter((f) => PROSE.some((re) => re.test(f.text))).map((f) => f.path);
     expect(hits).toEqual([]);

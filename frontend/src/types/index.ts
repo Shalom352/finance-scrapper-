@@ -133,6 +133,37 @@ export interface FinancialDataPoint {
   status: DataStatus | string;
 }
 
+/** Explorer row (Phase 11): a stored observation, as stored, with its provenance summary. */
+export type ObservationQualification =
+  | "authoritative"
+  | "superseded"
+  | "conflict"
+  | "needs_review"
+  | "rejected"
+  | "missing_value";
+
+export interface FinancialDataExplorerItem extends FinancialDataPoint {
+  institution_name: string | null;
+  country_code: string | null;
+  source_id: string | null;
+  source_name: string | null;
+  document_id: string | null;
+  document_title: string | null;
+  page_number: number | null;
+  qualification: ObservationQualification | null;
+  authoritative_data_id: string | null;
+}
+
+/** Values really present in the stored observations (explorer filters). */
+export interface FinancialDataFacets {
+  period_years: number[];
+  period_types: string[];
+  scopes: string[];
+  currencies: string[];
+  statuses: string[];
+  metric_codes: string[];
+}
+
 export interface MetricList {
   id: string;
   code: string;

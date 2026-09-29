@@ -1,6 +1,9 @@
 """UMOA Banking Intelligence — Financial Data Router"""
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db_session
@@ -10,7 +13,8 @@ from app.schemas.financial_data import (
     DataQualitySummary,
     DuplicateGroupResponse,
     FinancialDataBulkReviewRequest,
-    FinancialDataList,
+    FinancialDataExplorerItem,
+    FinancialDataFacets,
     FinancialDataRead,
     FinancialDataRejectRequest,
     FinancialDataReviewRequest,
@@ -20,17 +24,20 @@ from app.schemas.financial_data import (
 )
 from app.services.financial_data import (
     bulk_review_financial_data,
+    export_financial_data_csv,
     get_financial_data,
     get_financial_data_by_id,
     get_financial_data_conflicts,
     get_financial_data_coverage,
     get_financial_data_duplicates,
+    get_financial_data_facets,
     get_financial_data_historical_quality,
     get_financial_data_quality_summary,
     reject_financial_data,
     review_financial_data,
     verify_financial_data,
 )
+from scraping.financial_data.export import EXPORT_MAX_ROWS, ExportTooLargeError
 
 router = APIRouter(prefix="/api/v1", tags=["financial-data"])
 
@@ -144,31 +151,109 @@ async def bulk_review(
     return await bulk_review_financial_data(db, payload.data_ids, reviewer_notes=payload.reviewer_notes)
 
 
-@router.get("/financial-data", summary="List financial data", response_model=PaginatedResponse[FinancialDataList])
+SortQ = Literal["institution", "country", "indicator", "year", "value"]
+
+
+def _ids(institution_ids: str | None) -> list[str] | None:
+    return [i.strip() for i in institution_ids.split(",") if i.strip()] if institution_ids else None
+
+
+@router.get(
+    "/financial-data",
+    summary="List financial data (explorer: filters, sort, provenance summary, qualification)",
+    response_model=PaginatedResponse[FinancialDataExplorerItem],
+)
 async def list_financial_data(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     institution_id: str | None = Query(None, description="Filter by institution ID"),
+    institution_ids: str | None = Query(None, description="Comma-separated institution IDs"),
+    country_code: str | None = Query(None, description="Filter by country code (institution's country)"),
     metric_code: str | None = Query(None, description="Filter by metric code"),
     period_type: str | None = Query(None, description="Filter by period type"),
     period_year: int | None = Query(None, description="Filter by period year"),
     scope: str | None = Query(None, description="Filter by scope"),
     status: str | None = Query(None, description="Filter by status"),
     currency_normalized: str | None = Query(None, description="Filter by normalized currency"),
+    include_rejected: bool = Query(True, description="Include rejected observations (labelled 'rejected')"),
+    sort: SortQ | None = Query(None, description="Sort column (value sort is grouped by currency)"),
+    order: Literal["asc", "desc"] = Query("asc"),
     db: AsyncSession = Depends(get_db_session),
-) -> PaginatedResponse[FinancialDataList]:
+) -> PaginatedResponse[FinancialDataExplorerItem]:
     return await get_financial_data(
         db,
         page=page,
         page_size=page_size,
         institution_id=institution_id,
+        institution_ids=_ids(institution_ids),
+        country_code=country_code,
         metric_code=metric_code,
         period_type=period_type,
         period_year=period_year,
         scope=scope,
         status=status,
         currency_normalized=currency_normalized,
+        include_rejected=include_rejected,
+        sort=sort,
+        order=order,
     )
+
+
+@router.get(
+    "/financial-data/export",
+    summary=f"CSV export of the filtered observations (max {EXPORT_MAX_ROWS} rows)",
+    response_class=Response,
+)
+async def export_financial_data(
+    institution_id: str | None = Query(None),
+    institution_ids: str | None = Query(None),
+    country_code: str | None = Query(None),
+    metric_code: str | None = Query(None),
+    period_type: str | None = Query(None),
+    period_year: int | None = Query(None),
+    scope: str | None = Query(None),
+    status: str | None = Query(None),
+    currency_normalized: str | None = Query(None),
+    include_rejected: bool = Query(False, description="Rejected rows are excluded unless explicitly requested"),
+    sort: SortQ | None = Query(None),
+    order: Literal["asc", "desc"] = Query("asc"),
+    db: AsyncSession = Depends(get_db_session),
+) -> Response:
+    try:
+        csv_text = await export_financial_data_csv(
+            db,
+            sort=sort,
+            order=order,
+            institution_id=institution_id,
+            institution_ids=_ids(institution_ids),
+            country_code=country_code,
+            metric_code=metric_code,
+            period_type=period_type,
+            period_year=period_year,
+            scope=scope,
+            status=status,
+            currency_normalized=currency_normalized,
+            include_rejected=include_rejected,
+        )
+    except ExportTooLargeError as exc:
+        raise HTTPException(
+            status_code=413,
+            detail=f"export_too_large: {exc.total} rows > {EXPORT_MAX_ROWS}; refine the filters",
+        ) from exc
+    return Response(
+        content=csv_text,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="financial-data.csv"'},
+    )
+
+
+@router.get(
+    "/financial-data/facets",
+    summary="Values really present in the stored observations",
+    response_model=FinancialDataFacets,
+)
+async def financial_data_facets(db: AsyncSession = Depends(get_db_session)) -> FinancialDataFacets:
+    return await get_financial_data_facets(db)
 
 
 @router.get("/financial-data/{data_id}", summary="Get financial data by ID", response_model=FinancialDataRead)

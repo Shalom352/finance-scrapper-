@@ -5,18 +5,22 @@ Query logic for financial data.
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, distinct, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import raiseload, selectinload
 
+from app.models.country import Country
+from app.models.document import Document
 from app.models.financial_data import FinancialData
 from app.models.institution import Institution
+from app.models.source import Source
 from app.schemas.common import PaginatedResponse
 from app.schemas.financial_data import (
     ConflictRecordResponse,
     DataQualitySummary,
     DuplicateGroupResponse,
-    FinancialDataList,
+    FinancialDataExplorerItem,
+    FinancialDataFacets,
     FinancialDataRead,
     HistoricalQualityResponse,
     InstitutionCoverageResponse,
@@ -24,6 +28,138 @@ from app.schemas.financial_data import (
     QualityDimensionResponse,
 )
 from scraping.consolidation import FinancialDataConsolidator
+from scraping.consolidation.duplicate_detector import DuplicateDetector
+from scraping.financial_data.export import EXPORT_MAX_ROWS, ExportTooLargeError, build_csv
+from scraping.financial_data.qualification import qualify_rows
+
+# Sortable explorer columns (backend sort only; never a currency conversion).
+EXPLORER_SORTS = ("institution", "country", "indicator", "year", "value")
+
+
+def _explorer_query(
+    *,
+    institution_id: str | None = None,
+    institution_ids: list[str] | None = None,
+    country_code: str | None = None,
+    metric_code: str | None = None,
+    period_type: str | None = None,
+    period_year: int | None = None,
+    scope: str | None = None,
+    status: str | None = None,
+    currency_normalized: str | None = None,
+    include_rejected: bool = True,
+):
+    """Filtered observations joined with names and document title in ONE query
+    (no N+1, no full document rows)."""
+    query = (
+        select(FinancialData, Institution.name_official, Country.code, Source.name, Document.title)
+        .join(Institution, FinancialData.institution_id == Institution.id)
+        .outerjoin(Country, Institution.country_id == Country.id)
+        .outerjoin(Source, FinancialData.source_id == Source.id)
+        .outerjoin(Document, FinancialData.document_id == Document.id)
+        # Only the columns selected above: the model's default joined relationships
+        # (full document, source, metric rows) are never loaded for the list.
+        .options(raiseload("*"))
+        .where(FinancialData.deleted_at.is_(None))
+    )
+    ids = [i for i in (institution_ids or []) if i]
+    if institution_id:
+        ids.append(institution_id)
+    if ids:
+        query = query.where(FinancialData.institution_id.in_(ids))
+    if country_code:
+        query = query.where(Country.code == country_code.upper())
+    if metric_code:
+        query = query.where(FinancialData.metric_code == metric_code)
+    if period_type:
+        query = query.where(FinancialData.period_type == period_type)
+    if period_year is not None:
+        query = query.where(FinancialData.period_year == period_year)
+    if scope:
+        query = query.where(FinancialData.scope == scope)
+    if status:
+        query = query.where(FinancialData.status == status)
+    elif not include_rejected:
+        query = query.where(FinancialData.status != "rejected")
+    if currency_normalized:
+        query = query.where(FinancialData.currency_normalized == currency_normalized)
+    return query
+
+
+def _order(query, sort: str | None, order: str):
+    """Deterministic ordering. A value sort is grouped by currency first, so values of
+    different currencies are never interleaved as if comparable; id breaks every tie."""
+    desc = order == "desc"
+
+    def d(col):
+        return col.desc().nulls_last() if desc else col.asc().nulls_last()
+
+    if sort == "institution":
+        cols = [d(Institution.name_official), FinancialData.metric_code, FinancialData.period_year.desc()]
+    elif sort == "country":
+        cols = [d(Country.code), Institution.name_official, FinancialData.metric_code]
+    elif sort == "indicator":
+        cols = [d(FinancialData.metric_code), Institution.name_official, FinancialData.period_year.desc()]
+    elif sort == "year":
+        cols = [d(FinancialData.period_year), Institution.name_official, FinancialData.metric_code]
+    elif sort == "value":
+        cols = [FinancialData.currency_normalized.asc().nulls_last(), d(FinancialData.value_normalized)]
+    else:
+        cols = [FinancialData.period_year.desc(), FinancialData.metric_code]
+    return query.order_by(*cols, FinancialData.id)
+
+
+async def _qualify_page(db: AsyncSession, rows: list[FinancialData]) -> dict[str, tuple[str, str | None]]:
+    """Qualification of the page rows, decided over ALL observations of their logical keys."""
+    if not rows:
+        return {}
+    keys = {(r.institution_id, r.metric_code, r.period_year, r.period_type, r.scope) for r in rows}
+    sibling_q = (
+        select(FinancialData)
+        .options(
+            raiseload("*"),
+            # Exactly what the authority rule reads (source priority / name / type, document title).
+            selectinload(FinancialData.source)
+            .load_only(Source.id, Source.name, Source.source_type, Source.priority)
+            .raiseload("*"),
+            selectinload(FinancialData.document).load_only(Document.id, Document.title).raiseload("*"),
+        )
+        .where(
+            FinancialData.deleted_at.is_(None),
+            or_(*[
+                and_(
+                    FinancialData.institution_id == i,
+                    FinancialData.metric_code == m,
+                    FinancialData.period_year == y,
+                    FinancialData.period_type == p,
+                    FinancialData.scope == s,
+                )
+                for i, m, y, p, s in keys
+            ]),
+        )
+    )
+    siblings = (await db.execute(sibling_q)).scalars().all()
+    detector = DuplicateDetector()
+    obs = [detector.observation_from_orm(r) for r in siblings]
+    page_ids = {r.id for r in rows}
+    return qualify_rows([o for o in obs if o.id in page_ids], obs)
+
+
+def _to_item(row, inst_name, country, source_name, doc_title, qual) -> FinancialDataExplorerItem:
+    qualification, authoritative_id = qual.get(row.id, (None, None))
+    return FinancialDataExplorerItem.model_validate(row).model_copy(
+        update={
+            "institution_name": inst_name,
+            "country_code": country,
+            "source_id": row.source_id,
+            "source_name": source_name,
+            "document_id": row.document_id,
+            "document_title": doc_title,
+            "page_number": row.page_number,
+            "qualification": qualification,
+            "authoritative_data_id": authoritative_id,
+        }
+    )
 
 
 async def get_financial_data(
@@ -32,51 +168,71 @@ async def get_financial_data(
     page: int = 1,
     page_size: int = 20,
     institution_id: str | None = None,
+    institution_ids: list[str] | None = None,
+    country_code: str | None = None,
     metric_code: str | None = None,
     period_type: str | None = None,
     period_year: int | None = None,
     scope: str | None = None,
     status: str | None = None,
     currency_normalized: str | None = None,
-) -> PaginatedResponse[FinancialDataList]:
-    query = select(FinancialData).where(FinancialData.deleted_at.is_(None))
-
-    if institution_id:
-        query = query.where(FinancialData.institution_id == institution_id)
-
-    if metric_code:
-        query = query.where(FinancialData.metric_code == metric_code)
-
-    if period_type:
-        query = query.where(FinancialData.period_type == period_type)
-
-    if period_year is not None:
-        query = query.where(FinancialData.period_year == period_year)
-
-    if scope:
-        query = query.where(FinancialData.scope == scope)
-
-    if status:
-        query = query.where(FinancialData.status == status)
-
-    if currency_normalized:
-        query = query.where(FinancialData.currency_normalized == currency_normalized)
-
-    query = query.order_by(FinancialData.period_year.desc(), FinancialData.metric_code)
-
+    include_rejected: bool = True,
+    sort: str | None = None,
+    order: str = "asc",
+) -> PaginatedResponse[FinancialDataExplorerItem]:
+    query = _explorer_query(
+        institution_id=institution_id, institution_ids=institution_ids, country_code=country_code,
+        metric_code=metric_code, period_type=period_type, period_year=period_year, scope=scope,
+        status=status, currency_normalized=currency_normalized, include_rejected=include_rejected,
+    )
     count_q = select(func.count()).select_from(query.subquery())
     total = (await db.execute(count_q)).scalar_one()
 
     offset = (page - 1) * page_size
-    rows = (await db.execute(query.offset(offset).limit(page_size))).scalars().all()
+    result = (await db.execute(_order(query, sort, order).offset(offset).limit(page_size))).all()
+    qual = await _qualify_page(db, [r[0] for r in result])
 
     return PaginatedResponse(
-        items=[FinancialDataList.model_validate(r) for r in rows],
+        items=[_to_item(*r, qual) for r in result],
         total=total,
         page=page,
         page_size=page_size,
         has_next=offset + page_size < total,
         has_prev=page > 1,
+    )
+
+
+async def export_financial_data_csv(
+    db: AsyncSession,
+    *,
+    sort: str | None = None,
+    order: str = "asc",
+    **filters: Any,
+) -> str:
+    """CSV of exactly the filtered rows; refused above EXPORT_MAX_ROWS (refine the filters)."""
+    query = _explorer_query(**filters)
+    total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar_one()
+    if total > EXPORT_MAX_ROWS:
+        raise ExportTooLargeError(total)
+    result = (await db.execute(_order(query, sort, order))).all()
+    qual = await _qualify_page(db, [r[0] for r in result])
+    return build_csv(_to_item(*r, qual) for r in result)
+
+
+async def get_financial_data_facets(db: AsyncSession) -> FinancialDataFacets:
+    """Distinct values really stored (non-deleted rows) — nothing is listed that does not exist."""
+    base = FinancialData.deleted_at.is_(None)
+
+    async def values(col) -> list:
+        return [v for v in (await db.execute(select(distinct(col)).where(base))).scalars().all() if v is not None]
+
+    return FinancialDataFacets(
+        period_years=sorted(await values(FinancialData.period_year), reverse=True),
+        period_types=sorted(await values(FinancialData.period_type)),
+        scopes=sorted(await values(FinancialData.scope)),
+        currencies=sorted(await values(FinancialData.currency_normalized)),
+        statuses=sorted(await values(FinancialData.status)),
+        metric_codes=sorted(await values(FinancialData.metric_code)),
     )
 
 
