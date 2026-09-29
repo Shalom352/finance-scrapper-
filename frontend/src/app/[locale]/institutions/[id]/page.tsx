@@ -1,132 +1,139 @@
 "use client";
 
-import React, { Suspense, useEffect, useMemo, useState, use } from "react";
+import React, { Suspense, useEffect, useState, use } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import type { Document, FinancialDataPoint, Institution, RatioResult } from "@/types";
-import { getDocuments, getFinancialDataAll, getInstitutionById, getRatios } from "@/lib/api";
+import type {
+  Document,
+  Institution,
+  InstitutionFinancials,
+  InstitutionGrowth,
+  InstitutionHistory,
+  InstitutionProfileCoverage,
+  InstitutionRatios,
+} from "@/types";
+import {
+  getDocuments,
+  getInstitutionById,
+  getInstitutionCoverage,
+  getInstitutionFinancials,
+  getInstitutionGrowth,
+  getInstitutionHistory,
+  getInstitutionRatios,
+} from "@/lib/api";
 import { MISSING } from "@/lib/formatters";
-import { useFormatters } from "@/lib/useFormatters";
 import { useLabels } from "@/lib/useLabels";
 import { useQueryParams } from "@/lib/useQueryParams";
-import {
-  buildYearSeries,
-  distinctField,
-  findObservation,
-  latestYear,
-  qualifyObservations,
-} from "@/lib/series";
+import { DATA_SCOPES, PERIOD_TYPES, pick } from "@/lib/rankings";
+import { parseYearParam } from "@/lib/url";
 import { StateBadge } from "@/components/common/StatusBadge";
-import { FinancialDataTable } from "@/components/tables/FinancialDataTable";
-import { RatioDataTable } from "@/components/tables/RatioDataTable";
-import { FinancialLineChart } from "@/components/charts/FinancialLineChart";
-import { DocumentsTable } from "@/components/tables/DocumentsTable";
 import { CardSkeleton, TableSkeleton } from "@/components/common/LoadingSkeleton";
 import { EmptyState, ErrorState } from "@/components/common/EmptyState";
+import { ProvenancePanel } from "@/components/provenance/ProvenancePanel";
+import { FinancialDataTable } from "@/components/tables/FinancialDataTable";
+import { RatioDataTable } from "@/components/tables/RatioDataTable";
+import { DocumentsTable } from "@/components/tables/DocumentsTable";
+import { KeyFinancials } from "@/components/institutions/KeyFinancials";
+import { HistoryCharts } from "@/components/institutions/HistoryCharts";
+import { GrowthTable } from "@/components/institutions/GrowthTable";
+import { CoveragePanel } from "@/components/institutions/CoveragePanel";
+import { SourcesList } from "@/components/institutions/SourcesList";
+import { useReasonLabel } from "@/components/rankings/ReasonLabel";
 
 interface PageProps {
   params: Promise<{ id: string; locale: string }>;
 }
 
-const KPI_METRICS = [
-  "total_actifs",
-  "depots_clients",
-  "creances_clients",
-  "produit_net_bancaire",
-  "resultat_net",
-  "capitaux_propres",
-] as const;
+type Load<T> = { status: "loading" } | { status: "error" } | { status: "ready"; data: T };
 
-const CHART_METRICS = ["total_actifs", "depots_clients"] as const;
-const CHART_RATIOS = ["ROA", "ROE"] as const;
-
-type Tab = "financials" | "ratios" | "charts" | "documents";
-
-interface InstitutionData {
-  institution: Institution | null;
-  rows: FinancialDataPoint[] | null;
-  documents: Document[] | null;
+interface Profile {
+  financials: InstitutionFinancials;
+  history: InstitutionHistory;
+  ratios: InstitutionRatios;
+  growth: InstitutionGrowth;
+  coverage: InstitutionProfileCoverage;
 }
 
-/** Preferred default when available; otherwise the first value present in the data. */
-function pickDefault(options: string[], preferred: string): string | null {
-  if (options.includes(preferred)) return preferred;
-  return options[0] ?? null;
-}
-
-const TABS: Tab[] = ["financials", "ratios", "charts", "documents"];
+const selectCls =
+  "mt-1 w-full px-3 py-2 rounded-xl border border-gray-800 bg-gray-950 text-xs text-gray-200 focus:border-emerald-500 focus:outline-none";
 
 export default function InstitutionDetailPage({ params }: PageProps) {
   const { id } = use(params);
   return (
     <Suspense fallback={<CardSkeleton />}>
-      <InstitutionDetail id={id} />
+      <InstitutionExplorer id={id} />
     </Suspense>
   );
 }
 
-function InstitutionDetail({ id }: { id: string }) {
-  const t = useTranslations("institutions.detail");
-  const tInst = useTranslations("institution_status");
-  const fmt = useFormatters();
-  const labels = useLabels();
+function Section({ title, children, testId }: { title: string; children: React.ReactNode; testId?: string }) {
+  return (
+    <section className="space-y-3" data-testid={testId}>
+      <h2 className="text-lg font-bold text-white tracking-tight">{title}</h2>
+      {children}
+    </section>
+  );
+}
 
-  const [data, setData] = useState<InstitutionData | null>(null);
-  const [attempt, setAttempt] = useState(0);
-  // Tab, scope and period live in the URL: kept on reload and on locale switch.
+/**
+ * Financial Intelligence Explorer — every value, series, ratio, change and coverage
+ * figure is qualified by the backend (GET /api/v1/institutions/{id}/…). The page
+ * never selects, filters or computes a financial value itself.
+ */
+function InstitutionExplorer({ id }: { id: string }) {
+  const t = useTranslations("explorer");
+  const tInst = useTranslations("institution_status");
+  const labels = useLabels();
+  const reason = useReasonLabel();
   const { get, set } = useQueryParams();
-  const activeTab: Tab = (TABS as string[]).includes(get("tab")) ? (get("tab") as Tab) : "financials";
-  const setActiveTab = (tab: Tab) => set({ tab });
-  const scope = get("scope") || null;
-  const periodType = get("period") || null;
-  const setScope = (v: string) => set({ scope: v });
-  const setPeriodType = (v: string) => set({ period: v });
+
+  // One period type and one scope at a time (defaults annual + individual), kept in the URL.
+  const scope = pick(get("scope"), DATA_SCOPES, "individual");
+  const period = pick(get("period"), PERIOD_TYPES, "annual");
+  const year = parseYearParam(get("year"));
+
+  const [institution, setInstitution] = useState<Load<Institution | null>>({ status: "loading" });
+  const [documents, setDocuments] = useState<Document[] | null>(null);
+  const [profile, setProfile] = useState<Load<Profile>>({ status: "loading" });
+  const [attempt, setAttempt] = useState(0);
+  const [provenanceId, setProvenanceId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getInstitutionById(id)
+      .then((data) => !cancelled && setInstitution({ status: "ready", data }))
+      .catch(() => !cancelled && setInstitution({ status: "ready", data: null }));
+    getDocuments({ institution_id: id, page_size: 100 })
+      .then((r) => !cancelled && setDocuments(r.items))
+      .catch(() => !cancelled && setDocuments(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   useEffect(() => {
     let cancelled = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset before refetch
-    setData(null);
+    setProfile({ status: "loading" });
+    const sel = { period_type: period, data_scope: scope };
+    const yearSel = { ...sel, period_year: year ?? undefined };
     Promise.all([
-      getInstitutionById(id).catch(() => null),
-      getFinancialDataAll({ institution_id: id }).catch(() => null),
-      getDocuments({ institution_id: id, page_size: 100 })
-        .then((r) => r.items)
-        .catch(() => null),
-    ]).then(([institution, rows, documents]) => {
-      if (!cancelled) setData({ institution, rows, documents });
-    });
+      getInstitutionFinancials(id, yearSel),
+      getInstitutionHistory(id, sel),
+      getInstitutionRatios(id, yearSel),
+      getInstitutionGrowth(id, yearSel),
+      getInstitutionCoverage(id, sel),
+    ])
+      .then(([financials, history, ratios, growth, coverage]) => {
+        if (!cancelled) setProfile({ status: "ready", data: { financials, history, ratios, growth, coverage } });
+      })
+      .catch(() => !cancelled && setProfile({ status: "error" }));
     return () => {
       cancelled = true;
     };
-  }, [id, attempt]);
+  }, [id, scope, period, year, attempt]);
 
-  const rows = useMemo(() => data?.rows ?? [], [data]);
-  const scopes = useMemo(() => distinctField(rows, "scope"), [rows]);
-  const periodTypes = useMemo(() => distinctField(rows, "period_type"), [rows]);
-  const activeScope = scope && scopes.includes(scope) ? scope : pickDefault(scopes, "individual");
-  const activePeriod = periodType && periodTypes.includes(periodType) ? periodType : pickDefault(periodTypes, "annual");
-
-  // Ratios are requested in the selected accounting scope (backend data_scope): never mixed.
-  const [ratiosState, setRatiosState] = useState<{ scope: string; items: RatioResult[] | null } | null>(null);
-  useEffect(() => {
-    if (!activeScope) return;
-    let cancelled = false;
-    getRatios({ institution_id: id, page_size: 100, data_scope: activeScope })
-      .then((r) => !cancelled && setRatiosState({ scope: activeScope, items: r.items }))
-      .catch(() => !cancelled && setRatiosState({ scope: activeScope, items: null }));
-    return () => {
-      cancelled = true;
-    };
-  }, [id, activeScope, attempt]);
-
-  // Single qualified dataset for KPIs, table and charts.
-  const qualified = useMemo(
-    () =>
-      activeScope && activePeriod ? qualifyObservations(rows, { scope: activeScope, periodType: activePeriod }) : [],
-    [rows, activeScope, activePeriod],
-  );
-
-  if (!data) {
+  if (institution.status === "loading") {
     return (
       <div className="space-y-6">
         <CardSkeleton />
@@ -134,193 +141,140 @@ function InstitutionDetail({ id }: { id: string }) {
       </div>
     );
   }
-
-  const { institution } = data;
-  if (!institution) {
+  const inst = institution.status === "ready" ? institution.data : null;
+  if (!inst) {
     return <EmptyState title={t("not_found_title")} description={t("not_found")} />;
   }
 
-  const kpiYear = latestYear(qualified);
-  const years = qualified.map((o) => o.period_year);
-  const range = years.length > 0 ? { from: Math.min(...years), to: Math.max(...years) } : undefined;
-
-  // Ratios are annual indicators in one accounting scope: only those matching the page selection.
-  const ratiosError = ratiosState?.scope === activeScope && ratiosState.items === null;
-  const ratios = (ratiosState?.scope === activeScope ? (ratiosState.items ?? []) : []).filter(
-    (r) => r.period_type === activePeriod && r.data_scope === activeScope,
-  );
-  const ratioSeries = (code: string) => {
-    const pts = ratios.filter((r) => r.ratio_code === code);
-    if (pts.length === 0) return [];
-    const ys = pts.map((r) => r.period_year);
-    const out = [];
-    for (let y = Math.min(...ys); y <= Math.max(...ys); y++) {
-      const r = pts.find((p) => p.period_year === y);
-      out.push({ year: y, value: r ? r.value_percent : null, status: r ? r.status : "unavailable" });
-    }
-    return out;
-  };
-
-  const tabs: { key: Tab; label: string }[] = [
-    { key: "financials", label: `${t("tabs.financials")} (${qualified.length})` },
-    { key: "ratios", label: `${t("tabs.ratios")} (${ratios.length})` },
-    { key: "charts", label: t("tabs.charts") },
-    { key: "documents", label: `${t("tabs.documents")} (${data.documents?.length ?? MISSING})` },
-  ];
+  const data = profile.status === "ready" ? profile.data : null;
+  const selection = data?.financials.selection;
+  const displayYear = data?.financials.period_year ?? null;
 
   return (
-    <div className="space-y-6 animate-fade-in pb-12">
+    <div className="space-y-8 animate-fade-in pb-12">
       <Link href="/institutions" className="inline-flex text-xs font-semibold text-gray-400 hover:text-emerald-400 transition-colors">
         ← {t("back")}
       </Link>
 
-      <div className="p-6 md:p-8 rounded-3xl border border-gray-800 bg-gray-900/40">
+      {/* Institution header */}
+      <header className="p-6 md:p-8 rounded-3xl border border-gray-800 bg-gray-900/40" data-testid="institution-header">
         <div className="flex flex-wrap items-center gap-2 mb-2">
           <span
             data-testid="country-badge"
             className="px-2.5 py-0.5 rounded-lg border border-emerald-800/60 bg-emerald-950/40 text-emerald-400 text-xs font-bold uppercase"
           >
-            {institution.country?.code ?? MISSING}
+            {inst.country?.code ?? MISSING}
           </span>
-          <span className="text-xs text-gray-400 font-medium">{labels.country(institution.country, institution.country?.code)}</span>
-          <StateBadge
-            label={tInst.has(institution.status) ? tInst(institution.status) : institution.status}
-            tone={institution.status === "active" ? "ok" : "warn"}
-          />
+          <span className="text-xs text-gray-400 font-medium">{labels.country(inst.country, inst.country?.code)}</span>
+          <span className="text-xs text-gray-500">· {labels.institutionType(inst.institution_type) || MISSING}</span>
+          <StateBadge label={tInst.has(inst.status) ? tInst(inst.status) : inst.status} tone={inst.status === "active" ? "ok" : "warn"} />
         </div>
-
-        <h1 className="text-2xl md:text-4xl font-black text-white tracking-tight">{institution.name_official}</h1>
-        {institution.name_commercial && (
-          <p className="text-sm text-emerald-400 font-medium mt-1">
-            {t("commercial_name")} : {institution.name_commercial}
-          </p>
-        )}
-
+        <h1 className="text-2xl md:text-4xl font-black text-white tracking-tight">{inst.name_official}</h1>
+        {inst.name_commercial && <p className="text-sm text-emerald-400 font-medium mt-1">{inst.name_commercial}</p>}
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-4 text-xs text-gray-400">
-          <div>
-            <span className="text-gray-500">{t("group")} :</span>{" "}
-            <span className="text-gray-200 font-semibold">{institution.banking_group?.name ?? MISSING}</span>
-          </div>
-          <div>
-            <span className="text-gray-500">{t("regulatory_id")} :</span>{" "}
-            <span className="text-gray-200 font-mono">{institution.regulatory_id ?? MISSING}</span>
-          </div>
-          {institution.website_url && (
-            <a href={institution.website_url} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline">
+          <span>
+            {t("group")} : <span className="text-gray-200 font-semibold">{inst.banking_group?.name ?? MISSING}</span>
+          </span>
+          <span>
+            {t("regulatory_id")} : <span className="text-gray-200 font-mono">{inst.regulatory_id ?? MISSING}</span>
+          </span>
+          {inst.website_url && (
+            <a href={inst.website_url} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline">
               {t("website")} ↗
             </a>
           )}
         </div>
-      </div>
+      </header>
 
-      {data.rows === null && <ErrorState onRetry={() => setAttempt((a) => a + 1)} />}
-
-      {/* Dataset selectors: one period type and one scope at a time — never mixed. */}
-      <div className="flex flex-wrap items-center gap-4 p-4 rounded-2xl border border-gray-800 bg-gray-900/40 text-xs">
-        <label className="flex items-center gap-2 text-gray-400">
+      {/* Selection: explicit scope, period type and year — never mixed, never a fallback */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-2xl border border-gray-800 bg-gray-900/40" data-testid="selectors">
+        <label className="text-[11px] text-gray-400 font-medium">
           {t("scope")}
-          <select
-            value={activeScope ?? ""}
-            onChange={(e) => setScope(e.target.value)}
-            disabled={scopes.length === 0}
-            className="px-3 py-1.5 rounded-xl border border-gray-800 bg-gray-950 text-gray-200"
-          >
-            {scopes.length === 0 && <option value="">{MISSING}</option>}
-            {scopes.map((s) => (
+          <select value={scope} onChange={(e) => set({ scope: e.target.value, year: null })} className={selectCls} data-testid="scope-select">
+            {DATA_SCOPES.map((s) => (
               <option key={s} value={s}>
                 {labels.scope(s)}
+                {selection && !selection.scopes.includes(s) ? ` — ${t("not_published")}` : ""}
               </option>
             ))}
           </select>
         </label>
-        <label className="flex items-center gap-2 text-gray-400">
+        <label className="text-[11px] text-gray-400 font-medium">
           {t("period_type")}
-          <select
-            value={activePeriod ?? ""}
-            onChange={(e) => setPeriodType(e.target.value)}
-            disabled={periodTypes.length === 0}
-            className="px-3 py-1.5 rounded-xl border border-gray-800 bg-gray-950 text-gray-200"
-          >
-            {periodTypes.length === 0 && <option value="">{MISSING}</option>}
-            {periodTypes.map((p) => (
+          <select value={period} onChange={(e) => set({ period: e.target.value, year: null })} className={selectCls} data-testid="period-select">
+            {PERIOD_TYPES.map((p) => (
               <option key={p} value={p}>
                 {labels.periodType(p)}
+                {selection && !selection.period_types.includes(p) ? ` — ${t("not_published")}` : ""}
               </option>
             ))}
           </select>
         </label>
-        <span className="text-gray-500">{t("dataset_hint")}</span>
+        <label className="text-[11px] text-gray-400 font-medium">
+          {t("fiscal_year")}
+          <select value={year ?? ""} onChange={(e) => set({ year: e.target.value })} className={selectCls} data-testid="year-select">
+            <option value="">{t("latest_year")}</option>
+            {(selection?.years ?? []).map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="sm:col-span-3 text-[11px] text-gray-500">{t("selection_note")}</p>
       </div>
 
-      <div>
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-          {kpiYear === null ? t("kpi_title_none") : t("kpi_title", { year: kpiYear })}
-        </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {KPI_METRICS.map((code) => {
-            const o = findObservation(qualified, code, kpiYear);
-            return (
-              <div key={code} className="p-4 rounded-2xl border border-gray-800 bg-gray-900/30" data-testid={`kpi-${code}`}>
-                <span className="text-[11px] text-gray-400 font-medium block mb-1">{labels.metric(code)}</span>
-                <span className="text-lg font-black text-white">{fmt.compact(o?.value, o?.currency)}</span>
-                {o?.conflict && <span className="text-[11px] text-amber-400 block">{t("conflict")}</span>}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      {profile.status === "error" ? (
+        <ErrorState onRetry={() => setAttempt((a) => a + 1)} />
+      ) : !data ? (
+        <TableSkeleton rows={6} cols={4} />
+      ) : (
+        <>
+          {data.financials.status === "unavailable" && (
+            <div role="alert" className="p-4 rounded-2xl border border-amber-800/60 bg-amber-950/30 text-sm text-amber-200" data-testid="profile-unavailable">
+              {t("selection_unavailable", { scope: labels.scope(scope), period: labels.periodType(period) })} — {reason(data.financials.reason)}
+            </div>
+          )}
 
-      <div className="flex flex-wrap border-b border-gray-800 gap-4 text-xs font-semibold">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`pb-3 px-1 border-b-2 transition-colors ${
-              activeTab === tab.key
-                ? "border-emerald-500 text-emerald-400 font-bold"
-                : "border-transparent text-gray-400 hover:text-gray-200"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+          <KeyFinancials financials={data.financials} onProvenance={setProvenanceId} />
 
-      {activeTab === "financials" && <FinancialDataTable observations={qualified} title={t("financials_title")} />}
+          <Section title={t("financials_title", { year: displayYear ?? MISSING })} testId="financials-section">
+            <FinancialDataTable values={data.financials.values} unavailable={data.financials.unavailable} onProvenance={setProvenanceId} />
+          </Section>
 
-      {activeTab === "ratios" &&
-        (ratiosError ? (
-          <ErrorState onRetry={() => setAttempt((a) => a + 1)} />
-        ) : (
-          <RatioDataTable ratios={ratios} title={t("ratios_title")} />
-        ))}
+          <Section title={t("history_title")} testId="history-section">
+            <HistoryCharts history={data.history} onProvenance={setProvenanceId} />
+          </Section>
 
-      {activeTab === "charts" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {CHART_METRICS.map((code) => {
-            const series = buildYearSeries(qualified, code, range);
-            const currency = qualified.find((o) => o.metric_code === code && o.currency)?.currency ?? null;
-            return (
-              <FinancialLineChart
-                key={code}
-                data={series}
-                title={t("chart_title", { metric: labels.metric(code) })}
-                currency={currency}
-              />
-            );
-          })}
-          {CHART_RATIOS.map((code) => (
-            <FinancialLineChart key={code} data={ratioSeries(code)} title={t("chart_title", { metric: code })} isPercent />
-          ))}
-        </div>
+          <Section title={t("ratios_title")} testId="ratios-section">
+            {data.ratios.status === "unavailable" && data.ratios.reason ? (
+              <p className="text-xs text-gray-500">{reason(data.ratios.reason)}</p>
+            ) : null}
+            <RatioDataTable ratios={data.ratios.items} />
+          </Section>
+
+          <Section title={t("growth_title")} testId="growth-section">
+            {data.growth.status === "unavailable" && data.growth.reason ? (
+              <p className="text-xs text-gray-500">{reason(data.growth.reason)}</p>
+            ) : null}
+            <GrowthTable items={data.growth.items} />
+          </Section>
+
+          <Section title={t("coverage_section")} testId="coverage-section">
+            <CoveragePanel coverage={data.coverage} />
+          </Section>
+
+          <Section title={t("sources_title")} testId="sources-section">
+            <SourcesList documents={data.coverage.documents} />
+          </Section>
+        </>
       )}
 
-      {activeTab === "documents" &&
-        (data.documents === null ? (
-          <ErrorState onRetry={() => setAttempt((a) => a + 1)} />
-        ) : (
-          <DocumentsTable documents={data.documents} emptyText={t("documents_empty")} />
-        ))}
+      <Section title={t("documents_title")} testId="documents-section">
+        {documents === null ? <ErrorState /> : <DocumentsTable documents={documents} emptyText={t("documents_empty")} />}
+      </Section>
+
+      {provenanceId && <ProvenancePanel dataId={provenanceId} onClose={() => setProvenanceId(null)} />}
     </div>
   );
 }

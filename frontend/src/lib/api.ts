@@ -18,6 +18,11 @@ import type {
   GrowthResult,
   Institution,
   InstitutionCoverage,
+  InstitutionFinancials,
+  InstitutionProfileCoverage,
+  InstitutionGrowth,
+  InstitutionHistory,
+  InstitutionRatios,
   InstitutionsComparison,
   MarketShare,
   PaginatedResponse,
@@ -378,3 +383,47 @@ export async function getCountryComparison(params: {
     "umoa_coverage_ratio",
   ]);
 }
+
+// ============================================================
+// Phase 10 — Institution financial profile (backend-qualified)
+// ============================================================
+
+export interface ProfileQuery {
+  period_year?: number;
+  period_type?: string;
+  data_scope?: string;
+  indicator?: string;
+}
+
+function institutionPath(id: string, resource: string, params: ProfileQuery): string {
+  return `/api/v1/institutions/${encodeURIComponent(id)}/${resource}${buildQuery({ ...params })}`;
+}
+
+export async function getInstitutionFinancials(id: string, params: ProfileQuery = {}): Promise<InstitutionFinancials> {
+  const res = await apiFetch<InstitutionFinancials>(institutionPath(id, "financials", params));
+  return { ...res, values: (res.values ?? []).map((v) => numericFields(v, ["value_normalized"])) };
+}
+
+export async function getInstitutionHistory(id: string, params: ProfileQuery = {}): Promise<InstitutionHistory> {
+  const res = await apiFetch<InstitutionHistory>(institutionPath(id, "history", params));
+  return {
+    ...res,
+    series: (res.series ?? []).map((s) => ({ ...s, points: (s.points ?? []).map((p) => numericFields(p, ["value"])) })),
+  };
+}
+
+export async function getInstitutionRatios(id: string, params: ProfileQuery = {}): Promise<InstitutionRatios> {
+  const res = await apiFetch<InstitutionRatios>(institutionPath(id, "ratios", params));
+  return { ...res, items: (res.items ?? []).map(normalizeRatio) };
+}
+
+export async function getInstitutionGrowth(id: string, params: ProfileQuery = {}): Promise<InstitutionGrowth> {
+  const res = await apiFetch<InstitutionGrowth>(institutionPath(id, "growth", params));
+  return { ...res, items: (res.items ?? []).map(normalizeGrowth) };
+}
+
+export async function getInstitutionCoverage(id: string, params: ProfileQuery = {}): Promise<InstitutionProfileCoverage> {
+  const res = await apiFetch<InstitutionProfileCoverage>(institutionPath(id, "coverage", params));
+  return numericFields(res, ["coverage_ratio"]);
+}
+

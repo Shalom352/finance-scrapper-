@@ -511,3 +511,140 @@ export interface CountryComparison {
   currency?: string | null;
   share_percent: number | null;
 }
+
+// ============================================================
+// Phase 10 — Institution financial profile (backend-qualified)
+// ============================================================
+
+export type ProfileStatus = "available" | "partial" | "needs_review" | "unavailable";
+
+export interface ProfileSelection {
+  scopes: string[];
+  period_types: string[];
+  years: number[];
+}
+
+/** One authoritative value qualified by the backend, with its full provenance. */
+export interface ProfileValue {
+  metric_code: string;
+  period_year: number;
+  period_type: string;
+  period_label?: string | null;
+  data_scope: string;
+  value_original: string;
+  unit_original?: string | null;
+  currency_original?: string | null;
+  value_normalized: number | null;
+  unit_normalized?: string | null;
+  currency?: string | null;
+  status: string;
+  data_id: string;
+  provenance: ProvenanceRef;
+}
+
+export interface UnavailableValue {
+  metric_code: string;
+  period_year?: number | null;
+  status: string;
+  reason: string;
+}
+
+export interface InstitutionFinancials {
+  institution_id: string;
+  period_year: number | null;
+  period_type: string;
+  data_scope: string;
+  status: ProfileStatus;
+  reason?: string | null;
+  selection: ProfileSelection;
+  values: ProfileValue[];
+  unavailable: UnavailableValue[];
+}
+
+export interface HistoryPoint {
+  period_year: number;
+  value: number | null;
+  currency?: string | null;
+  unit_normalized?: string | null;
+  status: string;
+  data_id: string;
+  provenance: ProvenanceRef;
+}
+
+export interface HistorySeries {
+  metric_code: string;
+  status: ProfileStatus;
+  reason?: string | null;
+  currency?: string | null;
+  points: HistoryPoint[];
+  missing_years: number[];
+  excluded_years: UnavailableValue[];
+}
+
+export interface InstitutionHistory {
+  institution_id: string;
+  period_type: string;
+  data_scope: string;
+  status: ProfileStatus;
+  reason?: string | null;
+  selection: ProfileSelection;
+  series: HistorySeries[];
+}
+
+export interface DataQualityCounts {
+  total_observations: number;
+  verified: number;
+  reviewed: number;
+  extracted: number;
+  needs_review: number;
+  rejected: number;
+  conflicts: number;
+  missing_years: number;
+}
+
+export interface SourceDocument {
+  document_id: string;
+  title?: string | null;
+  source_name?: string | null;
+  period_years: number[];
+  pages: number[];
+  values_count: number;
+}
+
+export interface InstitutionProfileCoverage {
+  institution_id: string;
+  period_type: string;
+  data_scope: string;
+  status: ProfileStatus;
+  reason?: string | null;
+  first_year: number | null;
+  last_year: number | null;
+  available_years: number[];
+  missing_years: number[];
+  available_years_count: number;
+  /** Every year between first_year and last_year; null without data (never 0/1). */
+  expected_years_count: number | null;
+  coverage_ratio: number | null;
+  quality: DataQualityCounts;
+  documents: SourceDocument[];
+}
+
+export interface InstitutionRatios {
+  institution_id: string;
+  period_year: number | null;
+  period_type: string;
+  data_scope: string;
+  status: ProfileStatus;
+  reason?: string | null;
+  items: RatioResult[];
+}
+
+export interface InstitutionGrowth {
+  institution_id: string;
+  period_year: number | null;
+  period_type: string;
+  data_scope: string;
+  status: ProfileStatus;
+  reason?: string | null;
+  items: GrowthResult[];
+}

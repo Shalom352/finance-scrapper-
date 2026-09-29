@@ -6,6 +6,8 @@ import type { RatioResult } from "@/types";
 import { useFormatters } from "@/lib/useFormatters";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { ProvenancePanel } from "@/components/provenance/ProvenancePanel";
+import { useReasonLabel } from "@/components/rankings/ReasonLabel";
+import { useRatioDefinitions } from "@/lib/useRatioDefinitions";
 
 interface RatioDataTableProps {
   ratios: RatioResult[];
@@ -16,6 +18,8 @@ interface RatioDataTableProps {
 export function RatioDataTable({ ratios, title, className = "" }: RatioDataTableProps) {
   const t = useTranslations("tables.ratios");
   const fmt = useFormatters();
+  const reason = useReasonLabel();
+  const { ratioName } = useRatioDefinitions();
   const [selectedRatio, setSelectedRatio] = useState<RatioResult | null>(null);
 
   if (ratios.length === 0) {
@@ -56,9 +60,14 @@ export function RatioDataTable({ ratios, title, className = "" }: RatioDataTable
               >
                 <td className="py-3.5 px-4 font-mono font-bold text-emerald-400">{r.ratio_code}</td>
                 <td className="py-3.5 px-4 font-medium text-gray-200">
-                  <div>{r.ratio_name}</div>
+                  <div>{ratioName(r.ratio_code)}</div>
                   {r.institution_name && <span className="text-[11px] text-gray-400 block">{r.institution_name}</span>}
-                  {r.reason && <span className="text-[11px] text-amber-400/90 block mt-0.5">{r.reason}</span>}
+                  {r.reason && (
+                    // Translated reason; the calculator's technical detail stays in the tooltip.
+                    <span className="text-[11px] text-amber-400/90 block mt-0.5" title={r.reason}>
+                      {reason(r.status === "needs_review" ? "needs_review" : "ratio_component_missing")}
+                    </span>
+                  )}
                 </td>
                 <td className="py-3.5 px-4 text-gray-300">{r.period_year}</td>
                 <td className="py-3.5 px-4 font-mono text-[11px] text-gray-400">{r.formula_used}</td>
