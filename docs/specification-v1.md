@@ -567,11 +567,15 @@ GET /api/v1/documents              ?institution_id,source_id,document_type,perio
 GET /api/v1/documents/{id}
 GET /api/v1/financial-data         ?institution_id,metric_code,period_type,period_year,period_label,scope,status,currency_normalized,page,page_size
 GET /api/v1/financial-data/{id}
-GET /api/v1/rankings               ?metric_code(requis),period_type,period_year,period_label,scope,currency_normalized,order(asc|desc),limit
+GET /api/v1/rankings               ?metric_code(requis),period_year,period_type(=annual),data_scope(=individual),country_code(pays|UMOA),order(desc|asc),page,page_size
+GET /api/v1/rankings/history       ?institution_id(requis),metric_code(requis),period_type,data_scope,country_code
+GET /api/v1/comparisons            ?institution_ids(2 à 5, requis),metric_code(requis),period_year,period_type,data_scope
+GET /api/v1/comparisons/sector     ?institution_id(requis),metric_code(requis),period_year
+GET /api/v1/comparisons/country    ?country_code(requis),metric_code(requis),period_year
 GET /api/v1/search                 ?q(requis),types,page,page_size
 ```
 
-**`/api/v1/rankings`** — n'inclut que `status = verified`. Refuse (`400`) toute comparaison de `currency_normalized` différentes ou d'unités incompatibles. Si plusieurs devises sont présentes sans filtre `currency_normalized`, renvoie `400`. Réponse par devise : `{rank, institution_id, institution_name, country, value_normalized, unit_normalized, currency_normalized, period_label, scope}`. Les vues sectorielles/UMOA sont produites côté API **par agrégation** des données institutionnelles (jamais par données stockées fictives).
+**`/api/v1/rankings`** — *(contrat révisé et validé en Phase 9 ; voir `docs/phase9-report.md`)*. Classement **descriptif** (ordre numérique, aucun jugement qualitatif ni recommandation) sur un seul indicateur, une seule année, un seul `period_type` et un seul `data_scope` (défauts : `annual` + `individual`) ; année par défaut = dernière année disposant de données, jamais une constante. Une seule observation d'autorité par institution (`EligibilityEngine.select_authoritative_observation`) : `verified` / `reviewed` / `extracted` éligibles selon les règles existantes ; `rejected`, conflits non résolus et `needs_review` exclus. Ex æquo : rang de compétition (1, 1, 3). Institution sans valeur admissible : listée dans `unavailable`, jamais classée. Devises hétérogènes : `status = needs_review`, `reason = heterogeneous_currency`, classement vide, aucune conversion (plus de `400`). Couverture : `eligible_count`, `ranked_count`, `expected_count`, `coverage_ratio` (`null` si incalculable ou univers vide, jamais `0/N` artificiel), `coverage_status`. Chaque ligne : `{rank, institution_id, institution_name, country_code, metric_code, period_year, period_type, data_scope, value, unit, currency, status, data_id, provenance[]}`. Les vues sectorielles/UMOA sont produites côté API **par agrégation** des données institutionnelles (jamais par données stockées fictives) ; les ratios et variations ne sont pas agrégés (`aggregate_not_supported`).
 
 **`/api/v1/financial-data`** — expose systématiquement la provenance complète (§4) et le statut.
 
@@ -591,6 +595,7 @@ Routes :
 /[locale]/documents/[id]
 /[locale]/financial-data
 /[locale]/rankings
+/[locale]/comparisons
 /[locale]/search
 ```
 
@@ -598,7 +603,7 @@ Routes :
 - **Institutions** / détail : filtres (pays, groupe, type, statut), pagination, provenance.
 - **Documents** / détail : filtres (type, année, statut), provenance, lien source.
 - **Financial Data** : filtres (métrique, période, scope, statut, devise) ; affichage **valeur originale + unité + devise** ET **valeur normalisée + unité + devise** ; page, méthode, statut.
-- **Rankings** : uniquement `verified`, devise unique, indisponible si devises hétérogènes ; vues sectorielles/UMOA par agrégation à l'affichage.
+- **Rankings** (`/[locale]/rankings`, révisé Phase 9) : classement descriptif, filtres dans l'URL, couverture, section « Données indisponibles », provenance, historique des rangs ; « à réviser » si devises hétérogènes. **Comparaisons** (`/[locale]/comparisons`) : 2 à 5 institutions, institution ↔ secteur, pays ↔ UMOA.
 - **Search** : recherche globale avec filtres par entité.
 - **Transversal** : affichage provenance + statut systématique ; FR/EN via next-intl ; états vides conformes.
 - **Alignement types** : `DocumentType` (+`web_page`) ; `Source.type` (`group` → `banking_group`) ; ajout champs devise + `unit_normalized` ; ajout `MetricDefinition` ; `period_type` canonique (`semi_annual`).
@@ -628,8 +633,13 @@ Toute `financial_data` `verified` doit pouvoir retrouver : institution, source, 
 
 ### Rankings
 
-- impossible d'inclure une donnée non `verified` ;
-- impossible de comparer des devises différentes.
+*(révisé en Phase 9, décisions validées)*
+
+- impossible d'inclure une donnée `rejected`, en conflit non résolu ou `needs_review` ;
+- impossible de mélanger périodes, `period_type` ou périmètres (`individual` / `consolidated`) dans un même classement ;
+- impossible de comparer des devises différentes (aucune conversion) ;
+- impossible de classer une institution sans valeur admissible ;
+- aucun vocabulaire qualitatif ni recommandation d'investissement.
 
 ### Scraping
 

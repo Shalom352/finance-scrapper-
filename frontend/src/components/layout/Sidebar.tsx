@@ -19,6 +19,8 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     { href: "/institutions", label: t("institutions"), icon: "🏛️" },
     { href: "/countries", label: t("countries"), icon: "🌍" },
     { href: "/analytics", label: t("analytics"), icon: "📈" },
+    { href: "/rankings", label: t("rankings"), icon: "🔢" },
+    { href: "/comparisons", label: t("comparisons"), icon: "⚖️" },
     { href: "/documents", label: t("documents"), icon: "📑" },
     { href: "/search", label: t("search"), icon: "🔍" },
   ];

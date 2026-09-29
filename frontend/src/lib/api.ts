@@ -9,20 +9,25 @@
  */
 
 import type {
-  ComparisonResult,
   ComponentProvenance,
+  ComparisonRow,
+  CountryComparison,
   Document,
   FinancialDataDetail,
   FinancialDataPoint,
   GrowthResult,
   Institution,
   InstitutionCoverage,
+  InstitutionsComparison,
   MarketShare,
   PaginatedResponse,
+  RankHistory,
+  RankingResult,
   RatioDefinition,
   RatioResult,
   SearchResults,
   SectorAggregation,
+  SectorComparison,
   SectorStructure,
 } from "@/types";
 
@@ -292,22 +297,84 @@ export async function getSectorStructure(params: {
   };
 }
 
-export async function getComparison(params: {
-  comparison_type: string;
-  entity_a: string;
-  entity_b: string;
-  metric_or_ratio: string;
-  year: number;
-  data_scope?: string;
-}): Promise<ComparisonResult> {
-  const res = await apiFetch<ComparisonResult>(`/api/v1/analytics/compare${buildQuery({ ...params })}`);
-  return numericFields(res, ["value_a", "value_b", "difference", "ratio_a_to_b"]);
-}
-
 // ============================================================
 // Search
 // ============================================================
 
 export async function searchGlobal(q: string): Promise<SearchResults> {
   return apiFetch<SearchResults>(`/api/v1/search${buildQuery({ q })}`);
+}
+
+// ============================================================
+// Phase 9 — Descriptive rankings & comparisons
+// ============================================================
+
+export interface RankingQuery {
+  metric_code: string;
+  period_year?: number;
+  period_type?: string;
+  data_scope?: string;
+  country_code?: string;
+  order?: "desc" | "asc";
+  page?: number;
+  page_size?: number;
+}
+
+const normalizeRow = <T extends { value: number | null }>(r: T): T => numericFields(r, ["value"] as (keyof T)[]);
+
+export async function getRankings(params: RankingQuery): Promise<RankingResult> {
+  const res = await apiFetch<RankingResult>(`/api/v1/rankings${buildQuery({ ...params })}`);
+  return { ...res, items: (res.items ?? []).map(normalizeRow) };
+}
+
+export async function getRankHistory(params: {
+  institution_id: string;
+  metric_code: string;
+  period_type?: string;
+  data_scope?: string;
+  country_code?: string;
+}): Promise<RankHistory> {
+  const res = await apiFetch<RankHistory>(`/api/v1/rankings/history${buildQuery({ ...params })}`);
+  return { ...res, points: (res.points ?? []).map(normalizeRow) };
+}
+
+export async function getInstitutionsComparison(params: {
+  institution_ids: string[];
+  metric_code: string;
+  period_year?: number;
+  period_type?: string;
+  data_scope?: string;
+}): Promise<InstitutionsComparison> {
+  const { institution_ids, ...rest } = params;
+  const res = await apiFetch<InstitutionsComparison>(
+    `/api/v1/comparisons${buildQuery({ ...rest, institution_ids: institution_ids.join(",") })}`,
+  );
+  return { ...res, rows: (res.rows ?? []).map((r: ComparisonRow) => normalizeRow(r)) };
+}
+
+export async function getSectorComparison(params: {
+  institution_id: string;
+  metric_code: string;
+  period_year?: number;
+}): Promise<SectorComparison> {
+  const res = await apiFetch<SectorComparison>(`/api/v1/comparisons/sector${buildQuery({ ...params })}`);
+  return {
+    ...numericFields(res, ["sector_total", "share_percent", "sector_coverage_ratio"]),
+    institution: res.institution ? normalizeRow(res.institution) : null,
+  };
+}
+
+export async function getCountryComparison(params: {
+  country_code: string;
+  metric_code: string;
+  period_year?: number;
+}): Promise<CountryComparison> {
+  const res = await apiFetch<CountryComparison>(`/api/v1/comparisons/country${buildQuery({ ...params })}`);
+  return numericFields(res, [
+    "country_total",
+    "umoa_total",
+    "share_percent",
+    "country_coverage_ratio",
+    "umoa_coverage_ratio",
+  ]);
 }

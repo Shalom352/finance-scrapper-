@@ -13,6 +13,8 @@ interface CoverageIndicatorProps {
   representedCount?: number | null;
   totalCount?: number | null;
   label?: string;
+  /** Explanation shown when coverage is unknown (replaces the generic API message). */
+  unavailableReason?: string;
   className?: string;
 }
 
@@ -22,6 +24,7 @@ export function CoverageIndicator({
   representedCount,
   totalCount,
   label,
+  unavailableReason,
   className = "",
 }: CoverageIndicatorProps) {
   const t = useTranslations("coverage");
@@ -61,7 +64,11 @@ export function CoverageIndicator({
         </div>
       )}
 
-      {pct === null && <span className="text-[11px] text-gray-500">{t("unknown")}</span>}
+      {pct === null && (
+        <span className="text-[11px] text-gray-500" data-testid="coverage-unknown">
+          {unavailableReason ?? t("unknown")}
+        </span>
+      )}
 
       {partial && <span className="text-[11px] text-amber-400/90">⚠️ {t("partial_warning")}</span>}
     </div>

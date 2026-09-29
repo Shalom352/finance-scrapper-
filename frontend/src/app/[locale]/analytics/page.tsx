@@ -2,10 +2,9 @@
 
 import React, { Suspense, useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import type {
-  ComparisonResult,
   GrowthResult,
-  Institution,
   RatioDefinition,
   RatioResult,
   SectorAggregation,
@@ -13,9 +12,7 @@ import type {
 import {
   getAggregations,
   getAvailableYears,
-  getComparison,
   getGrowth,
-  getInstitutionsAll,
   getRatioDefinitions,
   getRatios,
 } from "@/lib/api";
@@ -149,7 +146,7 @@ function AnalyticsContent() {
           {tab === "ratios" && <RatiosTab year={year} country={country} />}
           {tab === "growth" && <GrowthTab year={year} country={country} />}
           {tab === "aggregations" && <AggregationsTab year={year} country={country} />}
-          {tab === "compare" && <CompareTab year={year} />}
+          {tab === "compare" && <CompareTab />}
         </>
       )}
     </div>
@@ -404,134 +401,17 @@ function AggregationsTab({ year, country }: { year: number; country: string }) {
   );
 }
 
-function CompareTab({ year }: { year: number }) {
+function CompareTab() {
   const t = useTranslations("analytics.compare");
-  const locale = useLocale();
-  const fmt = useFormatters();
-  const labels = useLabels();
-  const [institutions, setInstitutions] = useState<Institution[]>([]);
-  const [definitions, setDefinitions] = useState<RatioDefinition[]>([]);
-  const [entityA, setEntityA] = useState("");
-  const [entityB, setEntityB] = useState("");
-  const [indicator, setIndicator] = useState("ROA");
-  const [result, setResult] = useState<Load<ComparisonResult> | null>(null);
-
-  useEffect(() => {
-    getInstitutionsAll()
-      .then(setInstitutions)
-      .catch(() => setInstitutions([]));
-    getRatioDefinitions()
-      .then(setDefinitions)
-      .catch(() => setDefinitions([]));
-  }, []);
-
-  // A result is only shown for the exact inputs it was computed with.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- stale result must not stay on screen
-    setResult(null);
-  }, [entityA, entityB, indicator, year]);
-
-  const nameOf = (id: string) => institutions.find((i) => i.id === id)?.name_official ?? id;
-  const isRatio = definitions.some((d) => d.ratio_code === indicator);
-  const formatValue = (v: number | null, unit?: string | null) =>
-    isRatio || unit === "%" ? fmt.percent(v, 2) : fmt.compact(v, unit);
-
-  const run = () => {
-    if (!entityA || !entityB) return;
-    setResult({ status: "loading" });
-    getComparison({
-      comparison_type: "institution_vs_institution",
-      entity_a: entityA,
-      entity_b: entityB,
-      metric_or_ratio: indicator,
-      year,
-    })
-      .then((data) => setResult({ status: "ready", data }))
-      .catch(() => setResult({ status: "error" }));
-  };
-
   return (
-    <div className="space-y-6">
-      <div className="p-5 rounded-2xl border border-gray-800 bg-gray-900/40">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {[
-            { label: t("select_a"), value: entityA, onChange: setEntityA },
-            { label: t("select_b"), value: entityB, onChange: setEntityB },
-          ].map((s) => (
-            <label key={s.label} className="text-[11px] text-gray-400 font-medium">
-              {s.label}
-              <select value={s.value} onChange={(e) => s.onChange(e.target.value)} className={selectCls}>
-                <option value="">{t("choose")}</option>
-                {institutions.map((i) => (
-                  <option key={i.id} value={i.id}>
-                    {i.name_official} ({i.country?.code ?? MISSING})
-                  </option>
-                ))}
-              </select>
-            </label>
-          ))}
-
-          <label className="text-[11px] text-gray-400 font-medium">
-            {t("metric_label")}
-            <select value={indicator} onChange={(e) => setIndicator(e.target.value)} className={selectCls}>
-              <optgroup label={t("group_ratios")}>
-                {definitions.map((d) => (
-                  <option key={d.ratio_code} value={d.ratio_code}>
-                    {locale === "en" ? d.name_en : d.name_fr} ({d.ratio_code})
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label={t("group_metrics")}>
-                {CORE_METRICS.map((m) => (
-                  <option key={m} value={m}>
-                    {labels.metric(m)}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-          </label>
-        </div>
-
-        <div className="mt-4 flex justify-end">
-          <button
-            onClick={run}
-            disabled={!entityA || !entityB || result?.status === "loading"}
-            className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors disabled:opacity-50"
-          >
-            {result?.status === "loading" ? t("computing") : t("compare_btn")}
-          </button>
-        </div>
-      </div>
-
-      {result?.status === "error" && <ErrorState onRetry={run} />}
-
-      {result?.status === "ready" && (
-        <div className="p-6 rounded-2xl border border-emerald-600/40 bg-gray-900/60 space-y-4">
-          <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider block">
-            {t("result_title", { year: result.data.year })}
-          </span>
-          <p className="text-sm font-medium text-gray-200 leading-relaxed">{result.data.description}</p>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 text-xs">
-            <div className="p-3 rounded-xl bg-gray-950 border border-gray-800">
-              <span className="text-gray-400 block mb-0.5">{nameOf(result.data.entity_a)}</span>
-              <span className="font-bold text-base text-white">{formatValue(result.data.value_a, result.data.unit)}</span>
-            </div>
-            <div className="p-3 rounded-xl bg-gray-950 border border-gray-800">
-              <span className="text-gray-400 block mb-0.5">{nameOf(result.data.entity_b)}</span>
-              <span className="font-bold text-base text-white">{formatValue(result.data.value_b, result.data.unit)}</span>
-            </div>
-            <div className="p-3 rounded-xl bg-gray-950 border border-gray-800">
-              <span className="text-gray-400 block mb-0.5">{t("difference")}</span>
-              <span className="font-bold text-base text-emerald-400">{formatValue(result.data.difference, result.data.unit)}</span>
-            </div>
-            <div className="p-3 rounded-xl bg-gray-950 border border-gray-800">
-              <span className="text-gray-400 block mb-0.5">{t("ratio_a_b")}</span>
-              <span className="font-bold text-base text-teal-300">{fmt.number(result.data.ratio_a_to_b, 2)}</span>
-            </div>
-          </div>
-        </div>
-      )}
+    <div className="p-6 rounded-2xl border border-gray-800 bg-gray-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <p className="text-sm text-gray-300">{t("moved")}</p>
+      <Link
+        href="/comparisons"
+        className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors"
+      >
+        {t("open")}
+      </Link>
     </div>
   );
 }

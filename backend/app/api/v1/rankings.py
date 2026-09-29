@@ -1,168 +1,104 @@
-"""UMOA Banking Intelligence — Rankings Router
+"""UMOA Banking Intelligence — Rankings Router (Phase 9)
 
-Provides GET /api/v1/rankings for multicriteria rankings.
+Descriptive numerical orderings only — no qualitative judgement and no score.
 
-CRITICAL RULES:
-  - Only data with status = 'verified' may appear.
-  - Heterogeneous currencies trigger a 400 rejection.
+Contract:
+  - one indicator, one period_year, one period_type, one data_scope per ranking
+    (defaults: annual + individual); period_year defaults to the latest year
+    holding data, never to an arbitrary constant;
+  - one authoritative value per institution (existing EligibilityEngine rules);
+    rejected, conflicting and needs_review values are never ranked;
+  - ties share a rank (1, 1, 3); institutions without an admissible value are
+    listed in `unavailable` and never ranked;
+  - heterogeneous currencies → status "needs_review", empty ranking, no conversion;
+  - coverage = eligible / expected institutions, None when none is expected.
 """
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
-from sqlalchemy import desc, distinct, func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db_session
 from app.models.country import Country
-from app.models.financial_data import FinancialData
 from app.models.institution import Institution
-from app.models.metric_definition import MetricDefinition
+from scraping.rankings.definitions import RankableIndicator, get_indicator
+from scraping.rankings.models import RankHistory, RankingEntry, RankingResult
+from scraping.rankings.service import RankingService
 
 router = APIRouter(prefix="/api/v1", tags=["rankings"])
+ranking_service = RankingService()
+
+# Public schema names (kept for the API contract / OpenAPI).
+RankingResponse = RankingResult
+__all__ = ["RankingEntry", "RankingResponse", "router"]
+
+PeriodTypeQ = Literal["annual", "semi_annual", "quarterly"]
+DataScopeQ = Literal["individual", "consolidated"]
 
 
-class RankingEntry(BaseModel):
-    rank: int
-    institution_id: str
-    institution_name: str
-    country_code: str | None = None
-    value_normalized: float
-    unit_normalized: str | None = None
-    currency_normalized: str | None = None
-    period_year: int
-    scope: str
-
-    model_config = {"from_attributes": True}
+def indicator_or_404(metric_code: str) -> RankableIndicator:
+    indicator = get_indicator(metric_code)
+    if indicator is None:
+        raise HTTPException(status_code=404, detail=f"Rankable indicator '{metric_code}' not found")
+    return indicator
 
 
-class RankingResponse(BaseModel):
-    items: list[RankingEntry]
-    total: int
-    page: int
-    page_size: int
-    has_next: bool
-    has_prev: bool
-    metric_code: str
-    metric_label_fr: str
-    metric_label_en: str | None = None
-    currency: str | None = None
-    period_year: int | None = None
-
-
-@router.get("/rankings", summary="Get rankings", response_model=RankingResponse)
-async def get_rankings(
-    metric_code: str = Query(..., description="Metric code to rank by (REQUIRED)"),
-    period_year: int | None = Query(None, description="Filter by period year"),
-    country_code: str | None = Query(None, description="Filter by country code"),
-    scope: str | None = Query(None, description="Filter by scope"),
-    page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
-    db: AsyncSession = Depends(get_db_session),
-) -> RankingResponse:
-    # 1. Validate metric_code exists
-    metric = await db.scalar(
-        select(MetricDefinition).where(
-            MetricDefinition.code == metric_code,
-            MetricDefinition.deleted_at.is_(None),
-        )
-    )
-    if not metric:
-        raise HTTPException(status_code=404, detail="Metric not found")
-
-    # 2. Build base filter for verified data
-    base_filter = [
-        FinancialData.metric_code == metric_code,
-        FinancialData.status == "verified",
-        FinancialData.deleted_at.is_(None),
-        FinancialData.value_normalized.isnot(None),
-    ]
-    if period_year is not None:
-        base_filter.append(FinancialData.period_year == period_year)
-    if scope is not None:
-        base_filter.append(FinancialData.scope == scope)
-
-    # 3. Check currency homogeneity before returning data
-    currency_q = select(distinct(FinancialData.currency_normalized)).where(*base_filter)
-    if country_code:
-        currency_q = (
-            currency_q
-            .join(Institution, FinancialData.institution_id == Institution.id)
+async def institution_with_country(db: AsyncSession, institution_id: str) -> tuple[Institution, str]:
+    row = (
+        await db.execute(
+            select(Institution, Country.code)
             .join(Country, Institution.country_id == Country.id)
-            .where(Country.code == country_code.upper())
+            .where(Institution.id == institution_id, Institution.deleted_at.is_(None))
         )
-    currency_result = (await db.execute(currency_q)).scalars().all()
-    currencies = [c for c in currency_result if c is not None]
+    ).first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Institution not found")
+    return row[0], row[1]
 
-    if len(currencies) > 1:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Heterogeneous currencies found ({', '.join(sorted(currencies))}). "
-                   f"Add a currency filter to compare homogeneous values.",
-        )
 
-    currency = currencies[0] if currencies else None
-
-    # 4. Build ranked query with joins
-    stmt = (
-        select(FinancialData, Institution, Country)
-        .join(Institution, FinancialData.institution_id == Institution.id)
-        .join(Country, Institution.country_id == Country.id)
-        .where(*base_filter, Institution.deleted_at.is_(None))
-    )
-    if country_code:
-        stmt = stmt.where(Country.code == country_code.upper())
-
-    stmt = stmt.order_by(desc(FinancialData.value_normalized))
-
-    # 5. Count total
-    count_q = select(func.count()).select_from(stmt.subquery())
-    total = (await db.execute(count_q)).scalar_one()
-
-    if total == 0:
-        return RankingResponse(
-            items=[],
-            total=0,
-            page=page,
-            page_size=page_size,
-            has_next=False,
-            has_prev=False,
-            metric_code=metric_code,
-            metric_label_fr=metric.label_fr,
-            metric_label_en=metric.label_en,
-            currency=currency,
-            period_year=period_year,
-        )
-
-    # 6. Paginate and build ranking entries
-    offset = (page - 1) * page_size
-    result = await db.execute(stmt.offset(offset).limit(page_size))
-    rows = result.all()
-
-    items = [
-        RankingEntry(
-            rank=offset + idx + 1,
-            institution_id=inst.id,
-            institution_name=inst.name_commercial or inst.name_official,
-            country_code=country.code,
-            value_normalized=float(fd.value_normalized),
-            unit_normalized=fd.unit_normalized,
-            currency_normalized=fd.currency_normalized,
-            period_year=fd.period_year,
-            scope=fd.scope,
-        )
-        for idx, (fd, inst, country) in enumerate(rows)
-    ]
-
-    return RankingResponse(
-        items=items,
-        total=total,
+@router.get("/rankings", summary="Descriptive ranking of institutions", response_model=RankingResult)
+async def get_rankings(
+    metric_code: str = Query(..., description="Rankable indicator: metric, growth_<metric> or ratio code"),
+    period_year: int | None = Query(None, description="Fiscal year (default: latest year holding data)"),
+    period_type: PeriodTypeQ = Query("annual", description="Period type (never mixed)"),
+    data_scope: DataScopeQ = Query("individual", description="Accounting scope (never mixed)"),
+    country_code: str | None = Query(None, description="ISO country code, or UMOA (default) for the 8 countries"),
+    order: Literal["desc", "asc"] = Query("desc", description="Numerical order of the values"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db_session),
+) -> RankingResult:
+    indicator = indicator_or_404(metric_code)
+    return await ranking_service.rank(
+        db,
+        indicator,
+        period_year=period_year,
+        period_type=period_type,
+        data_scope=data_scope,
+        country_code=country_code,
+        order=order,
         page=page,
         page_size=page_size,
-        has_next=offset + page_size < total,
-        has_prev=page > 1,
-        metric_code=metric_code,
-        metric_label_fr=metric.label_fr,
-        metric_label_en=metric.label_en,
-        currency=currency,
-        period_year=period_year,
+    )
+
+
+@router.get("/rankings/history", summary="Observed rank of an institution over time", response_model=RankHistory)
+async def get_ranking_history(
+    institution_id: str = Query(..., description="Institution ID"),
+    metric_code: str = Query(..., description="Rankable indicator"),
+    period_type: PeriodTypeQ = Query("annual"),
+    data_scope: DataScopeQ = Query("individual"),
+    country_code: str | None = Query(None, description="Ranking universe: ISO code or UMOA (default: institution's country)"),
+    db: AsyncSession = Depends(get_db_session),
+) -> RankHistory:
+    indicator = indicator_or_404(metric_code)
+    institution, own_country = await institution_with_country(db, institution_id)
+    return await ranking_service.history(
+        db,
+        indicator,
+        institution,
+        period_type=period_type,
+        data_scope=data_scope,
+        country_code=(country_code or own_country).upper(),
     )

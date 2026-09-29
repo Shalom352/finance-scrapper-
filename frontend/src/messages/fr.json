@@ -9,7 +9,9 @@
     "countries": "Pays UMOA",
     "analytics": "Analyses & Ratios",
     "documents": "Documents",
-    "search": "Recherche"
+    "search": "Recherche",
+    "rankings": "Classements",
+    "comparisons": "Comparaisons"
   },
   "sidebar": {
     "notice_title": "Sources officielles",
@@ -125,7 +127,7 @@
   "coverage": {
     "label": "Couverture",
     "unknown": "Couverture non communiquée par l'API",
-    "partial_warning": "Données partielles : les agrégats n'englobent pas tous les établissements agréés."
+    "partial_warning": "Données partielles : tous les établissements attendus ne sont pas couverts."
   },
   "kpi": {
     "total_assets": "Total actifs",
@@ -377,17 +379,8 @@
       "empty": "Aucun agrégat pour cette métrique et cet exercice."
     },
     "compare": {
-      "select_a": "Établissement A",
-      "select_b": "Établissement B",
-      "choose": "Choisir un établissement",
-      "metric_label": "Indicateur",
-      "group_ratios": "Ratios",
-      "group_metrics": "Postes financiers",
-      "computing": "Calcul en cours...",
-      "compare_btn": "Comparer",
-      "result_title": "Résultat factuel — exercice {year}",
-      "difference": "Écart (A − B)",
-      "ratio_a_b": "Rapport A / B"
+      "moved": "Le comparateur dispose désormais d’une page dédiée (2 à 5 établissements, secteur, UMOA).",
+      "open": "Ouvrir les comparaisons →"
     },
     "scope_note": "Périmètre : comptes individuels annuels. Les comptes consolidés ne sont jamais mélangés aux agrégats, ratios et croissances affichés ici."
   },
@@ -398,5 +391,103 @@
     "financial_holding": "Holding financière",
     "development_bank": "Banque de développement",
     "other": "Autre"
+  },
+  "rankings": {
+    "title": "Classements descriptifs",
+    "subtitle": "Ordre numérique des valeurs publiées pour un indicateur, une année, une période et un périmètre. Aucun jugement qualitatif.",
+    "groups": {
+      "metric": "Postes publiés",
+      "growth": "Variations annuelles",
+      "ratio": "Ratios"
+    },
+    "growth_of": "Variation annuelle — {metric}",
+    "filters": {
+      "metric": "Indicateur",
+      "year": "Exercice",
+      "latest_year": "Dernier exercice disponible",
+      "country": "Univers",
+      "umoa": "UMOA (8 pays)",
+      "scope": "Périmètre",
+      "period": "Période",
+      "order": "Ordre",
+      "order_desc": "Valeurs décroissantes",
+      "order_asc": "Valeurs croissantes"
+    },
+    "method_note": "Rang = position de la valeur dans l’ordre choisi. Valeurs égales : même rang (1, 1, 3). Une seule valeur d’autorité par établissement ; valeurs rejetées, divergentes ou à réviser exclues ; aucune conversion de devise.",
+    "coverage": "Couverture du classement",
+    "blocked_needs_review": "Classement non calculable : à réviser",
+    "blocked_unavailable": "Classement indisponible",
+    "empty_title": "Aucune valeur classable",
+    "empty": "Aucun établissement ne dispose d’une valeur admissible pour cette sélection.",
+    "unavailable_title": "Données indisponibles",
+    "unavailable_hint": "Ces établissements n’ont pas de valeur admissible : ils ne reçoivent aucun rang.",
+    "history_title": "Rang observé par exercice — {institution}",
+    "history_empty": "Aucun exercice disponible pour cet indicateur.",
+    "history_close": "Fermer l’historique",
+    "table": {
+      "rank": "Rang",
+      "institution": "Établissement",
+      "country": "Pays",
+      "value": "Valeur",
+      "currency": "Devise",
+      "status": "Statut",
+      "provenance": "Provenance",
+      "history": "Historique",
+      "year": "Exercice",
+      "universe": "Classés / attendus"
+    },
+    "coverage_unavailable": "Couverture indisponible — {reason}",
+    "eligible_ranked": "{eligible} éligibles · {ranked} classés · {expected} attendus"
+  },
+  "ranking_reasons": {
+    "missing": "Aucune valeur publiée pour cette sélection",
+    "rejected_only": "Seules des valeurs rejetées existent",
+    "conflict": "Valeurs divergentes non vérifiées",
+    "needs_review": "Valeur à réviser",
+    "heterogeneous_currency": "Devises incompatibles : aucune conversion n’est effectuée",
+    "no_period": "Aucun exercice ne dispose de données pour cette sélection",
+    "no_eligible_data": "Aucune valeur admissible",
+    "period_type_not_supported": "Indicateur calculé sur des données annuelles uniquement",
+    "aggregate_not_supported": "Non disponible pour cet indicateur : les ratios et variations annuelles ne sont pas agrégés.",
+    "sector_total_unavailable": "Total sectoriel indisponible",
+    "sector_needs_review": "Total sectoriel à réviser",
+    "institution_value_unavailable": "Valeur de l’établissement indisponible",
+    "not_in_sector_total": "Valeur non incluse dans le total sectoriel",
+    "aggregate_needs_review": "Agrégat à réviser",
+    "aggregate_unavailable": "Agrégat indisponible"
+  },
+  "comparisons": {
+    "title": "Comparaisons factuelles",
+    "subtitle": "Valeurs de 2 à 5 établissements sur un même indicateur, exercice, période et périmètre, puis établissement ↔ secteur et pays ↔ UMOA.",
+    "institution_n": "Établissement {n}",
+    "metric": "Indicateur",
+    "scope": "Périmètre",
+    "period": "Période",
+    "country": {
+      "country_total": "Total du pays",
+      "umoa_total": "Total UMOA",
+      "share": "Part dans le total UMOA"
+    },
+    "method_note": "Les écarts sont des différences numériques avec le premier établissement. Aucune conversion de devise ; une comparaison non homogène n’est pas calculée.",
+    "select_title": "Sélectionnez au moins deux établissements",
+    "select_hint": "Choisissez de 2 à 5 établissements pour afficher leurs valeurs.",
+    "sector_title": "Établissement ↔ secteur national",
+    "sector_note": "Comptes individuels annuels, comme les agrégats sectoriels.",
+    "country_title": "Pays ↔ UMOA",
+    "country_hint": "Choisissez un pays.",
+    "table": {
+      "institution": "Établissement",
+      "country": "Pays",
+      "value": "Valeur",
+      "difference": "Écart avec {reference}",
+      "status": "Statut",
+      "provenance": "Provenance"
+    },
+    "sector": {
+      "institution_value": "Valeur de l’établissement",
+      "sector_total": "Total du secteur",
+      "share": "Part dans le total"
+    },
+    "country_label": "Pays"
   }
 }

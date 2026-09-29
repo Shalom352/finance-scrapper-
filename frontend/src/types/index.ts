@@ -342,3 +342,172 @@ export interface PaginatedResponse<T> {
   has_next: boolean;
   has_prev: boolean;
 }
+
+// ============================================================
+// Phase 9 — Descriptive rankings & comparisons
+// ============================================================
+
+export type RankingStatus = "calculated" | "partial" | "needs_review" | "unavailable";
+
+/** Traceability of one observation behind a ranked or compared value. */
+export interface ProvenanceRef {
+  data_id: string;
+  metric_code: string;
+  period_year: number;
+  period_type: string;
+  scope?: string | null;
+  source_id?: string | null;
+  source_name?: string | null;
+  document_id?: string | null;
+  document_title?: string | null;
+  page_number?: number | null;
+  status: string;
+  role?: string | null;
+}
+
+export interface RankingCoverage {
+  /** Institutions with an admissible value (real count, never forced to 0). */
+  eligible_count: number;
+  /** Institutions actually ranked (0 when the ranking cannot be computed). */
+  ranked_count: number;
+  expected_count: number;
+  /** null when nobody is expected or the ranking cannot be computed — never 0/N. */
+  coverage_ratio: number | null;
+  coverage_status: "available" | "unavailable";
+}
+
+export interface RankingEntry {
+  rank: number;
+  institution_id: string;
+  institution_name: string;
+  country_code?: string | null;
+  metric_code: string;
+  period_year: number;
+  period_type: string;
+  data_scope: string;
+  value: number | null;
+  unit: string;
+  currency?: string | null;
+  status: string;
+  data_id?: string | null;
+  provenance: ProvenanceRef[];
+}
+
+/** Institution without an admissible value: listed, never ranked. */
+export interface RankingUnavailableEntry {
+  institution_id: string;
+  institution_name: string;
+  country_code?: string | null;
+  status: string;
+  reason: string;
+  detail?: string | null;
+  currency?: string | null;
+}
+
+export interface RankingResult {
+  metric_code: string;
+  kind: "metric" | "growth" | "ratio" | string;
+  unit: string;
+  country_code: string;
+  period_year: number | null;
+  period_type: string;
+  data_scope: string;
+  order: "desc" | "asc" | string;
+  status: RankingStatus;
+  reason?: string | null;
+  currency?: string | null;
+  coverage: RankingCoverage;
+  items: RankingEntry[];
+  total_ranked: number;
+  page: number;
+  page_size: number;
+  has_next: boolean;
+  has_prev: boolean;
+  unavailable: RankingUnavailableEntry[];
+  available_years: number[];
+}
+
+export interface RankHistoryPoint {
+  period_year: number;
+  rank: number | null;
+  value: number | null;
+  currency?: string | null;
+  ranking_status: RankingStatus;
+  status: string;
+  reason?: string | null;
+  eligible_count: number;
+  ranked_count: number;
+  expected_count: number;
+  coverage_ratio: number | null;
+}
+
+export interface RankHistory {
+  institution_id: string;
+  institution_name: string;
+  metric_code: string;
+  period_type: string;
+  data_scope: string;
+  country_code: string;
+  points: RankHistoryPoint[];
+}
+
+export interface ComparisonRow {
+  institution_id: string;
+  institution_name: string;
+  country_code?: string | null;
+  value: number | null;
+  currency?: string | null;
+  status: string;
+  reason?: string | null;
+  data_id?: string | null;
+  provenance: ProvenanceRef[];
+}
+
+export interface InstitutionsComparison {
+  metric_code: string;
+  kind: string;
+  unit: string;
+  period_year: number | null;
+  period_type: string;
+  data_scope: string;
+  status: RankingStatus;
+  reason?: string | null;
+  currency?: string | null;
+  rows: ComparisonRow[];
+}
+
+export interface SectorComparison {
+  metric_code: string;
+  period_year: number | null;
+  period_type: string;
+  data_scope: string;
+  status: RankingStatus;
+  reason?: string | null;
+  institution: ComparisonRow | null;
+  country_code?: string | null;
+  sector_total: number | null;
+  sector_currency?: string | null;
+  sector_status?: string | null;
+  sector_coverage_ratio: number | null;
+  sector_institution_count?: number | null;
+  sector_total_institutions?: number | null;
+  share_percent: number | null;
+}
+
+export interface CountryComparison {
+  metric_code: string;
+  period_year: number | null;
+  period_type: string;
+  data_scope: string;
+  status: RankingStatus;
+  reason?: string | null;
+  country_code: string;
+  country_total: number | null;
+  country_status?: string | null;
+  country_coverage_ratio: number | null;
+  umoa_total: number | null;
+  umoa_status?: string | null;
+  umoa_coverage_ratio: number | null;
+  currency?: string | null;
+  share_percent: number | null;
+}

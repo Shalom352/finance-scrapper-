@@ -81,6 +81,7 @@ def create_app() -> FastAPI:
 
     from app.api.v1.analytics import router as analytics_router
     from app.api.v1.banking_groups import router as banking_groups_router
+    from app.api.v1.comparisons import router as comparisons_router
     from app.api.v1.countries import router as countries_router
     from app.api.v1.documents import router as documents_router
     from app.api.v1.financial_data import router as financial_data_router
@@ -98,6 +99,7 @@ def create_app() -> FastAPI:
     app.include_router(documents_router)
     app.include_router(financial_data_router)
     app.include_router(rankings_router)
+    app.include_router(comparisons_router)
     app.include_router(search_router)
     app.include_router(analytics_router)
 

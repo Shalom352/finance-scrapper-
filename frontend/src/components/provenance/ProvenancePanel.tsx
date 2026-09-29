@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import type { FinancialDataDetail, RatioResult } from "@/types";
+import type { FinancialDataDetail, ProvenanceRef, RatioResult } from "@/types";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { MISSING, orMissing } from "@/lib/formatters";
 import { useFormatters } from "@/lib/useFormatters";
@@ -13,13 +13,18 @@ interface ProvenancePanelProps {
   /** Financial data row id: the panel loads the full record from the API. */
   dataId?: string | null;
   ratioPoint?: RatioResult | null;
+  /** Observations behind a derived value (ranked growth / ratio): each opens its real record. */
+  sources?: ProvenanceRef[] | null;
   onClose: () => void;
 }
 
-export function ProvenancePanel({ dataId, ratioPoint, onClose }: ProvenancePanelProps) {
+export function ProvenancePanel({ dataId, ratioPoint, sources, onClose }: ProvenancePanelProps) {
   const t = useTranslations("provenance");
   const tc = useTranslations("common");
-  if (!dataId && !ratioPoint) return null;
+  const [selectedSource, setSelectedSource] = useState<string | null>(null);
+  const hasSources = !!sources && sources.length > 0;
+  if (!dataId && !ratioPoint && !hasSources) return null;
+  const detailId = dataId ?? selectedSource;
 
   return (
     <div
@@ -40,8 +45,11 @@ export function ProvenancePanel({ dataId, ratioPoint, onClose }: ProvenancePanel
           </button>
         </div>
 
-        {dataId && <DataPointProvenance dataId={dataId} />}
-        {!dataId && ratioPoint && <RatioProvenance ratio={ratioPoint} />}
+        {!dataId && hasSources && (
+          <SourcesList sources={sources!} selected={selectedSource} onSelect={setSelectedSource} />
+        )}
+        {detailId && <DataPointProvenance dataId={detailId} />}
+        {!detailId && !hasSources && ratioPoint && <RatioProvenance ratio={ratioPoint} />}
 
         <div className="mt-8 pt-4 border-t border-gray-800 flex justify-end">
           <button
@@ -215,6 +223,44 @@ function RatioProvenance({ ratio }: { ratio: RatioResult }) {
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function SourcesList({
+  sources,
+  selected,
+  onSelect,
+}: {
+  sources: ProvenanceRef[];
+  selected: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const t = useTranslations("provenance");
+  const labels = useLabels();
+  return (
+    <div className="pt-6 space-y-2">
+      <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+        {t("components_title", { count: sources.length })}
+      </h4>
+      {sources.map((src) => (
+        <button
+          key={src.data_id}
+          onClick={() => onSelect(src.data_id)}
+          data-testid="provenance-source"
+          className={`w-full text-left p-3 rounded-xl border text-xs transition-colors ${
+            selected === src.data_id ? "border-emerald-600 bg-emerald-950/30" : "border-gray-800 bg-gray-900/40 hover:border-gray-700"
+          }`}
+        >
+          <span className="font-bold text-gray-200">{labels.metric(src.metric_code)}</span>{" "}
+          <span className="text-gray-400">
+            ({src.period_year} · {labels.periodType(src.period_type)} · {labels.scope(src.scope)})
+          </span>
+          <span className="block text-gray-500 mt-0.5">
+            {orMissing(src.source_name)} · {orMissing(src.document_title)} · {t("page")} {orMissing(src.page_number)}
+          </span>
+        </button>
+      ))}
     </div>
   );
 }

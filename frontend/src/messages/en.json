@@ -9,7 +9,9 @@
     "countries": "UMOA Countries",
     "analytics": "Analytics & Ratios",
     "documents": "Documents",
-    "search": "Search"
+    "search": "Search",
+    "rankings": "Rankings",
+    "comparisons": "Comparisons"
   },
   "sidebar": {
     "notice_title": "Official sources",
@@ -125,7 +127,7 @@
   "coverage": {
     "label": "Coverage",
     "unknown": "Coverage not provided by the API",
-    "partial_warning": "Partial data: aggregates do not include every licensed institution."
+    "partial_warning": "Partial data: not every expected institution is covered."
   },
   "kpi": {
     "total_assets": "Total assets",
@@ -377,17 +379,8 @@
       "empty": "No aggregate for this metric and fiscal year."
     },
     "compare": {
-      "select_a": "Institution A",
-      "select_b": "Institution B",
-      "choose": "Choose an institution",
-      "metric_label": "Indicator",
-      "group_ratios": "Ratios",
-      "group_metrics": "Financial items",
-      "computing": "Computing...",
-      "compare_btn": "Compare",
-      "result_title": "Factual result — fiscal year {year}",
-      "difference": "Difference (A − B)",
-      "ratio_a_b": "Ratio A / B"
+      "moved": "The comparator now has a dedicated page (2 to 5 institutions, sector, UMOA).",
+      "open": "Open comparisons →"
     },
     "scope_note": "Scope: individual annual accounts. Consolidated accounts are never mixed into the aggregates, ratios and growth shown here."
   },
@@ -398,5 +391,103 @@
     "financial_holding": "Financial holding",
     "development_bank": "Development bank",
     "other": "Other"
+  },
+  "rankings": {
+    "title": "Descriptive rankings",
+    "subtitle": "Numerical order of published values for one indicator, year, period and scope. No qualitative judgement.",
+    "groups": {
+      "metric": "Published items",
+      "growth": "Annual changes",
+      "ratio": "Ratios"
+    },
+    "growth_of": "Annual change — {metric}",
+    "filters": {
+      "metric": "Indicator",
+      "year": "Fiscal year",
+      "latest_year": "Latest available year",
+      "country": "Universe",
+      "umoa": "UMOA (8 countries)",
+      "scope": "Scope",
+      "period": "Period",
+      "order": "Order",
+      "order_desc": "Descending values",
+      "order_asc": "Ascending values"
+    },
+    "method_note": "Rank = position of the value in the chosen order. Equal values share a rank (1, 1, 3). One authoritative value per institution; rejected, divergent or under-review values are excluded; no currency conversion.",
+    "coverage": "Ranking coverage",
+    "blocked_needs_review": "Ranking cannot be computed: needs review",
+    "blocked_unavailable": "Ranking unavailable",
+    "empty_title": "No rankable value",
+    "empty": "No institution has an admissible value for this selection.",
+    "unavailable_title": "Unavailable data",
+    "unavailable_hint": "These institutions have no admissible value: they receive no rank.",
+    "history_title": "Observed rank per fiscal year — {institution}",
+    "history_empty": "No fiscal year available for this indicator.",
+    "history_close": "Close history",
+    "table": {
+      "rank": "Rank",
+      "institution": "Institution",
+      "country": "Country",
+      "value": "Value",
+      "currency": "Currency",
+      "status": "Status",
+      "provenance": "Provenance",
+      "history": "History",
+      "year": "Fiscal year",
+      "universe": "Ranked / expected"
+    },
+    "coverage_unavailable": "Coverage unavailable — {reason}",
+    "eligible_ranked": "{eligible} eligible · {ranked} ranked · {expected} expected"
+  },
+  "ranking_reasons": {
+    "missing": "No published value for this selection",
+    "rejected_only": "Only rejected values exist",
+    "conflict": "Unverified divergent values",
+    "needs_review": "Value needs review",
+    "heterogeneous_currency": "Incompatible currencies: no conversion is performed",
+    "no_period": "No fiscal year holds data for this selection",
+    "no_eligible_data": "No admissible value",
+    "period_type_not_supported": "Indicator computed on annual data only",
+    "aggregate_not_supported": "Not available for this indicator: ratios and annual changes are not aggregated.",
+    "sector_total_unavailable": "Sector total unavailable",
+    "sector_needs_review": "Sector total needs review",
+    "institution_value_unavailable": "Institution value unavailable",
+    "not_in_sector_total": "Value not included in the sector total",
+    "aggregate_needs_review": "Aggregate needs review",
+    "aggregate_unavailable": "Aggregate unavailable"
+  },
+  "comparisons": {
+    "title": "Factual comparisons",
+    "subtitle": "Values of 2 to 5 institutions on the same indicator, fiscal year, period and scope, then institution ↔ sector and country ↔ UMOA.",
+    "institution_n": "Institution {n}",
+    "metric": "Indicator",
+    "scope": "Scope",
+    "period": "Period",
+    "country": {
+      "country_total": "Country total",
+      "umoa_total": "UMOA total",
+      "share": "Share of the UMOA total"
+    },
+    "method_note": "Differences are numerical differences with the first institution. No currency conversion; a non-homogeneous comparison is not computed.",
+    "select_title": "Select at least two institutions",
+    "select_hint": "Choose 2 to 5 institutions to display their values.",
+    "sector_title": "Institution ↔ national sector",
+    "sector_note": "Individual annual accounts, as for sector aggregates.",
+    "country_title": "Country ↔ UMOA",
+    "country_hint": "Choose a country.",
+    "table": {
+      "institution": "Institution",
+      "country": "Country",
+      "value": "Value",
+      "difference": "Difference with {reference}",
+      "status": "Status",
+      "provenance": "Provenance"
+    },
+    "sector": {
+      "institution_value": "Institution value",
+      "sector_total": "Sector total",
+      "share": "Share of the total"
+    },
+    "country_label": "Country"
   }
 }

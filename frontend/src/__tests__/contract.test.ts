@@ -75,3 +75,48 @@ describe("i18n parity", () => {
     expect(keys(en).sort()).toEqual(keys(fr).sort());
   });
 });
+
+describe("no qualitative or investment vocabulary (Phase 9)", () => {
+  // Rankings are descriptive numerical orderings: no judgement, score or recommendation.
+  // Words that only make sense as prose (safe to search in code too).
+  const PROSE = [
+    /meilleure?s?\b/i,
+    /\bpires?\b/i,
+    /\bbest\b/i,
+    /\bworst\b/i,
+    /recommand/i,
+    /recommend/i,
+    /\bbuy\b/i,
+    /\bsell\b/i,
+    /score de cr[ée]dit/i,
+    /credit score/i,
+    /la plus s[ûu]re/i,
+    /\bsafest\b/i,
+    /la plus rentable/i,
+    /most profitable/i,
+    /\bperformance\b/i,
+    /am[ée]lioration/i,
+    /d[ée]gradation/i,
+  ];
+  // Short words that collide with code identifiers (CSS "top-2", "placeholder"): dictionaries only.
+  const FORBIDDEN = [...PROSE, /\btop\b/i, /\bhold\b/i];
+
+  function strings(obj: unknown): string[] {
+    if (typeof obj === "string") return [obj];
+    if (obj && typeof obj === "object") return Object.values(obj).flatMap(strings);
+    return [];
+  }
+
+  it("dictionaries (FR and EN) contain no forbidden wording", () => {
+    const hits = [...strings(fr), ...strings(en)].filter((text) => FORBIDDEN.some((re) => re.test(text)));
+    expect(hits).toEqual([]);
+  });
+
+  it("ranking and comparison UI code contains no forbidden wording", () => {
+    const ui = files.filter((f) => /rankings|comparisons/.test(f.path));
+    expect(ui.length).toBeGreaterThan(0);
+    const hits = ui.filter((f) => PROSE.some((re) => re.test(f.text))).map((f) => f.path);
+    expect(hits).toEqual([]);
+  });
+});
+

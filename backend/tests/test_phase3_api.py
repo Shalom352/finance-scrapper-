@@ -21,10 +21,7 @@ from fastapi.testclient import TestClient
 
 from app.db.session import get_db_session
 from app.main import app
-from app.models.country import Country
-from app.models.financial_data import FinancialData
 from app.models.institution import Institution
-from app.models.metric_definition import MetricDefinition
 
 
 @pytest.fixture
@@ -204,119 +201,107 @@ class TestRankingsLogic:
         finally:
             app.dependency_overrides.clear()
 
-    def test_rankings_empty_when_no_verified_data(self):
-        mock_db = AsyncMock()
-        metric = MagicMock(spec=MetricDefinition)
-        metric.label_fr = "Total actifs"
-        metric.label_en = "Total Assets"
-        mock_db.scalar = AsyncMock(return_value=metric)
+    # Phase 9 contract: the real RankingService.rank logic runs; only its database
+    # accessors (universe, available years, candidates) are replaced.
 
-        cur_mock = MagicMock()
-        cur_mock.scalars.return_value.all.return_value = []
+    @staticmethod
+    def _patch_service(monkeypatch, universe, years, candidates):
+        from app.api.v1 import rankings as rankings_api
+        from scraping.rankings.models import Candidate
 
-        cnt_mock = MagicMock()
-        cnt_mock.scalar_one.return_value = 0
+        svc = rankings_api.ranking_service
 
-        mock_db.execute = AsyncMock(side_effect=[cur_mock, cnt_mock])
+        async def fake_universe(db, country_code):
+            return universe
 
-        app.dependency_overrides[get_db_session] = lambda: mock_db
+        async def fake_years(db, indicator, period_type, data_scope, ids):
+            return years
+
+        async def fake_candidates(db, indicator, year, period_type, data_scope, ids):
+            return {i: candidates.get(i) or Candidate(institution_id=i, eligible=False, status="unavailable",
+                                                      reason="missing") for i in ids}
+
+        monkeypatch.setattr(svc, "universe", fake_universe)
+        monkeypatch.setattr(svc, "available_years", fake_years)
+        monkeypatch.setattr(svc, "candidates", fake_candidates)
+
+    @staticmethod
+    def _inst(inst_id, name):
+        inst = MagicMock(spec=Institution)
+        inst.id = inst_id
+        inst.name_official = name
+        return inst
+
+    def test_rankings_unavailable_when_no_period(self, monkeypatch):
+        self._patch_service(monkeypatch, [(self._inst("i1", "Banque A"), "CI")], [], {})
+        app.dependency_overrides[get_db_session] = lambda: AsyncMock()
         try:
-            c = TestClient(app)
-            resp = c.get("/api/v1/rankings?metric_code=total_actifs")
+            resp = TestClient(app).get("/api/v1/rankings?metric_code=total_actifs")
             assert resp.status_code == 200
             data = resp.json()
-            assert data["total"] == 0
+            assert data["status"] == "unavailable"
+            assert data["reason"] == "no_period"
+            assert data["period_year"] is None  # never an arbitrary default year
             assert data["items"] == []
-            assert data["metric_code"] == "total_actifs"
         finally:
             app.dependency_overrides.clear()
 
-    def test_rankings_heterogeneous_currencies_rejected(self):
-        mock_db = AsyncMock()
-        metric = MagicMock(spec=MetricDefinition)
-        metric.label_fr = "Total actifs"
-        metric.label_en = "Total Assets"
-        mock_db.scalar = AsyncMock(return_value=metric)
+    def test_rankings_heterogeneous_currencies_needs_review(self, monkeypatch):
+        from scraping.rankings.models import Candidate
 
-        cur_mock = MagicMock()
-        cur_mock.scalars.return_value.all.return_value = ["XOF", "USD"]
-        mock_db.execute = AsyncMock(return_value=cur_mock)
-
-        app.dependency_overrides[get_db_session] = lambda: mock_db
+        universe = [(self._inst("i1", "Banque A"), "CI"), (self._inst("i2", "Banque B"), "SN")]
+        cands = {
+            "i1": Candidate(institution_id="i1", eligible=True, value=Decimal("100"), currency="XOF", status="verified"),
+            "i2": Candidate(institution_id="i2", eligible=True, value=Decimal("80"), currency="EUR", status="verified"),
+        }
+        self._patch_service(monkeypatch, universe, [2023], cands)
+        app.dependency_overrides[get_db_session] = lambda: AsyncMock()
         try:
-            c = TestClient(app)
-            resp = c.get("/api/v1/rankings?metric_code=total_actifs")
-            assert resp.status_code == 400
+            resp = TestClient(app).get("/api/v1/rankings?metric_code=total_actifs")
+            assert resp.status_code == 200  # no longer a 400
             data = resp.json()
-            assert data["error"]["code"] == "BAD_REQUEST"
-            assert "Heterogeneous currencies" in data["error"]["message"]
+            assert data["status"] == "needs_review"
+            assert data["reason"] == "heterogeneous_currency"
+            assert data["items"] == []
+            assert {u["reason"] for u in data["unavailable"]} == {"heterogeneous_currency"}
+            assert data["coverage"]["eligible_count"] == 2  # real admissible values, never forced to 0
+            assert data["coverage"]["ranked_count"] == 0
+            assert data["coverage"]["coverage_ratio"] is None
+            assert data["coverage"]["coverage_status"] == "unavailable"
         finally:
             app.dependency_overrides.clear()
 
-    def test_rankings_multiple_institutions_ordered(self):
-        mock_db = AsyncMock()
-        metric = MagicMock(spec=MetricDefinition)
-        metric.label_fr = "Total actifs"
-        metric.label_en = "Total Assets"
-        mock_db.scalar = AsyncMock(return_value=metric)
+    def test_rankings_multiple_institutions_ordered_with_ties(self, monkeypatch):
+        from scraping.rankings.models import Candidate
 
-        cur_mock = MagicMock()
-        cur_mock.scalars.return_value.all.return_value = ["XOF"]
-
-        cnt_mock = MagicMock()
-        cnt_mock.scalar_one.return_value = 2
-
-        fd1 = MagicMock(spec=FinancialData)
-        fd1.value_normalized = Decimal("5000000000.0")
-        fd1.unit_normalized = "absolute"
-        fd1.currency_normalized = "XOF"
-        fd1.period_year = 2023
-        fd1.scope = "individual"
-
-        inst1 = MagicMock(spec=Institution)
-        inst1.id = "inst-1"
-        inst1.name_official = "Banque A"
-        inst1.name_commercial = "BA"
-
-        country1 = MagicMock(spec=Country)
-        country1.code = "CI"
-
-        fd2 = MagicMock(spec=FinancialData)
-        fd2.value_normalized = Decimal("3000000000.0")
-        fd2.unit_normalized = "absolute"
-        fd2.currency_normalized = "XOF"
-        fd2.period_year = 2023
-        fd2.scope = "individual"
-
-        inst2 = MagicMock(spec=Institution)
-        inst2.id = "inst-2"
-        inst2.name_official = "Banque B"
-        inst2.name_commercial = None
-
-        country2 = MagicMock(spec=Country)
-        country2.code = "SN"
-
-        rows_mock = MagicMock()
-        rows_mock.all.return_value = [(fd1, inst1, country1), (fd2, inst2, country2)]
-
-        mock_db.execute = AsyncMock(side_effect=[cur_mock, cnt_mock, rows_mock])
-
-        app.dependency_overrides[get_db_session] = lambda: mock_db
+        universe = [
+            (self._inst("i1", "Banque B"), "CI"),
+            (self._inst("i2", "Banque A"), "SN"),
+            (self._inst("i3", "Banque C"), "CI"),
+            (self._inst("i4", "Banque D"), "CI"),
+        ]
+        cands = {
+            i: Candidate(institution_id=i, eligible=True, value=Decimal(v), currency="XOF", status="verified",
+                         data_id=f"fd-{i}")
+            for i, v in (("i1", "5000"), ("i2", "5000"), ("i3", "3000"))
+        }
+        self._patch_service(monkeypatch, universe, [2023], cands)
+        app.dependency_overrides[get_db_session] = lambda: AsyncMock()
         try:
-            c = TestClient(app)
-            resp = c.get("/api/v1/rankings?metric_code=total_actifs")
+            resp = TestClient(app).get("/api/v1/rankings?metric_code=total_actifs")
             assert resp.status_code == 200
             data = resp.json()
-            assert data["total"] == 2
-            assert len(data["items"]) == 2
-            assert data["items"][0]["rank"] == 1
-            assert data["items"][0]["institution_name"] == "BA"
-            assert data["items"][0]["value_normalized"] == 5000000000.0
-            assert data["items"][0]["country_code"] == "CI"
-            assert data["items"][1]["rank"] == 2
-            assert data["items"][1]["institution_name"] == "Banque B"
-            assert data["items"][1]["value_normalized"] == 3000000000.0
-            assert data["items"][1]["country_code"] == "SN"
+            assert data["period_year"] == 2023
+            assert [(e["rank"], e["institution_name"]) for e in data["items"]] == [
+                (1, "Banque A"), (1, "Banque B"), (3, "Banque C"),
+            ]
+            assert data["items"][0]["data_id"] == "fd-i2"
+            assert [u["institution_id"] for u in data["unavailable"]] == ["i4"]  # missing: never ranked
+            assert data["coverage"] == {
+                "eligible_count": 3, "ranked_count": 3, "expected_count": 4,
+                "coverage_ratio": 0.75, "coverage_status": "available",
+            }
+            assert data["status"] == "partial"
         finally:
             app.dependency_overrides.clear()
 
@@ -450,12 +435,13 @@ class TestSchemas:
     def test_ranking_response_schema(self):
         from app.api.v1.rankings import RankingEntry, RankingResponse
         fields = RankingResponse.model_fields
-        assert "metric_code" in fields
-        assert "currency" in fields
-        assert "items" in fields
+        for f in ("metric_code", "currency", "items", "coverage", "unavailable", "status",
+                  "period_year", "period_type", "data_scope"):
+            assert f in fields
         entry_fields = RankingEntry.model_fields
-        assert "rank" in entry_fields
-        assert "institution_name" in entry_fields
+        for f in ("rank", "institution_name", "value", "currency", "data_id", "provenance",
+                  "period_type", "data_scope", "status"):
+            assert f in entry_fields
 
     def test_search_results_schema(self):
         from app.api.v1.search import SearchResults
