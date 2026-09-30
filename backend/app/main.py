@@ -83,6 +83,7 @@ def create_app() -> FastAPI:
     from app.api.v1.banking_groups import router as banking_groups_router
     from app.api.v1.comparisons import router as comparisons_router
     from app.api.v1.countries import router as countries_router
+    from app.api.v1.data_quality import router as data_quality_router
     from app.api.v1.documents import router as documents_router
     from app.api.v1.financial_data import router as financial_data_router
     from app.api.v1.institutions import router as institutions_router
@@ -102,6 +103,7 @@ def create_app() -> FastAPI:
     app.include_router(comparisons_router)
     app.include_router(search_router)
     app.include_router(analytics_router)
+    app.include_router(data_quality_router)
 
     from app.core.exceptions import register_exception_handlers
     register_exception_handlers(app)

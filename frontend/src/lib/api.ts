@@ -17,6 +17,11 @@ import type {
   FinancialDataExplorerItem,
   FinancialDataFacets,
   FinancialDataPoint,
+  ReviewCenterCounts,
+  ReviewAction,
+  ReviewDetail,
+  ReviewEvent,
+  ReviewObservation,
   GrowthResult,
   Institution,
   InstitutionCoverage,
@@ -71,6 +76,22 @@ async function apiFetch<T>(path: string): Promise<T> {
     if (err instanceof ApiError) throw err;
     throw new ApiError(0, err instanceof Error ? err.message : "Network error");
   }
+}
+
+/** POST JSON; a non-2xx answer becomes an ApiError carrying the HTTP status (404 / 409 / 422…). */
+async function apiPost<T>(path: string, body: unknown): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    throw new ApiError(0, err instanceof Error ? err.message : "Network error");
+  }
+  if (!response.ok) throw new ApiError(response.status, await response.text().catch(() => "Unknown error"));
+  return (await response.json()) as T;
 }
 
 function buildQuery(params: Record<string, string | number | boolean | null | undefined>): string {
@@ -260,6 +281,61 @@ export async function exportFinancialDataCsv(params: FinancialDataExplorerQuery)
   if (response.status === 413) return { status: "too_large" };
   if (!response.ok) throw new ApiError(response.status, await response.text().catch(() => "Unknown error"));
   return { status: "ok", blob: await response.blob() };
+}
+
+// ============================================================
+// Data Quality & Review Center (Phase 12)
+// ============================================================
+
+/** Review queue: without a status, the observations needing a decision (needs_review + conflicts). */
+export async function getDataQualityQueue(
+  params: FinancialDataExplorerQuery & { page?: number; page_size?: number },
+): Promise<PaginatedResponse<FinancialDataExplorerItem>> {
+  const { institution_ids, ...rest } = params;
+  const res = await apiFetch<PaginatedResponse<FinancialDataExplorerItem>>(
+    `/api/v1/data-quality${buildQuery({ ...rest, institution_ids: institution_ids?.join(",") })}`,
+  );
+  return mapPage(res, normalizeDataPoint);
+}
+
+export async function getDataQualityCounts(): Promise<ReviewCenterCounts> {
+  return apiFetch<ReviewCenterCounts>("/api/v1/data-quality/summary");
+}
+
+const normalizeReviewObservation = (o: ReviewObservation): ReviewObservation =>
+  numericFields(o, ["value_normalized", "difference"]);
+
+export async function getReviewDetail(id: string): Promise<ReviewDetail> {
+  const d = await apiFetch<ReviewDetail>(`/api/v1/data-quality/${encodeURIComponent(id)}`);
+  return {
+    ...d,
+    observation: normalizeDetail(d.observation),
+    competing: d.competing.map(normalizeReviewObservation),
+    not_comparable: d.not_comparable.map(normalizeReviewObservation),
+  };
+}
+
+export async function getReviewHistory(id: string): Promise<ReviewEvent[]> {
+  const rows = await apiFetch<ReviewEvent[]>(`/api/v1/data-quality/${encodeURIComponent(id)}/history`);
+  return rows.map((e) => numericFields(e, ["value_before", "value_after"]));
+}
+
+export interface ReviewDecision {
+  actor: string;
+  reason: string;
+  /** State the reviewer saw: the backend answers 409 if it changed meanwhile. */
+  expected_status: string;
+  expected_updated_at: string;
+}
+
+/** A human decision. The resulting status is decided by the backend, never sent. */
+export async function postReviewAction(
+  id: string,
+  action: ReviewAction,
+  decision: ReviewDecision,
+): Promise<FinancialDataDetail> {
+  const res = await apiPost<FinancialDataDetail>(`/api/v1/data-quality/${encodeURIComponent(id)}/${action}`, decision);
+  return normalizeDetail(res);
 }
 
 /** Every financial data row matching the filters (no silent truncation at 100 rows). */

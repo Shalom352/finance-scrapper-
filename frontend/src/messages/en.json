@@ -12,7 +12,8 @@
     "search": "Search",
     "rankings": "Rankings",
     "comparisons": "Comparisons",
-    "financial_data": "Financial data"
+    "financial_data": "Financial data",
+    "data_quality": "Data quality"
   },
   "sidebar": {
     "notice_title": "Official sources",
@@ -608,6 +609,113 @@
       "running": "Exporting…",
       "too_large": "Export unavailable — refine your filters (maximum {max} rows).",
       "error": "The export failed."
+    }
+  },
+  "data_quality": {
+    "title": "Data quality & review center",
+    "subtitle": "Observations needing a human decision: needs review and divergent values.",
+    "note": "Every decision (review, verify, reject) is a traced human action: reason, identifier, date, status before and after. No observation is promoted automatically.",
+    "auth_note": "The platform has no authentication: the identifier you enter is recorded as entered.",
+    "status_to_decide": "To decide (needs review + divergent values)",
+    "open": "Examine",
+    "back": "Back to the queue",
+    "empty_title": "No observation to decide",
+    "empty_hint": "No observation matches these filters.",
+    "count": "{total, plural, =0 {No observation} one {# observation} other {# observations}}",
+    "counts": {
+      "title": "Counters",
+      "unresolved": "Unresolved",
+      "needs_review": "Needs review",
+      "conflict_keys": "Divergent values (indicators)",
+      "conflict_observations": "Divergent observations",
+      "extracted": "Extracted",
+      "reviewed": "Reviewed",
+      "verified": "Verified",
+      "rejected": "Rejected",
+      "total": "Stored observations"
+    },
+    "detail": {
+      "title": "Observation",
+      "not_found": "Observation not found.",
+      "id": "Identifier",
+      "institution": "Institution",
+      "country": "Country",
+      "indicator": "Indicator",
+      "original_value": "Original value",
+      "normalized_value": "Normalized value",
+      "unit": "Unit",
+      "currency": "Currency",
+      "year": "Year",
+      "period_type": "Period type",
+      "scope": "Scope",
+      "status": "Status",
+      "qualification": "Authority rule",
+      "extraction_method": "Extraction method",
+      "document": "Document",
+      "page": "Page",
+      "source": "Source",
+      "created_at": "Created at",
+      "updated_at": "Updated at",
+      "verified_by": "Verified by",
+      "missing": "Missing",
+      "provenance": "Show provenance"
+    },
+    "competing": {
+      "title": "Competing observations (same institution, indicator, year, period and scope)",
+      "none": "No other observation for this key.",
+      "this": "This observation",
+      "observation": "Observation",
+      "value": "Value",
+      "difference": "Difference",
+      "open": "Open",
+      "reasons": {
+        "same_observation": "—",
+        "missing_value": "Not computable: missing value",
+        "currency_mismatch": "Not comparable: different currencies",
+        "unit_mismatch": "Not comparable: different units"
+      },
+      "not_comparable_title": "Other scope or other period type (not comparable, never merged)",
+      "conflict_guide": "Divergent values: no value is retained until one observation is verified. To resolve: review then verify the correct observation, and reject the others with a reason. Each step is a separate, traced decision."
+    },
+    "history": {
+      "title": "Decision history",
+      "empty": "No decision recorded for this observation.",
+      "by": "by {actor}",
+      "unknown_actor": "identifier not provided",
+      "value_change": "Value: {before} → {after}"
+    },
+    "actions": {
+      "title": "Decision",
+      "actor": "Your identifier",
+      "actor_placeholder": "e.g. analyst-1",
+      "reason": "Reason (required)",
+      "reason_placeholder": "Why this decision? (page, document, finding)",
+      "review": "Mark as reviewed",
+      "verify": "Verify",
+      "reject": "Reject",
+      "not_allowed": "No action is possible for this status.",
+      "need_fields": "Enter your identifier and a reason.",
+      "confirm_title": "Confirm the decision",
+      "confirm": {
+        "review": "Are you sure you want to mark this observation as reviewed?",
+        "verify": "Are you sure you want to verify this observation? It will be used as the certified value.",
+        "reject": "Are you sure you want to reject this observation? It will no longer be used."
+      },
+      "confirm_yes": "Confirm",
+      "confirm_no": "Cancel",
+      "done": "Decision recorded.",
+      "errors": {
+        "404": "Observation not found: it may have been deleted.",
+        "409": "The observation was changed by another reviewer. Reload before deciding.",
+        "422": "Transition not possible from the current status, or missing field.",
+        "other": "Server error: the decision was not recorded."
+      },
+      "reload": "Reload"
+    },
+    "action_names": {
+      "review": "Review",
+      "verify": "Verification",
+      "reject": "Rejection"
     }
   }
 }

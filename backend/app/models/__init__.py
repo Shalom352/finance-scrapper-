@@ -7,6 +7,7 @@ from app.models.institution import Institution
 from app.models.metric_definition import MetricDefinition
 from app.models.document import Document
 from app.models.financial_data import FinancialData
+from app.models.review_event import FinancialDataReviewEvent
 
 __all__ = [
     "Country",
@@ -16,4 +17,5 @@ __all__ = [
     "MetricDefinition",
     "Document",
     "FinancialData",
+    "FinancialDataReviewEvent",
 ]

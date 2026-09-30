@@ -26,7 +26,10 @@ export interface ExplorerParams {
 }
 
 /** Explorer state read from the URL (deep links survive reload and locale switch). */
-export function parseExplorerParams(get: (key: string) => string): ExplorerParams {
+export function parseExplorerParams(
+  get: (key: string) => string,
+  { dimensionDefaults = true }: { dimensionDefaults?: boolean } = {},
+): ExplorerParams {
   const year = Number.parseInt(get("year"), 10);
   const page = Number.parseInt(get("page"), 10);
   const country = get("country").toUpperCase();
@@ -40,8 +43,8 @@ export function parseExplorerParams(get: (key: string) => string): ExplorerParam
       country_code: isUmoaCountry(country) ? country : undefined,
       metric_code: get("metric") || undefined,
       period_year: Number.isInteger(year) ? year : undefined,
-      period_type: get("period") || DEFAULT_PERIOD_TYPE,
-      scope: get("scope") || DEFAULT_SCOPE,
+      period_type: get("period") || (dimensionDefaults ? DEFAULT_PERIOD_TYPE : undefined),
+      scope: get("scope") || (dimensionDefaults ? DEFAULT_SCOPE : undefined),
       currency_normalized: get("currency") || undefined,
       status: get("status") || undefined,
       sort: EXPLORER_SORTS.includes(sort) ? sort : undefined,

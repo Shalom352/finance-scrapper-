@@ -12,7 +12,8 @@
     "search": "Recherche",
     "rankings": "Classements",
     "comparisons": "Comparaisons",
-    "financial_data": "Données financières"
+    "financial_data": "Données financières",
+    "data_quality": "Qualité des données"
   },
   "sidebar": {
     "notice_title": "Sources officielles",
@@ -608,6 +609,113 @@
       "running": "Export en cours…",
       "too_large": "Export indisponible — affinez vos filtres (maximum {max} lignes).",
       "error": "L'export a échoué."
+    }
+  },
+  "data_quality": {
+    "title": "Centre de qualité et de revue des données",
+    "subtitle": "Observations qui demandent une décision humaine : à réviser et valeurs divergentes.",
+    "note": "Chaque décision (réviser, vérifier, rejeter) est une action humaine tracée : motif, identifiant, date, statut avant et après. Aucune observation n'est promue automatiquement.",
+    "auth_note": "La plateforme n'a pas d'authentification : l'identifiant saisi est enregistré tel quel.",
+    "status_to_decide": "À traiter (à réviser + valeurs divergentes)",
+    "open": "Examiner",
+    "back": "Retour à la file",
+    "empty_title": "Aucune observation à traiter",
+    "empty_hint": "Aucune observation ne correspond à ces filtres.",
+    "count": "{total, plural, =0 {Aucune observation} one {# observation} other {# observations}}",
+    "counts": {
+      "title": "Compteurs",
+      "unresolved": "Non résolues",
+      "needs_review": "À réviser",
+      "conflict_keys": "Valeurs divergentes (indicateurs)",
+      "conflict_observations": "Observations divergentes",
+      "extracted": "Extraites",
+      "reviewed": "Revues",
+      "verified": "Vérifiées",
+      "rejected": "Rejetées",
+      "total": "Observations enregistrées"
+    },
+    "detail": {
+      "title": "Observation",
+      "not_found": "Observation introuvable.",
+      "id": "Identifiant",
+      "institution": "Institution",
+      "country": "Pays",
+      "indicator": "Indicateur",
+      "original_value": "Valeur originale",
+      "normalized_value": "Valeur normalisée",
+      "unit": "Unité",
+      "currency": "Devise",
+      "year": "Année",
+      "period_type": "Type de période",
+      "scope": "Périmètre",
+      "status": "Statut",
+      "qualification": "Règle d'autorité",
+      "extraction_method": "Méthode d'extraction",
+      "document": "Document",
+      "page": "Page",
+      "source": "Source",
+      "created_at": "Créée le",
+      "updated_at": "Modifiée le",
+      "verified_by": "Vérifiée par",
+      "missing": "Donnée non renseignée",
+      "provenance": "Afficher la provenance"
+    },
+    "competing": {
+      "title": "Observations concurrentes (même institution, indicateur, année, période et périmètre)",
+      "none": "Aucune autre observation pour cette clé.",
+      "this": "Cette observation",
+      "observation": "Observation",
+      "value": "Valeur",
+      "difference": "Écart",
+      "open": "Ouvrir",
+      "reasons": {
+        "same_observation": "—",
+        "missing_value": "Non calculable : valeur absente",
+        "currency_mismatch": "Non comparable : devises différentes",
+        "unit_mismatch": "Non comparable : unités différentes"
+      },
+      "not_comparable_title": "Autre périmètre ou autre type de période (non comparable, jamais fusionné)",
+      "conflict_guide": "Valeurs divergentes : aucune valeur n'est retenue tant qu'une observation n'est pas vérifiée. Pour résoudre : réviser puis vérifier l'observation correcte, et rejeter les autres avec un motif. Chaque étape est une décision distincte et tracée."
+    },
+    "history": {
+      "title": "Historique des décisions",
+      "empty": "Aucune décision enregistrée pour cette observation.",
+      "by": "par {actor}",
+      "unknown_actor": "identifiant non renseigné",
+      "value_change": "Valeur : {before} → {after}"
+    },
+    "actions": {
+      "title": "Décision",
+      "actor": "Votre identifiant",
+      "actor_placeholder": "ex. analyste-1",
+      "reason": "Motif (obligatoire)",
+      "reason_placeholder": "Pourquoi cette décision ? (page, document, constat)",
+      "review": "Marquer comme revue",
+      "verify": "Vérifier",
+      "reject": "Rejeter",
+      "not_allowed": "Aucune action possible pour ce statut.",
+      "need_fields": "Renseignez votre identifiant et un motif.",
+      "confirm_title": "Confirmer la décision",
+      "confirm": {
+        "review": "Êtes-vous sûr de vouloir marquer cette observation comme revue ?",
+        "verify": "Êtes-vous sûr de vouloir vérifier cette observation ? Elle sera utilisée comme valeur certifiée.",
+        "reject": "Êtes-vous sûr de vouloir rejeter cette observation ? Elle ne sera plus utilisée."
+      },
+      "confirm_yes": "Confirmer",
+      "confirm_no": "Annuler",
+      "done": "Décision enregistrée.",
+      "errors": {
+        "404": "Observation introuvable : elle a peut-être été supprimée.",
+        "409": "L'observation a été modifiée par un autre reviewer. Rechargez avant de décider.",
+        "422": "Transition impossible depuis le statut actuel, ou champ manquant.",
+        "other": "Erreur serveur : la décision n'a pas été enregistrée."
+      },
+      "reload": "Recharger"
+    },
+    "action_names": {
+      "review": "Revue",
+      "verify": "Vérification",
+      "reject": "Rejet"
     }
   }
 }

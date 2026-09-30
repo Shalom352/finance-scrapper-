@@ -154,7 +154,7 @@ async def bulk_review(
 SortQ = Literal["institution", "country", "indicator", "year", "value"]
 
 
-def _ids(institution_ids: str | None) -> list[str] | None:
+def split_ids(institution_ids: str | None) -> list[str] | None:
     return [i.strip() for i in institution_ids.split(",") if i.strip()] if institution_ids else None
 
 
@@ -185,7 +185,7 @@ async def list_financial_data(
         page=page,
         page_size=page_size,
         institution_id=institution_id,
-        institution_ids=_ids(institution_ids),
+        institution_ids=split_ids(institution_ids),
         country_code=country_code,
         metric_code=metric_code,
         period_type=period_type,
@@ -225,7 +225,7 @@ async def export_financial_data(
             sort=sort,
             order=order,
             institution_id=institution_id,
-            institution_ids=_ids(institution_ids),
+            institution_ids=split_ids(institution_ids),
             country_code=country_code,
             metric_code=metric_code,
             period_type=period_type,

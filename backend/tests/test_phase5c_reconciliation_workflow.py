@@ -296,6 +296,7 @@ async def test_workflow_review_and_verify_success():
     mock_row = make_mock_financial_data("data-1", "extracted", Decimal("1000000.00"), "Extracted automatically")
 
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous (audit event)
     exec_res = MagicMock()
     exec_res.scalar_one_or_none.return_value = mock_row
     db.execute.return_value = exec_res
@@ -310,6 +311,10 @@ async def test_workflow_review_and_verify_success():
     assert mock_row.status == "verified"
     assert mock_row.verified_by == "analyst_test@umoa.org"
     assert mock_row.verified_at is not None
+    events = [c.args[0] for c in db.add.call_args_list]
+    assert [(e.action, e.previous_status, e.new_status) for e in events] == [
+        ("review", "extracted", "reviewed"), ("verify", "reviewed", "verified")]
+    assert events[1].actor == "analyst_test@umoa.org"
 
 
 @pytest.mark.asyncio
@@ -318,6 +323,7 @@ async def test_workflow_forbidden_direct_extracted_to_verified_jump():
     mock_row = make_mock_financial_data("data-2", "extracted", Decimal("500000.00"))
 
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous (audit event)
     exec_res = MagicMock()
     exec_res.scalar_one_or_none.return_value = mock_row
     db.execute.return_value = exec_res
@@ -332,6 +338,7 @@ async def test_workflow_reject_requires_reason():
     mock_row = make_mock_financial_data("data-3", "needs_review", Decimal("500000.00"), "")
 
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous (audit event)
     exec_res = MagicMock()
     exec_res.scalar_one_or_none.return_value = mock_row
     db.execute.return_value = exec_res
@@ -344,6 +351,9 @@ async def test_workflow_reject_requires_reason():
     await reject_financial_data(db, "data-3", reason="Illegible scan in source document")
     assert mock_row.status == "rejected"
     assert "Rejection: Illegible scan" in mock_row.notes
+    (event,) = (c.args[0] for c in db.add.call_args_list)
+    assert (event.action, event.previous_status, event.reason) == (
+        "reject", "needs_review", "Illegible scan in source document")
 
 
 @pytest.mark.asyncio
@@ -353,6 +363,7 @@ async def test_workflow_bulk_review():
     r2 = MagicMock(spec=FinancialData, id="d2", status="needs_review", value_normalized=Decimal("20"), notes="")
 
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous (audit event)
     # Mock finding r1 then r2
     res1 = MagicMock()
     res1.scalar_one_or_none.return_value = r1

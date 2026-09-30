@@ -19,10 +19,22 @@ interface ExplorerFiltersProps {
   institutions: Institution[];
   /** Writes URL params (page reset is handled by the caller). */
   onChange: (updates: Updates) => void;
+  /** Label of the empty status option (explorer: all valid rows; review queue: rows to decide). */
+  statusAllLabel?: string;
+  /** Review queue: period type and scope may be left open (each row keeps its own, nothing is merged). */
+  openDimensions?: boolean;
 }
 
 /** Filters of the data explorer. Options list only values really stored (facets). */
-export function ExplorerFilters({ query, institutionIds, facets, institutions, onChange }: ExplorerFiltersProps) {
+export function ExplorerFilters({
+  query,
+  institutionIds,
+  facets,
+  institutions,
+  onChange,
+  statusAllLabel,
+  openDimensions = false,
+}: ExplorerFiltersProps) {
   const t = useTranslations("data_explorer.filters");
   const tStatus = useTranslations("status");
   const tCountries = useTranslations("country_names");
@@ -101,7 +113,8 @@ export function ExplorerFilters({ query, institutionIds, facets, institutions, o
         {/* Period type and scope always hold ONE value: rows of different periods or scopes are never mixed. */}
         <label className="text-[11px] text-gray-400 font-medium">
           {t("period_type")}
-          <select value={query.period_type} onChange={(e) => onChange({ period: e.target.value })} className={selectCls}>
+          <select value={query.period_type ?? ""} onChange={(e) => onChange({ period: e.target.value })} className={selectCls}>
+            {openDimensions && <option value="">{t("all")}</option>}
             {withCurrent(facets?.period_types, query.period_type).map((p) => (
               <option key={p} value={p}>
                 {labels.periodType(p)}
@@ -112,7 +125,8 @@ export function ExplorerFilters({ query, institutionIds, facets, institutions, o
 
         <label className="text-[11px] text-gray-400 font-medium">
           {t("scope")}
-          <select value={query.scope} onChange={(e) => onChange({ scope: e.target.value })} className={selectCls}>
+          <select value={query.scope ?? ""} onChange={(e) => onChange({ scope: e.target.value })} className={selectCls}>
+            {openDimensions && <option value="">{t("all")}</option>}
             {withCurrent(facets?.scopes, query.scope).map((s) => (
               <option key={s} value={s}>
                 {labels.scope(s)}
@@ -124,7 +138,7 @@ export function ExplorerFilters({ query, institutionIds, facets, institutions, o
         <label className="text-[11px] text-gray-400 font-medium">
           {t("status")}
           <select value={query.status ?? ""} onChange={(e) => onChange({ status: e.target.value })} className={selectCls}>
-            <option value="">{t("status_all_valid")}</option>
+            <option value="">{statusAllLabel ?? t("status_all_valid")}</option>
             {(facets?.statuses ?? []).map((s) => (
               <option key={s} value={s}>
                 {statusLabel(s)}

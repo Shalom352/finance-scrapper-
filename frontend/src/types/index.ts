@@ -197,6 +197,70 @@ export interface FinancialDataDetail extends FinancialDataPoint {
   metric: MetricList | null;
 }
 
+// ============================================================
+// Data Quality & Review Center (Phase 12)
+// ============================================================
+
+export type ReviewAction = "review" | "verify" | "reject";
+
+/** Plain counts of stored observations (backend `DataQualityCounts`). */
+export interface ReviewCenterCounts {
+  total: number;
+  extracted: number;
+  needs_review: number;
+  reviewed: number;
+  verified: number;
+  rejected: number;
+  conflict_keys: number;
+  conflict_observations: number;
+  unresolved: number;
+}
+
+export type DifferenceReason = "same_observation" | "missing_value" | "currency_mismatch" | "unit_mismatch";
+
+export interface ReviewObservation {
+  id: string;
+  status: string;
+  qualification: ObservationQualification | null;
+  scope: string;
+  period_type: string;
+  period_year: number;
+  value_original: string;
+  value_normalized: number | null;
+  unit_normalized: string | null;
+  currency_normalized: string | null;
+  extraction_method: string;
+  source_name: string | null;
+  document_title: string | null;
+  page_number: number | null;
+  /** other − observation under review; only for the same currency and unit. */
+  difference: number | null;
+  difference_reason: DifferenceReason | null;
+}
+
+export interface ReviewDetail {
+  observation: FinancialDataDetail;
+  country_code: string | null;
+  qualification: ObservationQualification | null;
+  authoritative_data_id: string | null;
+  allowed_actions: ReviewAction[];
+  competing: ReviewObservation[];
+  not_comparable: ReviewObservation[];
+}
+
+export interface ReviewEvent {
+  id: string;
+  financial_data_id: string;
+  action: ReviewAction;
+  previous_status: string;
+  new_status: string;
+  reason: string | null;
+  actor: string | null;
+  value_before: number | null;
+  value_after: number | null;
+  created_at: string;
+}
+
 /** Backend `InstitutionCoverageResponse` — `GET /api/v1/financial-data/coverage`. */
 export interface InstitutionCoverage {
   institution_id: string;

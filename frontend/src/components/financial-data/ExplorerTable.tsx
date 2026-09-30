@@ -16,13 +16,15 @@ interface ExplorerTableProps {
   order: "asc" | "desc";
   onSort: (sort: ExplorerSort) => void;
   onProvenance: (dataId: string) => void;
+  /** Optional last column linking each row to a page (review queue -> observation detail). */
+  rowLink?: { label: string; href: (row: FinancialDataExplorerItem) => string };
 }
 
 /**
  * Stored observations, one row each, exactly as stored (normalized value + unit + currency).
  * No total, no average, no conversion: rows of different currencies are only listed.
  */
-export function ExplorerTable({ items, sort, order, onSort, onProvenance }: ExplorerTableProps) {
+export function ExplorerTable({ items, sort, order, onSort, onProvenance, rowLink }: ExplorerTableProps) {
   const t = useTranslations("data_explorer.table");
   const tq = useTranslations("data_explorer.qualification");
   const labels = useLabels();
@@ -64,6 +66,7 @@ export function ExplorerTable({ items, sort, order, onSort, onProvenance }: Expl
             <th className="py-3 px-3 uppercase tracking-wider">{t("currency")}</th>
             <th className="py-3 px-3 uppercase tracking-wider">{t("status")}</th>
             <th className="py-3 px-3 uppercase tracking-wider">{t("source")}</th>
+            {rowLink && <th className="py-3 px-3" aria-label={rowLink.label} />}
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-800/60">
@@ -111,6 +114,17 @@ export function ExplorerTable({ items, sort, order, onSort, onProvenance }: Expl
                   </span>
                 </button>
               </td>
+              {rowLink && (
+                <td className="py-2.5 px-3">
+                  <Link
+                    href={rowLink.href(row)}
+                    className="px-2 py-1 rounded-lg bg-gray-800 hover:bg-emerald-600 text-gray-200 hover:text-white whitespace-nowrap"
+                    data-testid="row-link"
+                  >
+                    {rowLink.label}
+                  </Link>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

@@ -5,7 +5,7 @@ Query logic for financial data.
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import and_, distinct, func, or_, select
+from sqlalchemy import distinct, func, or_, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import raiseload, selectinload
 
@@ -13,6 +13,7 @@ from app.models.country import Country
 from app.models.document import Document
 from app.models.financial_data import FinancialData
 from app.models.institution import Institution
+from app.models.review_event import FinancialDataReviewEvent
 from app.models.source import Source
 from app.schemas.common import PaginatedResponse
 from app.schemas.financial_data import (
@@ -31,6 +32,14 @@ from scraping.consolidation import FinancialDataConsolidator
 from scraping.consolidation.duplicate_detector import DuplicateDetector
 from scraping.financial_data.export import EXPORT_MAX_ROWS, ExportTooLargeError, build_csv
 from scraping.financial_data.qualification import qualify_rows
+from scraping.financial_data.review import (
+    InvalidTransitionError,
+    ObservationNotFoundError,
+    can_reject,
+    can_review,
+    can_verify,
+    check_expected_state,
+)
 
 # Sortable explorer columns (backend sort only; never a currency conversion).
 EXPLORER_SORTS = ("institution", "country", "indicator", "year", "value")
@@ -48,6 +57,7 @@ def _explorer_query(
     status: str | None = None,
     currency_normalized: str | None = None,
     include_rejected: bool = True,
+    attention_ids: set[str] | None = None,
 ):
     """Filtered observations joined with names and document title in ONE query
     (no N+1, no full document rows)."""
@@ -79,6 +89,9 @@ def _explorer_query(
         query = query.where(FinancialData.scope == scope)
     if status:
         query = query.where(FinancialData.status == status)
+    elif attention_ids is not None:
+        # Review queue: observations needing a human decision.
+        query = query.where(or_(FinancialData.status == "needs_review", FinancialData.id.in_(attention_ids)))
     elif not include_rejected:
         query = query.where(FinancialData.status != "rejected")
     if currency_normalized:
@@ -109,40 +122,71 @@ def _order(query, sort: str | None, order: str):
     return query.order_by(*cols, FinancialData.id)
 
 
-async def _qualify_page(db: AsyncSession, rows: list[FinancialData]) -> dict[str, tuple[str, str | None]]:
-    """Qualification of the page rows, decided over ALL observations of their logical keys."""
-    if not rows:
-        return {}
-    keys = {(r.institution_id, r.metric_code, r.period_year, r.period_type, r.scope) for r in rows}
-    sibling_q = (
+LOGICAL_KEY = (
+    FinancialData.institution_id,
+    FinancialData.metric_code,
+    FinancialData.period_year,
+    FinancialData.period_type,
+    FinancialData.scope,
+)
+
+
+async def load_observations(db: AsyncSession, *conditions: Any) -> list:
+    """Stored (non-deleted) observations matching `conditions`, as ObservationSummary, loading
+    exactly what the authority rule reads (source priority / name / type, document title)."""
+    query = (
         select(FinancialData)
         .options(
             raiseload("*"),
-            # Exactly what the authority rule reads (source priority / name / type, document title).
             selectinload(FinancialData.source)
             .load_only(Source.id, Source.name, Source.source_type, Source.priority)
             .raiseload("*"),
             selectinload(FinancialData.document).load_only(Document.id, Document.title).raiseload("*"),
         )
-        .where(
-            FinancialData.deleted_at.is_(None),
-            or_(*[
-                and_(
-                    FinancialData.institution_id == i,
-                    FinancialData.metric_code == m,
-                    FinancialData.period_year == y,
-                    FinancialData.period_type == p,
-                    FinancialData.scope == s,
-                )
-                for i, m, y, p, s in keys
-            ]),
-        )
+        .where(FinancialData.deleted_at.is_(None), *conditions)
     )
-    siblings = (await db.execute(sibling_q)).scalars().all()
+    rows = (await db.execute(query)).scalars().all()
     detector = DuplicateDetector()
-    obs = [detector.observation_from_orm(r) for r in siblings]
+    return [detector.observation_from_orm(r) for r in rows]
+
+
+async def key_observations(db: AsyncSession, keys) -> list:
+    """Every stored observation of the given logical keys."""
+    keys = list(keys)
+    return await load_observations(db, tuple_(*LOGICAL_KEY).in_(keys)) if keys else []
+
+
+async def _qualify_page(db: AsyncSession, rows: list[FinancialData]) -> dict[str, tuple[str, str | None]]:
+    """Qualification of the page rows, decided over ALL observations of their logical keys."""
+    if not rows:
+        return {}
+    keys = {(r.institution_id, r.metric_code, r.period_year, r.period_type, r.scope) for r in rows}
+    obs = await key_observations(db, keys)
     page_ids = {r.id for r in rows}
     return qualify_rows([o for o in obs if o.id in page_ids], obs)
+
+
+async def conflict_observations(db: AsyncSession, **dims: Any) -> list:
+    """Observations whose logical key is in conflict according to the EXISTING authority rule.
+
+    SQL only narrows the candidates (keys with >= 2 non-rejected valued rows and no verified
+    row); the decision itself is qualify_rows -> qualify_metric -> EligibilityEngine.
+    """
+    candidates = (
+        _explorer_query(**dims, include_rejected=False)
+        .with_only_columns(*LOGICAL_KEY)
+        .where(FinancialData.value_normalized.is_not(None))
+        .group_by(*LOGICAL_KEY)
+        .having(func.count() >= 2, func.count().filter(FinancialData.status == "verified") == 0)
+    )
+    keys = [tuple(k) for k in (await db.execute(candidates)).all()]
+    obs = await key_observations(db, keys)
+    qual = qualify_rows(obs, obs)
+    return [o for o in obs if qual.get(o.id, (None,))[0] == "conflict"]
+
+
+async def conflict_observation_ids(db: AsyncSession, **dims: Any) -> set[str]:
+    return {o.id for o in await conflict_observations(db, **dims)}
 
 
 def _to_item(row, inst_name, country, source_name, doc_title, qual) -> FinancialDataExplorerItem:
@@ -179,11 +223,16 @@ async def get_financial_data(
     include_rejected: bool = True,
     sort: str | None = None,
     order: str = "asc",
+    attention_only: bool = False,
 ) -> PaginatedResponse[FinancialDataExplorerItem]:
-    query = _explorer_query(
+    dims = dict(
         institution_id=institution_id, institution_ids=institution_ids, country_code=country_code,
         metric_code=metric_code, period_type=period_type, period_year=period_year, scope=scope,
-        status=status, currency_normalized=currency_normalized, include_rejected=include_rejected,
+    )
+    attention_ids = await conflict_observation_ids(db, **dims) if attention_only and not status else None
+    query = _explorer_query(
+        **dims, status=status, currency_normalized=currency_normalized, include_rejected=include_rejected,
+        attention_ids=attention_ids,
     )
     count_q = select(func.count()).select_from(query.subquery())
     total = (await db.execute(count_q)).scalar_one()
@@ -251,38 +300,89 @@ async def get_financial_data_by_id(db: AsyncSession, data_id: str) -> FinancialD
     return FinancialDataRead.model_validate(row) if row else None
 
 
+async def _load_for_decision(
+    db: AsyncSession,
+    data_id: str,
+    expected_status: str | None,
+    expected_updated_at: datetime | None,
+) -> FinancialData:
+    """Load the observation locked for the decision (SELECT ... FOR UPDATE on financial_data
+    only) and refuse a decision taken on a stale view (optimistic concurrency)."""
+    result = await db.execute(
+        select(FinancialData)
+        .where(FinancialData.id == data_id, FinancialData.deleted_at.is_(None))
+        .with_for_update(of=FinancialData)
+    )
+    row = result.scalar_one_or_none()
+    if not row:
+        raise ObservationNotFoundError(f"FinancialData '{data_id}' not found")
+    check_expected_state(row, expected_status, expected_updated_at)
+    return row
+
+
+def _record_event(
+    db: AsyncSession,
+    row: FinancialData,
+    *,
+    action: str,
+    previous_status: str,
+    reason: str | None,
+    actor: str | None,
+    value_before: Any,
+) -> None:
+    """Append the decision to the audit trail, in the same transaction as the change."""
+    db.add(
+        FinancialDataReviewEvent(
+            financial_data_id=row.id,
+            action=action,
+            previous_status=previous_status,
+            new_status=row.status,
+            reason=reason,
+            actor=actor,
+            value_before=value_before,
+            value_after=row.value_normalized,
+        )
+    )
+
+
+def _clean(text: str | None) -> str | None:
+    return text.strip() if text and text.strip() else None
+
+
 async def review_financial_data(
     db: AsyncSession,
     data_id: str,
     *,
     reviewer_notes: str | None = None,
     value_normalized_override: Any | None = None,
+    actor: str | None = None,
+    expected_status: str | None = None,
+    expected_updated_at: datetime | None = None,
 ) -> FinancialDataRead:
     """
     Transition financial data point to 'reviewed' status.
     Requires value_normalized to be NOT NULL.
+    A value override is traced in the audit trail (value before / after).
     """
-    result = await db.execute(
-        select(FinancialData).where(FinancialData.id == data_id, FinancialData.deleted_at.is_(None))
-    )
-    row = result.scalar_one_or_none()
-    if not row:
-        raise ValueError(f"FinancialData '{data_id}' not found")
+    row = await _load_for_decision(db, data_id, expected_status, expected_updated_at)
+    previous_status, value_before = row.status, row.value_normalized
 
     if row.status in ("verified", "rejected"):
-        raise ValueError(f"Cannot transition to 'reviewed' from status '{row.status}'")
+        raise InvalidTransitionError(f"Cannot transition to 'reviewed' from status '{row.status}'")
 
     if value_normalized_override is not None:
         row.value_normalized = value_normalized_override
 
-    if row.value_normalized is None:
-        raise ValueError("Cannot review financial data: value_normalized must not be null")
+    if not can_review(row.status, row.value_normalized):
+        raise InvalidTransitionError("Cannot review financial data: value_normalized must not be null")
 
     row.status = "reviewed"
     if reviewer_notes:
         row.notes = f"{row.notes} | Review: {reviewer_notes}" if row.notes else f"Review: {reviewer_notes}"
 
     row.updated_at = datetime.now(UTC)
+    _record_event(db, row, action="review", previous_status=previous_status, reason=_clean(reviewer_notes),
+                  actor=_clean(actor), value_before=value_before)
 
     await db.commit()
     return await get_financial_data_by_id(db, data_id)  # type: ignore[return-value]
@@ -294,29 +394,27 @@ async def verify_financial_data(
     *,
     verified_by: str,
     verification_notes: str | None = None,
+    expected_status: str | None = None,
+    expected_updated_at: datetime | None = None,
 ) -> FinancialDataRead:
     """
     Transition financial data point to 'verified' status.
     Invariant: Can ONLY be verified if previously 'reviewed'. Direct jump is forbidden.
     Requires verified_by and sets verified_at.
     """
-    result = await db.execute(
-        select(FinancialData).where(FinancialData.id == data_id, FinancialData.deleted_at.is_(None))
-    )
-    row = result.scalar_one_or_none()
-    if not row:
-        raise ValueError(f"FinancialData '{data_id}' not found")
+    row = await _load_for_decision(db, data_id, expected_status, expected_updated_at)
+    previous_status, value_before = row.status, row.value_normalized
 
     if row.status != "reviewed":
-        raise ValueError(
+        raise InvalidTransitionError(
             f"Direct verification from status '{row.status}' is forbidden; record must be 'reviewed' first"
         )
 
     if not verified_by or not verified_by.strip():
         raise ValueError("verified_by validator identifier is required")
 
-    if row.value_normalized is None:
-        raise ValueError("Cannot verify financial data: value_normalized must not be null")
+    if not can_verify(row.status, row.value_normalized):
+        raise InvalidTransitionError("Cannot verify financial data: value_normalized must not be null")
 
     now = datetime.now(UTC)
     row.status = "verified"
@@ -329,6 +427,8 @@ async def verify_financial_data(
             if row.notes
             else f"Verification: {verification_notes}"
         )
+    _record_event(db, row, action="verify", previous_status=previous_status, reason=_clean(verification_notes),
+                  actor=row.verified_by, value_before=value_before)
 
     await db.commit()
     return await get_financial_data_by_id(db, data_id)  # type: ignore[return-value]
@@ -339,24 +439,27 @@ async def reject_financial_data(
     data_id: str,
     *,
     reason: str,
+    actor: str | None = None,
+    expected_status: str | None = None,
+    expected_updated_at: datetime | None = None,
 ) -> FinancialDataRead:
     """
     Transition financial data point to 'rejected' status.
-    Requires mandatory rejection reason.
+    Requires mandatory rejection reason. A rejected observation stays rejected.
     """
     if not reason or not reason.strip():
         raise ValueError("Rejection reason is mandatory")
 
-    result = await db.execute(
-        select(FinancialData).where(FinancialData.id == data_id, FinancialData.deleted_at.is_(None))
-    )
-    row = result.scalar_one_or_none()
-    if not row:
-        raise ValueError(f"FinancialData '{data_id}' not found")
+    row = await _load_for_decision(db, data_id, expected_status, expected_updated_at)
+    previous_status, value_before = row.status, row.value_normalized
+    if not can_reject(row.status):
+        raise InvalidTransitionError("Observation is already 'rejected'")
 
     row.status = "rejected"
     row.notes = f"{row.notes} | Rejection: {reason.strip()}" if row.notes else f"Rejection: {reason.strip()}"
     row.updated_at = datetime.now(UTC)
+    _record_event(db, row, action="reject", previous_status=previous_status, reason=reason.strip(),
+                  actor=_clean(actor), value_before=value_before)
 
     await db.commit()
     return await get_financial_data_by_id(db, data_id)  # type: ignore[return-value]
@@ -375,7 +478,8 @@ async def bulk_review_financial_data(
             select(FinancialData).where(FinancialData.id == d_id, FinancialData.deleted_at.is_(None))
         )
         row = result.scalar_one_or_none()
-        if row and row.status in ("extracted", "needs_review") and row.value_normalized is not None:
+        if row and row.status in ("extracted", "needs_review") and can_review(row.status, row.value_normalized):
+            previous_status = row.status
             row.status = "reviewed"
             if reviewer_notes:
                 row.notes = (
@@ -384,6 +488,8 @@ async def bulk_review_financial_data(
                     else f"Bulk Review: {reviewer_notes}"
                 )
             row.updated_at = datetime.now(UTC)
+            _record_event(db, row, action="review", previous_status=previous_status,
+                          reason=_clean(reviewer_notes), actor=None, value_before=row.value_normalized)
             updated_ids.append(d_id)
 
     await db.commit()
