@@ -129,6 +129,37 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     # ------------------------------------------------------------------
+    # Ingestion command (Full multi-year automated ingestion pipeline)
+    # ------------------------------------------------------------------
+    ingestion_p = subparsers.add_parser(
+        "ingestion",
+        help="Run the unified automated ingestion pipeline (multi-year, idempotent, audit-logged)",
+    )
+    ingestion_p.add_argument(
+        "--source",
+        choices=["bceao", "cb-umoa", "all"],
+        default="all",
+        help="Filter source (default: all)",
+    )
+    ingestion_p.add_argument(
+        "--year",
+        type=int,
+        default=None,
+        help="Target single year (overrides historical window)",
+    )
+    ingestion_p.add_argument(
+        "--historical-years",
+        type=int,
+        default=None,
+        help="Number of historical calendar years to scan (default: from config)",
+    )
+    ingestion_p.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Limit discovery per source",
+    )
+    # ------------------------------------------------------------------
     # Import deals (Phase 13): structured import only, no extraction
     # ------------------------------------------------------------------
     deals_p = subparsers.add_parser(
@@ -140,6 +171,43 @@ def build_parser() -> argparse.ArgumentParser:
     deals_p.add_argument("--dry-run", action="store_true", help="Validate everything, write nothing")
 
     return parser
+
+
+async def run_ingestion_cli(args: argparse.Namespace) -> int:
+    """Execute the automated ingestion pipeline via CLI."""
+    from app.services.ingestion import IngestionService
+
+    service = IngestionService()
+    sources = None if args.source == "all" else [args.source]
+    target_years = [args.year] if args.year else None
+
+    print("\n================================================================================")
+    print("UMOA Banking Intelligence — Ingestion Pipeline Execution")
+    print("================================================================================")
+    print(f"Source(s)       : {args.source.upper()}")
+    print(f"Target year(s)  : {target_years or f'Current + {args.historical_years or 5} historical years'}")
+    print(f"Limit/source    : {args.limit or 'Unlimited'}")
+    print(f"Force run       : {args.force}\n")
+
+    async with AsyncSessionLocal() as session:
+        run = await service.execute_run(
+            db=session,
+            trigger_type="cli",
+            target_years=target_years,
+            sources=sources,
+            limit_per_source=args.limit,
+            force=args.force,
+        )
+
+    print(f"[+] Status: {run.status.upper()}")
+    print(f"[+] Run ID: {run.id}")
+    print(f"[+] Summary: {run.summary_text}")
+    if run.errors:
+        print(f"[!] Errors encountered ({len(run.errors)}):")
+        for err in run.errors:
+            print(f"    - [{err.get('source', 'unknown')}] {err.get('phase')}: {err.get('error')}")
+
+    return 0 if run.status in ("completed", "partial_failure") else 1
 
 
 async def run_import_deals(args: argparse.Namespace) -> int:
@@ -175,6 +243,8 @@ async def run_cli(args: argparse.Namespace) -> int:
     configure_logging()
     if args.command == "import-deals":
         return await run_import_deals(args)
+    if args.command == "ingestion":
+        return await run_ingestion_cli(args)
     pipeline = ScrapingPipeline()
 
     sources = ["bceao", "cb-umoa"] if getattr(args, "source", None) == "all" else [getattr(args, "source", "bceao")]

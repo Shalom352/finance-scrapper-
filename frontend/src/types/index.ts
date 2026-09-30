@@ -903,3 +903,32 @@ export interface DealAnalytics {
   rows: DealAnalyticsRow[];
   amount_basis: string;
 }
+
+// ============================================================
+// Automated Ingestion
+// ============================================================
+
+export type IngestionStatus = "running" | "completed" | "partial_failure" | "failed" | "skipped_concurrent";
+export type IngestionTrigger = "scheduled" | "manual" | "cli";
+
+export interface IngestionRun {
+  id: string;
+  trigger_type: IngestionTrigger;
+  status: IngestionStatus;
+  target_years: string | null;
+  sources_checked: number;
+  documents_found: number;
+  documents_new: number;
+  documents_downloaded: number;
+  documents_skipped: number;
+  documents_failed: number;
+  data_points_extracted: number;
+  data_points_needing_review: number;
+  started_at: string;
+  finished_at: string | null;
+  duration_seconds: number | null;
+  errors: Array<{ source?: string; phase?: string; error: string }> | null;
+  summary_text: string | null;
+  created_at: string;
+}
+

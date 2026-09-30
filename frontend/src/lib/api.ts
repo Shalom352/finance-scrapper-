@@ -24,6 +24,7 @@ import type {
   FinancialDataExplorerItem,
   FinancialDataFacets,
   FinancialDataPoint,
+  IngestionRun,
   ReviewCenterCounts,
   ReviewAction,
   ReviewDetail,
@@ -704,3 +705,13 @@ export async function postDuplicateDecision(
     expected_state: "duplicate_candidate",
   });
 }
+
+/** Get the latest automated/manual ingestion run execution details. */
+export async function getLatestIngestionRun(): Promise<IngestionRun | null> {
+  try {
+    return await apiFetch<IngestionRun | null>("/api/v1/ingestion/runs/latest");
+  } catch {
+    return null;
+  }
+}
+

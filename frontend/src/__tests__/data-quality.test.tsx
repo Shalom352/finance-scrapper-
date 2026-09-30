@@ -74,6 +74,7 @@ vi.mock("@/lib/api", () => {
       state.provenanceCalls.push(id);
       return new Promise(() => {});
     },
+    getLatestIngestionRun: () => Promise.resolve(null),
   };
 });
 

@@ -38,7 +38,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         host=settings.backend_host,
         port=settings.backend_port,
     )
+
+    # Start background ingestion scheduler if enabled
+    from app.services.scheduler import get_ingestion_scheduler
+    scheduler = get_ingestion_scheduler()
+    scheduler.start()
+
     yield
+
+    scheduler.stop()
     logger.info("application_shutdown")
 
 
@@ -111,6 +119,7 @@ def create_app() -> FastAPI:
     from app.api.v1.deals import router as deals_router
     from app.api.v1.documents import router as documents_router
     from app.api.v1.financial_data import router as financial_data_router
+    from app.api.v1.ingestion import router as ingestion_router
     from app.api.v1.institutions import router as institutions_router
     from app.api.v1.metrics import router as metrics_router
     from app.api.v1.rankings import router as rankings_router
@@ -130,6 +139,7 @@ def create_app() -> FastAPI:
     app.include_router(analytics_router)
     app.include_router(data_quality_router)
     app.include_router(deals_router)
+    app.include_router(ingestion_router)
 
     from app.core.exceptions import register_exception_handlers
     register_exception_handlers(app)

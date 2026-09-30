@@ -26,6 +26,7 @@ import { ExplorerFilters } from "@/components/financial-data/ExplorerFilters";
 import { ExplorerTable } from "@/components/financial-data/ExplorerTable";
 import { SummaryCounts } from "@/components/data-quality/SummaryCounts";
 import { DealQueue } from "@/components/data-quality/DealQueue";
+import { IngestionStatusBanner } from "@/components/data-quality/IngestionStatusBanner";
 
 const DEAL_QUEUE_STATUSES = ["extracted", "needs_review", "reviewed", "verified", "rejected"];
 
@@ -92,6 +93,8 @@ function DataQualityContent() {
         <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">{t("title")}</h1>
         <p className="text-xs text-gray-400 mt-1">{t("subtitle")}</p>
       </div>
+
+      <IngestionStatusBanner />
 
       {counts && <SummaryCounts counts={counts} />}
 

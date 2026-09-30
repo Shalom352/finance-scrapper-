@@ -655,6 +655,19 @@
       "deals_duplicate_candidates": "Duplicate candidates",
       "deals_verified": "Deals — verified"
     },
+    "ingestion": {
+      "title": "Automated Ingestion",
+      "status_running": "Running",
+      "status_completed": "Completed",
+      "status_partial_failure": "Partial Failure",
+      "status_failed": "Failed",
+      "status_skipped_concurrent": "Skipped (concurrent)",
+      "last_run": "Last ingestion: {time}",
+      "no_run": "No ingestion recorded",
+      "stats": "{docs} docs discovered · {metrics} metrics extracted",
+      "duration": "Duration: {seconds}s",
+      "target_years": "Target years: {years}"
+    },
     "detail": {
       "title": "Observation",
       "not_found": "Observation not found.",

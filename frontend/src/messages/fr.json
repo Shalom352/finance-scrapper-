@@ -655,6 +655,19 @@
       "deals_duplicate_candidates": "Doublons potentiels",
       "deals_verified": "Transactions vérifiées"
     },
+    "ingestion": {
+      "title": "Ingestion automatisée",
+      "status_running": "En cours d'exécution",
+      "status_completed": "Terminée",
+      "status_partial_failure": "Succès partiel",
+      "status_failed": "Échec",
+      "status_skipped_concurrent": "Ignorée (exécution concurrente)",
+      "last_run": "Dernière ingestion : {time}",
+      "no_run": "Aucune ingestion enregistrée",
+      "stats": "{docs} documents découverts · {metrics} métriques extraites",
+      "duration": "Durée : {seconds}s",
+      "target_years": "Années cibles : {years}"
+    },
     "detail": {
       "title": "Observation",
       "not_found": "Observation introuvable.",

@@ -11,6 +11,7 @@ from app.models.deal import (
 )
 from app.models.document import Document
 from app.models.financial_data import FinancialData
+from app.models.ingestion_run import IngestionRun
 from app.models.institution import Institution
 from app.models.metric_definition import MetricDefinition
 from app.models.review_event import FinancialDataReviewEvent
@@ -30,4 +31,5 @@ __all__ = [
     "DealFieldSource",
     "DealParticipant",
     "DealDuplicateCandidate",
+    "IngestionRun",
 ]

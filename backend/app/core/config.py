@@ -90,6 +90,15 @@ class Settings(BaseSettings):
     documents_storage_path: str = "./data/downloads"
 
     # ------------------------------------------------------------------
+    # Automated Ingestion & Scheduling
+    # ------------------------------------------------------------------
+    ingestion_enabled: bool = False
+    ingestion_schedule: str = "0 8,20 * * *"
+    ingestion_timezone: str = "Africa/Abidjan"
+    ingestion_historical_years: int = 5
+    ingestion_concurrency_limit: int = 1
+
+    # ------------------------------------------------------------------
     # Computed helpers
     # ------------------------------------------------------------------
     @property
