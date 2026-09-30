@@ -124,8 +124,11 @@ class SectorAnalyzer:
             ratio_share = round(f_inst / f_tot, 4)
 
         desc = (
-            f"{institution_name} represents {round(ratio_share * 100, 2) if ratio_share else 0.0}% "
+            f"{institution_name} represents {round(ratio_share * 100, 2)}% "
             f"of the {country_name} sector total for {metric_code} in {year}."
+            if ratio_share is not None
+            else f"Share of {institution_name} in the {country_name} sector total for {metric_code} "
+            f"in {year}: not available."
         )
 
         return ComparisonResult(
@@ -160,8 +163,10 @@ class SectorAnalyzer:
             ratio_share = round(f_c / f_u, 4)
 
         desc = (
-            f"{country_name} represents {round(ratio_share * 100, 2) if ratio_share else 0.0}% "
+            f"{country_name} represents {round(ratio_share * 100, 2)}% "
             f"of the total UMOA banking sector for {metric_code} in {year}."
+            if ratio_share is not None
+            else f"Share of {country_name} in the UMOA banking sector for {metric_code} in {year}: not available."
         )
 
         return ComparisonResult(

@@ -48,17 +48,22 @@ class HistoricalAnalyzer:
             for obs in observations
         ]
 
-        grouped: dict[tuple[str, str], list[ObservationSummary]] = defaultdict(list)
+        # One series per (institution, metric, period type, scope): annual and semi-annual,
+        # individual and consolidated are never chained together. Rejected rows are never
+        # picked as the value of a year (Phase 13).
+        grouped: dict[tuple[str, str, str, str | None], list[ObservationSummary]] = defaultdict(list)
         for obs in parsed_obs:
+            if obs.status == "rejected":
+                continue
             metric_code = getattr(obs, "metric_code", "")
             if not metric_code and hasattr(obs, "metric"):
                 metric_code = getattr(obs.metric, "code", "")
-            key = (obs.institution_id, metric_code)
+            key = (obs.institution_id, metric_code, obs.period_type, obs.scope)
             grouped[key].append(obs)
 
         series_list: list[HistoricalSeries] = []
 
-        for (inst_id, metric_code), items in grouped.items():
+        for (inst_id, metric_code, p_type, scope), items in grouped.items():
             # For each year, select the most authoritative observation if multiple exist
             year_map: dict[int, ObservationSummary] = {}
             for it in items:
@@ -107,6 +112,8 @@ class HistoricalAnalyzer:
                     institution_id=inst_id,
                     institution_name=None,
                     metric_code=metric_code,
+                    period_type=p_type,
+                    scope=scope,
                     first_year=first_year,
                     last_year=last_year,
                     available_years=sorted_years,

@@ -96,20 +96,24 @@ function InstitutionExplorer({ id }: { id: string }) {
   const [documents, setDocuments] = useState<Document[] | null>(null);
   const [profile, setProfile] = useState<Load<Profile>>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
+  const [institutionAttempt, setInstitutionAttempt] = useState(0);
   const [provenanceId, setProvenanceId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     getInstitutionById(id)
       .then((data) => !cancelled && setInstitution({ status: "ready", data }))
-      .catch(() => !cancelled && setInstitution({ status: "ready", data: null }));
+      // Only a 404 means "not found"; any other failure is an error state with a retry.
+      .catch((err: { status?: number }) =>
+        !cancelled && setInstitution(err?.status === 404 ? { status: "ready", data: null } : { status: "error" }),
+      );
     getDocuments({ institution_id: id, page_size: 100 })
       .then((r) => !cancelled && setDocuments(r.items))
       .catch(() => !cancelled && setDocuments(null));
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, institutionAttempt]);
 
   useEffect(() => {
     let cancelled = false;
@@ -140,6 +144,9 @@ function InstitutionExplorer({ id }: { id: string }) {
         <TableSkeleton rows={6} cols={4} />
       </div>
     );
+  }
+  if (institution.status === "error") {
+    return <ErrorState onRetry={() => { setInstitution({ status: "loading" }); setInstitutionAttempt((n) => n + 1); }} />;
   }
   const inst = institution.status === "ready" ? institution.data : null;
   if (!inst) {
@@ -173,11 +180,17 @@ function InstitutionExplorer({ id }: { id: string }) {
         {inst.name_commercial && <p className="text-sm text-emerald-400 font-medium mt-1">{inst.name_commercial}</p>}
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-4 text-xs text-gray-400">
           <span>
-            {t("group")} : <span className="text-gray-200 font-semibold">{inst.banking_group?.name ?? MISSING}</span>
+            {t("group")}{t("label_sep")} <span className="text-gray-200 font-semibold">{inst.banking_group?.name ?? MISSING}</span>
           </span>
           <span>
-            {t("regulatory_id")} : <span className="text-gray-200 font-mono">{inst.regulatory_id ?? MISSING}</span>
+            {t("regulatory_id")}{t("label_sep")} <span className="text-gray-200 font-mono">{inst.regulatory_id ?? MISSING}</span>
           </span>
+          <Link href={`/financial-data?inst=${encodeURIComponent(inst.id)}`} className="text-emerald-400 hover:underline" data-testid="institution-financial-data-link">
+            {t("financial_data_link")} →
+          </Link>
+          <Link href={`/deals?bank=${encodeURIComponent(inst.id)}`} className="text-emerald-400 hover:underline" data-testid="institution-deals-link">
+            {t("deals_link")} →
+          </Link>
           {inst.website_url && (
             <a href={inst.website_url} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline">
               {t("website")} ↗

@@ -85,9 +85,10 @@ class SectorAggregator:
             if best_obs.status == "rejected":
                 continue
 
-            if best_obs.status == "needs_review" and not include_needs_review:
+            if best_obs.status == "needs_review":
                 has_needs_review_contributions = True
-                continue
+                if not include_needs_review:
+                    continue
 
             if best_obs.value_normalized is not None:
                 total_sum += best_obs.value_normalized
@@ -109,6 +110,10 @@ class SectorAggregator:
         elif inst_count == 0:
             status = "unavailable"
             total_val = None
+        elif has_needs_review_contributions and include_needs_review:
+            # Explicitly requested: the total contains unreviewed values, it is never "calculated".
+            status = "needs_review"
+            total_val = total_sum
         elif is_partial:
             status = "partial"
             total_val = total_sum
@@ -124,6 +129,8 @@ class SectorAggregator:
             )
         if has_needs_review_contributions and not include_needs_review:
             notes = f"{notes or ''} Observations with 'needs_review' status were excluded."
+        if has_needs_review_contributions and include_needs_review:
+            notes = f"{notes or ''} Includes observations with 'needs_review' status (not reviewed)."
         if conflicting_ids:
             notes = f"{notes or ''} {len(conflicting_ids)} institution(s) excluded: unresolved conflicting values."
         if currency_mismatch:

@@ -186,7 +186,10 @@ async def test_queue_filters_and_explicit_statuses(api: AsyncClient, pg_db: dict
 async def test_summary_counters_only(api: AsyncClient):
     s = (await api.get(f"{DQ}/summary")).json()
     assert s == {"total": 10, "extracted": 6, "needs_review": 1, "reviewed": 1, "verified": 1, "rejected": 1,
-                 "conflict_keys": 2, "conflict_observations": 4, "unresolved": 5}
+                 "conflict_keys": 2, "conflict_observations": 4, "unresolved": 5,
+                 # Phase 13: deal counters (no deal in this database).
+                 "deals_total": 0, "deals_needs_review": 0, "deals_reviewed": 0, "deals_verified": 0,
+                 "deals_rejected": 0, "deals_duplicate_candidates": 0}
 
 
 @pytest.mark.asyncio
@@ -339,11 +342,15 @@ async def test_reject_needs_review_is_excluded_everywhere(api: AsyncClient, pg_d
 async def test_legacy_routes_keep_http_400_and_are_audited(api: AsyncClient, pg_db: dict):
     i = pg_db["ids"]
     r = await api.post(f"/api/v1/financial-data/{i['c_dc_eur']}/verify", json={"verified_by": "x"})
-    assert r.status_code == 400  # unchanged contract of the pre-existing route
+    assert r.status_code == 400  # invalid transition: unchanged contract of the pre-existing route
+    # Phase 13 hardening: the actor is mandatory, a decision is never recorded with actor NULL.
     r = await api.post(f"/api/v1/financial-data/{i['c_dc_eur']}/reject", json={"reason": "Wrong currency column"})
+    assert r.status_code == 422
+    r = await api.post(f"/api/v1/financial-data/{i['c_dc_eur']}/reject",
+                       json={"reason": "Wrong currency column", "actor": "analyst-9"})
     assert r.status_code == 200
     (e,) = await events(api, i["c_dc_eur"])
-    assert (e["action"], e["previous_status"], e["actor"]) == ("reject", "extracted", None)
+    assert (e["action"], e["previous_status"], e["actor"]) == ("reject", "extracted", "analyst-9")
 
 
 @pytest.mark.asyncio

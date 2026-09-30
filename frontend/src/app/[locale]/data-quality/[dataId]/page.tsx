@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import type { ReviewDetail, ReviewEvent } from "@/types";
 import { ApiError, getReviewDetail, getReviewHistory } from "@/lib/api";
 import { Link } from "@/i18n/navigation";
-import { displayCurrency, MISSING } from "@/lib/formatters";
+import { displayCurrency, MISSING, orMissing } from "@/lib/formatters";
 import { useFormatters } from "@/lib/useFormatters";
 import { useLabels } from "@/lib/useLabels";
 import { useQueryParams } from "@/lib/useQueryParams";
@@ -37,6 +37,7 @@ function ReviewDetailContent({ dataId }: { dataId: string }) {
   const td = useTranslations("data_quality.detail");
   const tc = useTranslations("data_quality.competing");
   const tq = useTranslations("data_explorer.qualification");
+  const tm = useTranslations("provenance.methods");
   const labels = useLabels();
   const fmt = useFormatters();
   const { searchParams } = useQueryParams();
@@ -46,6 +47,8 @@ function ReviewDetailContent({ dataId }: { dataId: string }) {
   const [state, setState] = useState<Load>({ status: "loading" });
   const [reload, setReload] = useState(0);
   const [provenance, setProvenance] = useState(false);
+  // Success of the last decision, kept across the reload that remounts the decision form.
+  const [done, setDone] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -103,14 +106,17 @@ function ReviewDetailContent({ dataId }: { dataId: string }) {
     [td("scope"), labels.scope(o.scope)],
     [td("status"), <StatusBadge key="st" status={o.status} size="sm" />],
     [td("qualification"), detail.qualification ? tq(detail.qualification) : MISSING],
-    [td("extraction_method"), o.extraction_method],
+    [td("extraction_method"), tm.has(o.extraction_method) ? tm(o.extraction_method) : orMissing(o.extraction_method)],
     [td("document"), o.document?.title ?? MISSING],
     [td("page"), o.page_number ?? MISSING],
     [td("source"), o.source?.name ?? MISSING],
     [td("created_at"), fmt.date(o.created_at)],
     [td("updated_at"), fmt.date(o.updated_at)],
     [td("verified_by"), o.verified_by ?? MISSING],
+    [td("notes"), orMissing(o.notes)],
   ];
+  // Phase 13 scope guard: the pipeline could not tell individual from consolidated statements.
+  const scopeNotDetected = (o.notes ?? "").includes("scope not detected");
   const hrefFor = (id: string) => `/data-quality/${id}${suffix}`;
 
   return (
@@ -125,6 +131,12 @@ function ReviewDetailContent({ dataId }: { dataId: string }) {
           {td("provenance")}
         </button>
       </div>
+
+      {scopeNotDetected && (
+        <p role="note" className="p-3 rounded-xl border border-amber-800/60 bg-amber-950/30 text-xs text-amber-200" data-testid="dq-scope-not-detected">
+          {td("scope_not_detected")}
+        </p>
+      )}
 
       <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3 p-4 rounded-2xl border border-gray-800 bg-gray-900/40 text-xs" data-testid="dq-facts">
         {facts.map(([label, value]) => (
@@ -167,7 +179,15 @@ function ReviewDetailContent({ dataId }: { dataId: string }) {
         allowed={detail.allowed_actions}
         expectedStatus={o.status}
         expectedUpdatedAt={o.updated_at}
-        onDone={() => setReload((n) => n + 1)}
+        done={done}
+        onDone={() => {
+          setDone(true);
+          setReload((n) => n + 1);
+        }}
+        onReload={() => {
+          setDone(false);
+          setReload((n) => n + 1);
+        }}
       />
       <p className="text-[11px] text-gray-500">{t("auth_note")}</p>
 

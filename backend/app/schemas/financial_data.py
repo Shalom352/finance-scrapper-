@@ -2,8 +2,9 @@
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
+from app.schemas.common import Actor
 from app.schemas.document import DocumentList
 from app.schemas.institution import InstitutionList
 from app.schemas.metric_definition import MetricList
@@ -91,31 +92,60 @@ class FinancialDataRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class FinancialDataReviewRequest(BaseModel):
+class _ExpectedState(BaseModel):
+    """State the caller saw before deciding (optimistic concurrency -> 409 if it changed)."""
+
+    expected_status: str | None = None
+    expected_updated_at: datetime | None = None
+
+
+class FinancialDataReviewRequest(_ExpectedState):
     """Payload for promoting a financial data point to reviewed status."""
 
+    actor: Actor
     reviewer_notes: str | None = None
+    # A value override is always traced (value before / after, actor, reason) in the audit trail.
     value_normalized_override: Decimal | None = None
 
 
-class FinancialDataVerifyRequest(BaseModel):
-    """Payload for promoting a financial data point to verified status."""
+class FinancialDataVerifyRequest(_ExpectedState):
+    """Payload for promoting a financial data point to verified status.
 
-    verified_by: str  # Mandatory technical identifier of validator (agent code / email)
+    ``verified_by`` is kept for compatibility; it is the actor of the decision.
+    """
+
+    verified_by: Actor
     verification_notes: str | None = None
 
 
-class FinancialDataRejectRequest(BaseModel):
+class FinancialDataRejectRequest(_ExpectedState):
     """Payload for rejecting a financial data point."""
 
+    actor: Actor
     reason: str  # Mandatory reason for rejection
 
 
-class FinancialDataBulkReviewRequest(BaseModel):
-    """Payload for reviewing multiple data points simultaneously."""
+BULK_REVIEW_MAX_IDS = 100
 
-    data_ids: list[str]
+
+class BulkExpectedState(_ExpectedState):
+    data_id: str
+
+
+class FinancialDataBulkReviewRequest(BaseModel):
+    """Payload for reviewing up to 100 data points in one all-or-nothing transaction."""
+
+    data_ids: list[str] = Field(min_length=1, max_length=BULK_REVIEW_MAX_IDS)
+    actor: Actor
     reviewer_notes: str | None = None
+    expected: list[BulkExpectedState] = Field(default_factory=list, max_length=BULK_REVIEW_MAX_IDS)
+
+    @field_validator("data_ids")
+    @classmethod
+    def unique_ids(cls, value: list[str]) -> list[str]:
+        if len(set(value)) != len(value):
+            raise ValueError("data_ids must be unique")
+        return value
 
 
 class DataQualitySummary(BaseModel):
@@ -127,8 +157,8 @@ class DataQualitySummary(BaseModel):
     reviewed_count: int
     verified_count: int
     rejected_count: int
-    verification_rate: float
-    needs_review_rate: float
+    verification_rate: float | None = None
+    needs_review_rate: float | None = None
     distinct_institutions_count: int
     distinct_metrics_count: int
 

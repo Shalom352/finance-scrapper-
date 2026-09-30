@@ -9,6 +9,7 @@ CSV export of the data explorer view.
 """
 import csv
 import io
+import re
 from collections.abc import Iterable
 from decimal import Decimal
 
@@ -44,12 +45,21 @@ class ExportTooLargeError(ValueError):
         self.total = total
 
 
+_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+_PLAIN_NUMBER = re.compile(r"^-[\d\s.,\u00a0\u202f]+$")
+
+
 def _cell(value) -> str:
     if value is None:
         return ""  # missing stays missing
     if isinstance(value, Decimal):
         return format(value, "f")  # exact stored value, no float rounding / exponent
-    return str(value)
+    text = str(value)
+    # CSV/formula injection: scraped text starting like a formula is neutralized for
+    # spreadsheets (a plain negative number such as "-1 250,5" is kept as published).
+    if text.startswith(_FORMULA_PREFIXES) and not _PLAIN_NUMBER.match(text):
+        return "'" + text
+    return text
 
 
 def build_csv(items: Iterable) -> str:

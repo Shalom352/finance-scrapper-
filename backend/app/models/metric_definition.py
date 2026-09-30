@@ -20,10 +20,15 @@ Enumerations (open strings, guarded by CHECK constraints):
 V1: all 26 metrics have ``is_calculated = false`` (published values only).
 """
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy import Boolean, CheckConstraint, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:  # relationship targets, resolved by SQLAlchemy at runtime
+    from app.models.financial_data import FinancialData
 
 
 class MetricDefinition(Base):

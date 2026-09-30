@@ -105,6 +105,12 @@ describe("no qualitative or investment vocabulary (Phase 9)", () => {
     /\bweakest\b/i,
     /\bgagnants?\b/i,
     /\bperdants?\b/i,
+    // Phase 13 additions (French equivalents; the noun "conseil" as a participant role is factual).
+    /\bach[eè]te[rz]?\b/i,
+    /\bvend(re|ez)\b/i,
+    /\bconseill(ons|ez|er|é|ée)\b/i,
+    /\b(le|la) plus (forte?|faible)\b/i,
+    /\b(premier|première|dernier|dernière) du classement\b/i,
   ];
   // Short words that collide with code identifiers (CSS "top-2", "placeholder"): dictionaries only.
   const FORBIDDEN = [...PROSE, /\btop\b/i, /\bhold\b/i];
@@ -120,11 +126,20 @@ describe("no qualitative or investment vocabulary (Phase 9)", () => {
     expect(hits).toEqual([]);
   });
 
-  it("ranking, comparison, institution, financial data and data quality UI code contains no forbidden wording", () => {
-    const ui = files.filter((f) => /rankings|comparisons|institutions|financial-data|data-quality/.test(f.path));
-    expect(ui.length).toBeGreaterThan(0);
-    const hits = ui.filter((f) => PROSE.some((re) => re.test(f.text))).map((f) => f.path);
+  it("no UI source file contains forbidden wording (global guard, Phase 13)", () => {
+    // Every file of src/ (pages, components, lib, types), deals included.
+    expect(files.some((f) => /deals/.test(f.path))).toBe(true);
+    const hits = files.filter((f) => PROSE.some((re) => re.test(f.text))).map((f) => f.path);
     expect(hits).toEqual([]);
+  });
+
+  it("known false positives are not flagged", () => {
+    for (const text of ["bestow", "topic", "authoritative", 'role="alert"', "Conseil", "Advisor", "top-2"]) {
+      expect(PROSE.filter((re) => re.test(text)).map(String)).toEqual([]);
+    }
+    for (const text of ["bestow", "topic", "authoritative", 'role="alert"']) {
+      expect(FORBIDDEN.filter((re) => re.test(text)).map(String)).toEqual([]);
+    }
   });
 });
 

@@ -99,7 +99,8 @@ class DuplicateDetector:
         """
         Group observations by logical key and classify duplicate groups.
 
-        Logical Key: (institution_id, metric_code, period_year, period_type)
+        Logical Key: (institution_id, metric_code, period_year, period_type, scope)
+        Individual and consolidated figures are never grouped together (Phase 13).
 
         Returns:
             List of DuplicateGroup objects representing groups with 2 or more matching records.
@@ -109,7 +110,7 @@ class DuplicateDetector:
             for obs in observations
         ]
 
-        grouped: dict[tuple[str, str, int, str], list[ObservationSummary]] = defaultdict(list)
+        grouped: dict[tuple[str, str, int, str, str | None], list[ObservationSummary]] = defaultdict(list)
 
         for obs in parsed_obs:
             metric_code = getattr(obs, "metric_code", "")
@@ -117,16 +118,16 @@ class DuplicateDetector:
                 metric_code = getattr(obs.metric, "code", "")
 
             # If metric_code is still empty, try extracting from raw row if accessible
-            key = (obs.institution_id, metric_code, obs.period_year, obs.period_type)
+            key = (obs.institution_id, metric_code, obs.period_year, obs.period_type, obs.scope)
             grouped[key].append(obs)
 
         duplicates: list[DuplicateGroup] = []
 
-        for (inst_id, metric_code, year, p_type), items in grouped.items():
+        for (inst_id, metric_code, year, p_type, scope), items in grouped.items():
             if len(items) < 2:
                 continue
 
-            logical_key_str = f"{inst_id}:{metric_code}:{year}:{p_type}"
+            logical_key_str = f"{inst_id}:{metric_code}:{year}:{p_type}:{scope}"
 
             # Check value identity
             first_val = items[0].value_normalized

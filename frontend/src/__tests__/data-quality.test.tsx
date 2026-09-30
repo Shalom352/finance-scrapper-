@@ -200,7 +200,7 @@ describe("detail", () => {
     state.params = new URLSearchParams("status=needs_review");
     await renderDetail();
     const facts = screen.getByTestId("dq-facts").textContent ?? "";
-    for (const text of ["fd-100", "Banque A", "Côte d'Ivoire", "100 unit XOF", "FCFA", "Rapport annuel A", "BCEAO", "pdf_table", "Valeurs divergentes non résolues"])
+    for (const text of ["fd-100", "Banque A", "Côte d'Ivoire", "100 unit XOF", "FCFA", "Rapport annuel A", "BCEAO", "Tableau PDF", "Valeurs divergentes non résolues"])
       expect(facts).toContain(text);
     expect(screen.getByTestId("dq-back").getAttribute("href")).toBe("/data-quality?status=needs_review");
     fireEvent.click(screen.getByTestId("dq-provenance"));
@@ -253,6 +253,13 @@ describe("review actions", () => {
     expect([btn("review").disabled, btn("verify").disabled, btn("reject").disabled]).toEqual([false, true, false]);
   });
 
+  it("an undetected scope is flagged explicitly for the reviewer (Phase 13 scope guard)", async () => {
+    state.detail = conflictDetail({ observation: observation({ status: "needs_review", notes: "Tableau p.12 | scope not detected" }) });
+    await renderDetail();
+    expect(screen.getByTestId("dq-scope-not-detected").textContent).toContain("Périmètre non détecté");
+    expect(screen.getByTestId("dq-facts").textContent).toContain("scope not detected");
+  });
+
   it("no action for a rejected observation", async () => {
     state.detail = conflictDetail({ observation: observation({ status: "rejected" }), allowed_actions: [], qualification: "rejected" });
     await renderDetail();
@@ -277,6 +284,8 @@ describe("review actions", () => {
     }]);
     expect(JSON.stringify(state.posts[0].body)).not.toMatch(/new_status|"status"/);
     await waitFor(() => expect(state.detailCalls.length).toBeGreaterThan(1)); // reloaded after the decision
+    // Phase 13: the confirmation survives the reload (the form remounts on the new state).
+    await waitFor(() => expect(screen.getByTestId("dq-done")).toBeTruthy());
   });
 
   it.each([

@@ -18,6 +18,7 @@ Foundational rules:
 """
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     CheckConstraint,
@@ -32,6 +33,12 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:  # relationship targets, resolved by SQLAlchemy at runtime
+    from app.models.document import Document
+    from app.models.institution import Institution
+    from app.models.metric_definition import MetricDefinition
+    from app.models.source import Source
 
 
 class FinancialData(Base):
@@ -137,8 +144,9 @@ class FinancialData(Base):
     extracted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Technical validator identifier (agent code / e-mail), NOT a display name.
+    # Widened to 255 in migration 0007 (same bound as the audit actor).
     # No User table in V1 (replaced by an FK once auth exists).
-    verified_by: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    verified_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Relationships
     institution: Mapped["Institution"] = relationship(  # type: ignore[name-defined]

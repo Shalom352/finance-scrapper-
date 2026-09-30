@@ -31,6 +31,27 @@ from scraping.storage.manager import StorageManager
 
 logger = get_logger(__name__)
 
+# Scope guard (Phase 13). The extractor does NOT detect whether a statement is individual
+# or consolidated. The technical value stored is "individual" (the column is NOT NULL and
+# no "unknown" scope exists), so every extracted point is held for a human decision:
+# status needs_review + the explicit note below. Eligibility already excludes needs_review
+# from rankings, comparisons, ratios, growth and aggregations. Existing rows are never
+# modified retroactively by this rule.
+EXTRACTION_SCOPE = "individual"
+SCOPE_NOT_DETECTED_NOTE = "scope not detected"
+# A re-extraction never overwrites a human decision.
+PROTECTED_STATUSES = ("reviewed", "verified", "rejected")
+
+
+def scope_guard(status: str | None, notes: str | None) -> tuple[str, str]:
+    """Force needs_review and append the explicit scope note (idempotent)."""
+    del status  # whatever the extractor proposed, the scope still needs a human confirmation
+    text = notes or ""
+    if SCOPE_NOT_DETECTED_NOTE not in text:
+        text = f"{text} | {SCOPE_NOT_DETECTED_NOTE}" if text else SCOPE_NOT_DETECTED_NOTE
+    return "needs_review", text
+
+
 
 def utcnow() -> datetime:
     """Return timezone-aware UTC datetime."""
@@ -421,13 +442,15 @@ class ScrapingPipeline:
                         FinancialData.metric_code == pt.metric_code,
                         FinancialData.period_year == pt.period_year,
                         FinancialData.period_type == pt.period_type,
+                        FinancialData.scope == EXTRACTION_SCOPE,
                         FinancialData.deleted_at.is_(None),
                     )
-                    existing = (await db.execute(existing_q)).scalar_one_or_none()
+                    existing = (await db.execute(existing_q.order_by(FinancialData.created_at))).scalars().first()
+                    guarded_status, guarded_notes = scope_guard(pt.status, pt.notes)
 
                     if existing:
-                        # Invariant: Never overwrite verified or reviewed records
-                        if existing.status in ("verified", "reviewed"):
+                        # Invariant: never overwrite a human decision (reviewed, verified or rejected)
+                        if existing.status in PROTECTED_STATUSES:
                             logger.info(
                                 "protected_record_untouched",
                                 data_id=existing.id,
@@ -445,8 +468,8 @@ class ScrapingPipeline:
                             existing.page_number = pt.page_number
                             existing.extraction_method = pt.extraction_method
                             existing.confidence_score = pt.confidence_score
-                            existing.status = pt.status
-                            existing.notes = pt.notes
+                            existing.status = guarded_status
+                            existing.notes = guarded_notes
                             existing.extracted_at = utcnow()
                     else:
                         new_data = FinancialData(
@@ -454,7 +477,7 @@ class ScrapingPipeline:
                             source_id=doc.source_id,
                             document_id=doc.id,
                             metric_code=pt.metric_code,
-                            scope="individual",
+                            scope=EXTRACTION_SCOPE,
                             period_type=pt.period_type,
                             period_year=pt.period_year,
                             period_label=pt.period_label,
@@ -467,8 +490,8 @@ class ScrapingPipeline:
                             page_number=pt.page_number,
                             extraction_method=pt.extraction_method,
                             confidence_score=pt.confidence_score,
-                            status=pt.status,
-                            notes=pt.notes,
+                            status=guarded_status,
+                            notes=guarded_notes,
                             extracted_at=utcnow(),
                         )
                         db.add(new_data)

@@ -480,7 +480,7 @@ async def test_pipeline_extract_financial_data_idempotent():
 
         # First run: no existing FinancialData in DB
         first_existing_res = MagicMock()
-        first_existing_res.scalar_one_or_none.return_value = None
+        first_existing_res.scalars.return_value.first.return_value = None
         db.execute.side_effect = [scalar_res, first_existing_res]
 
         results = await pipeline.extract_financial_data(db, document_id="doc-123")
@@ -498,6 +498,10 @@ async def test_pipeline_extract_financial_data_idempotent():
         assert db.add.called
         added_record = db.add.call_args[0][0]
         assert isinstance(added_record, FinancialData)
+        # Phase 13 scope guard: the scope is not detected -> held for human review.
+        assert added_record.scope == "individual"
+        assert added_record.status == "needs_review"
+        assert "scope not detected" in added_record.notes
         assert added_record.metric_code == "total_actifs"
         assert added_record.status in ("extracted", "needs_review")
 

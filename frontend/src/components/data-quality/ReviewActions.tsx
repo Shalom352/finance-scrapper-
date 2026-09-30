@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useTranslations } from "next-intl";
 import type { ReviewAction } from "@/types";
-import { ApiError, postReviewAction } from "@/lib/api";
+import { ApiError, postReviewAction, type ReviewDecision } from "@/lib/api";
 import { selectCls } from "@/components/rankings/IndicatorSelect";
 
 const ACTIONS: ReviewAction[] = ["review", "verify", "reject"];
@@ -15,12 +15,18 @@ interface Props {
   expectedStatus: string;
   expectedUpdatedAt: string;
   onDone: () => void;
+  /** Reload after a 409 (stale view); defaults to onDone. */
+  onReload?: () => void;
+  /** The previous decision succeeded: kept visible although the form remounts on the new state. */
+  done?: boolean;
+  /** Where the decision is sent (default: an observation of the Review Center). */
+  submitAction?: (action: ReviewAction, decision: ReviewDecision) => Promise<unknown>;
 }
 
 type Outcome = { kind: "done" } | { kind: "error"; status: number } | null;
 
 /** Human decision form: identifier + mandatory reason, confirmation, explicit error states. */
-export function ReviewActions({ dataId, allowed, expectedStatus, expectedUpdatedAt, onDone }: Props) {
+export function ReviewActions({ dataId, allowed, expectedStatus, expectedUpdatedAt, onDone, onReload, done = false, submitAction }: Props) {
   const t = useTranslations("data_quality.actions");
   const [actor, setActor] = useState("");
   const [reason, setReason] = useState("");
@@ -32,12 +38,13 @@ export function ReviewActions({ dataId, allowed, expectedStatus, expectedUpdated
   const submit = async (action: ReviewAction) => {
     setBusy(true);
     try {
-      await postReviewAction(dataId, action, {
+      const decision: ReviewDecision = {
         actor: actor.trim(),
         reason: reason.trim(),
         expected_status: expectedStatus,
         expected_updated_at: expectedUpdatedAt,
-      });
+      };
+      await (submitAction ? submitAction(action, decision) : postReviewAction(dataId, action, decision));
       setOutcome({ kind: "done" });
       setReason("");
       onDone();
@@ -108,12 +115,12 @@ export function ReviewActions({ dataId, allowed, expectedStatus, expectedUpdated
         </div>
       )}
 
-      {outcome?.kind === "done" && <p className="text-xs text-emerald-300" data-testid="dq-done">{t("done")}</p>}
+      {(outcome?.kind === "done" || (done && outcome === null)) && <p className="text-xs text-emerald-300" data-testid="dq-done">{t("done")}</p>}
       {outcome?.kind === "error" && (
         <div role="alert" className="text-xs text-rose-200 space-y-1" data-testid="dq-error">
           <p>{t(`errors.${errorKey(outcome.status)}`)}</p>
           {outcome.status === 409 && (
-            <button type="button" onClick={onDone} className="underline" data-testid="dq-reload">{t("reload")}</button>
+            <button type="button" onClick={onReload ?? onDone} className="underline" data-testid="dq-reload">{t("reload")}</button>
           )}
         </div>
       )}

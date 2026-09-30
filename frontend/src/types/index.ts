@@ -202,6 +202,13 @@ export interface FinancialDataDetail extends FinancialDataPoint {
 // ============================================================
 
 export type ReviewAction = "review" | "verify" | "reject";
+/** Every action recorded in the audit journal (human decisions + deal import / duplicate decisions). */
+export type ReviewEventAction =
+  | ReviewAction
+  | "import"
+  | "mark_same_deal"
+  | "mark_distinct"
+  | "mark_same_deal_multi_source";
 
 /** Plain counts of stored observations (backend `DataQualityCounts`). */
 export interface ReviewCenterCounts {
@@ -214,6 +221,13 @@ export interface ReviewCenterCounts {
   conflict_keys: number;
   conflict_observations: number;
   unresolved: number;
+  /** Deals (Phase 13): not attached to another deal; open duplicate candidates. */
+  deals_total?: number;
+  deals_needs_review?: number;
+  deals_reviewed?: number;
+  deals_verified?: number;
+  deals_rejected?: number;
+  deals_duplicate_candidates?: number;
 }
 
 export type DifferenceReason = "same_observation" | "missing_value" | "currency_mismatch" | "unit_mismatch";
@@ -248,10 +262,13 @@ export interface ReviewDetail {
   not_comparable: ReviewObservation[];
 }
 
+/** One audit event: targets an observation OR a deal (single journal, Phase 13). */
 export interface ReviewEvent {
   id: string;
-  financial_data_id: string;
-  action: ReviewAction;
+  financial_data_id: string | null;
+  deal_id?: string | null;
+  deal_duplicate_candidate_id?: string | null;
+  action: ReviewEventAction;
   previous_status: string;
   new_status: string;
   reason: string | null;
@@ -422,7 +439,7 @@ export interface SearchResults {
 }
 
 export interface HealthResponse {
-  status: "ok" | "degraded";
+  status: "ok" | "unavailable";
   app: string;
   version: string;
   env: string;
@@ -742,4 +759,147 @@ export interface InstitutionGrowth {
   status: ProfileStatus;
   reason?: string | null;
   items: GrowthResult[];
+}
+
+// ============================================================
+// Phase 13 — Deal Intelligence (structured import only; NULL stays null)
+// ============================================================
+
+export type DealStatus = "extracted" | "needs_review" | "reviewed" | "verified" | "rejected";
+export type DealDuplicateState = "duplicate_candidate" | "same_deal" | "distinct_deals" | "same_deal_multi_source";
+export type DuplicateDecision = "same_deal" | "distinct_deals" | "same_deal_multi_source";
+
+export const DEAL_TYPES = [
+  "term_loan",
+  "syndicated_loan",
+  "project_finance",
+  "trade_finance",
+  "bond",
+  "guarantee",
+  "other",
+] as const;
+export const PARTICIPANT_ROLES = [
+  "borrower",
+  "lender",
+  "arranger",
+  "co_arranger",
+  "agent",
+  "guarantor",
+  "sponsor",
+  "advisor",
+  "investor",
+] as const;
+export const DEAL_STATUSES: DealStatus[] = ["extracted", "needs_review", "reviewed", "verified", "rejected"];
+
+export interface DealParticipant {
+  id: string;
+  participant_name: string;
+  institution_id: string | null;
+  institution_name: string | null;
+  role: string;
+  commitment_amount: number | null;
+  commitment_currency: string | null;
+  deal_source_id: string;
+}
+
+export interface DealSource {
+  id: string;
+  deal_id: string;
+  document_id: string;
+  document_title: string | null;
+  document_url: string | null;
+  source_id: string;
+  source_name: string | null;
+  page_number: number;
+  excerpt: string | null;
+  fields: string[];
+}
+
+export interface DealDuplicate {
+  id: string;
+  other_deal_id: string;
+  other_deal_title: string | null;
+  other_deal_status: string | null;
+  matched_criteria: string[];
+  state: DealDuplicateState;
+  primary_deal_id: string | null;
+  decided_by: string | null;
+  decided_at: string | null;
+  decision_reason: string | null;
+}
+
+export interface DealListItem {
+  id: string;
+  title: string;
+  deal_type: string | null;
+  status: DealStatus;
+  country_code: string | null;
+  sector: string | null;
+  project_name: string | null;
+  amount: number | null;
+  currency: string | null;
+  unit: string | null;
+  announcement_date: string | null;
+  signing_date: string | null;
+  borrowers: string[];
+  arrangers: string[];
+  duplicate_candidates: number;
+  merged_into_deal_id: string | null;
+  updated_at: string;
+}
+
+export interface MergedDeal {
+  id: string;
+  title: string;
+  status: DealStatus;
+  sources: DealSource[];
+  participants: DealParticipant[];
+}
+
+export interface DealDetail extends DealListItem {
+  amount_original: string | null;
+  interest_rate: number | null;
+  interest_rate_type: string | null;
+  benchmark: string | null;
+  spread_bps: number | null;
+  maturity_months: number | null;
+  grace_period_months: number | null;
+  fees: string | null;
+  guarantees: string | null;
+  financial_close_date: string | null;
+  closing_date: string | null;
+  notes: string | null;
+  verified_at: string | null;
+  verified_by: string | null;
+  created_at: string;
+  participants: DealParticipant[];
+  sources: DealSource[];
+  field_provenance: Record<string, string[]>;
+  duplicates: DealDuplicate[];
+  merged_deals: MergedDeal[];
+  allowed_actions: ReviewAction[];
+}
+
+export interface DealCurrencyTotal {
+  currency: string;
+  unit: string | null;
+  total: number | null;
+  deals: number;
+}
+
+export interface DealAnalyticsRow {
+  key: string | null;
+  label: string | null;
+  deals: number;
+  by_status: Record<string, number>;
+  amounts: DealCurrencyTotal[];
+  deals_without_amount: number;
+}
+
+export type DealDimension = "country" | "year" | "type" | "sector" | "institution";
+
+export interface DealAnalytics {
+  dimension: DealDimension;
+  rows: DealAnalyticsRow[];
+  amount_basis: string;
 }

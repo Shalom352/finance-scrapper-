@@ -25,6 +25,9 @@ import { ProvenancePanel } from "@/components/provenance/ProvenancePanel";
 import { ExplorerFilters } from "@/components/financial-data/ExplorerFilters";
 import { ExplorerTable } from "@/components/financial-data/ExplorerTable";
 import { SummaryCounts } from "@/components/data-quality/SummaryCounts";
+import { DealQueue } from "@/components/data-quality/DealQueue";
+
+const DEAL_QUEUE_STATUSES = ["extracted", "needs_review", "reviewed", "verified", "rejected"];
 
 export default function DataQualityPage() {
   return (
@@ -43,6 +46,8 @@ function DataQualityContent() {
   const { query, page, institutionIds } = parseExplorerParams(get, { dimensionDefaults: false });
   const queryKey = JSON.stringify(query);
   const qs = searchParams.toString();
+  const tab = get("tab") === "deals" ? "deals" : "observations";
+  const dealStatus = DEAL_QUEUE_STATUSES.includes(get("deal_status")) ? get("deal_status") : "needs_review";
 
   const [counts, setCounts] = useState<ReviewCenterCounts | null>(null);
   const [facets, setFacets] = useState<FinancialDataFacets | null>(null);
@@ -64,6 +69,7 @@ function DataQualityContent() {
   }, []);
 
   useEffect(() => {
+    if (tab !== "observations") return;
     let cancelled = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- new request for new filters
     setResult({ status: "loading" });
@@ -74,7 +80,7 @@ function DataQualityContent() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- queryKey is the stable form of query
-  }, [queryKey, page, reload]);
+  }, [queryKey, page, reload, tab]);
 
   const change = (updates: Record<string, string | number | null>) => set({ ...updates, page: null });
   const onSort = (key: ExplorerSort) =>
@@ -89,51 +95,67 @@ function DataQualityContent() {
 
       {counts && <SummaryCounts counts={counts} />}
 
-      <ExplorerFilters
-        query={query}
-        institutionIds={institutionIds}
-        facets={facets}
-        institutions={institutions}
-        onChange={change}
-        statusAllLabel={t("status_to_decide")}
-        openDimensions
-      />
-
-      <div className="text-[11px] text-gray-500 space-y-1">
-        <p>{t("note")}</p>
-        <p>{t("auth_note")}</p>
+      <div role="tablist" aria-label={t("title")} className="flex gap-2" data-testid="dq-tabs">
+        {(["observations", "deals"] as const).map((k) => (
+          <button key={k} type="button" role="tab" aria-selected={tab === k} data-testid={`dq-tab-${k}`}
+            onClick={() => set({ tab: k === "deals" ? "deals" : null, page: null })}
+            className={`px-3 py-1.5 rounded-lg border text-xs font-semibold ${tab === k ? "border-emerald-500 text-emerald-300 bg-emerald-500/10" : "border-gray-800 text-gray-400 hover:text-gray-200"}`}>
+            {t(`tabs.${k}`)}
+          </button>
+        ))}
       </div>
 
-      {result.status === "loading" ? (
-        <TableSkeleton rows={8} cols={8} />
-      ) : result.status === "error" ? (
-        <ErrorState onRetry={() => setReload((n) => n + 1)} />
-      ) : result.data.items.length === 0 ? (
-        <EmptyState title={t("empty_title")} description={t("empty_hint")} icon="✅" />
+      {tab === "deals" ? (
+        <DealQueue status={dealStatus} page={page} onChange={set} />
       ) : (
-        <section className="space-y-2">
-          <p className="text-xs text-gray-400" data-testid="dq-queue-count">
-            {t("count", { total: result.data.total })}
-          </p>
-          <ExplorerTable
-            items={result.data.items}
-            sort={query.sort}
-            order={query.order ?? "asc"}
-            onSort={onSort}
-            onProvenance={setProvenance}
-            rowLink={{
-              label: t("open"),
-              // The queue filters travel with the link so "back" restores them.
-              href: (row) => `/data-quality/${row.id}${qs ? `?${qs}` : ""}`,
-            }}
+        <>
+          <ExplorerFilters
+            query={query}
+            institutionIds={institutionIds}
+            facets={facets}
+            institutions={institutions}
+            onChange={change}
+            statusAllLabel={t("status_to_decide")}
+            openDimensions
           />
-          <Pagination
-            currentPage={page}
-            pageSize={EXPLORER_PAGE_SIZE}
-            total={result.data.total}
-            onPageChange={(p) => set({ page: p > 1 ? p : null })}
-          />
-        </section>
+
+          <div className="text-[11px] text-gray-500 space-y-1">
+            <p>{t("note")}</p>
+            <p>{t("auth_note")}</p>
+          </div>
+
+          {result.status === "loading" ? (
+            <TableSkeleton rows={8} cols={8} />
+          ) : result.status === "error" ? (
+            <ErrorState onRetry={() => setReload((n) => n + 1)} />
+          ) : result.data.items.length === 0 ? (
+            <EmptyState title={t("empty_title")} description={t("empty_hint")} icon="✅" />
+          ) : (
+            <section className="space-y-2">
+              <p className="text-xs text-gray-400" data-testid="dq-queue-count">
+                {t("count", { total: result.data.total })}
+              </p>
+              <ExplorerTable
+                items={result.data.items}
+                sort={query.sort}
+                order={query.order ?? "asc"}
+                onSort={onSort}
+                onProvenance={setProvenance}
+                rowLink={{
+                  label: t("open"),
+                  // The queue filters travel with the link so "back" restores them.
+                  href: (row) => `/data-quality/${row.id}${qs ? `?${qs}` : ""}`,
+                }}
+              />
+              <Pagination
+                currentPage={page}
+                pageSize={EXPLORER_PAGE_SIZE}
+                total={result.data.total}
+                onPageChange={(p) => set({ page: p > 1 ? p : null })}
+              />
+            </section>
+          )}
+        </>
       )}
 
       {provenance && <ProvenancePanel dataId={provenance} onClose={() => setProvenance(null)} />}

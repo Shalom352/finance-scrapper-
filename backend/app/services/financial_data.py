@@ -469,31 +469,55 @@ async def bulk_review_financial_data(
     db: AsyncSession,
     data_ids: list[str],
     *,
+    actor: str,
     reviewer_notes: str | None = None,
+    expected: dict[str, tuple[str | None, datetime | None]] | None = None,
 ) -> list[str]:
-    """Bulk transition multiple data points to reviewed status."""
-    updated_ids: list[str] = []
-    for d_id in data_ids:
-        result = await db.execute(
-            select(FinancialData).where(FinancialData.id == d_id, FinancialData.deleted_at.is_(None))
-        )
-        row = result.scalar_one_or_none()
-        if row and row.status in ("extracted", "needs_review") and can_review(row.status, row.value_normalized):
-            previous_status = row.status
-            row.status = "reviewed"
-            if reviewer_notes:
-                row.notes = (
-                    f"{row.notes} | Bulk Review: {reviewer_notes}"
-                    if row.notes
-                    else f"Bulk Review: {reviewer_notes}"
-                )
-            row.updated_at = datetime.now(UTC)
-            _record_event(db, row, action="review", previous_status=previous_status,
-                          reason=_clean(reviewer_notes), actor=None, value_before=row.value_normalized)
-            updated_ids.append(d_id)
+    """Review several observations in ONE all-or-nothing transaction.
+
+    Every row is locked (SELECT ... FOR UPDATE, ordered by id to avoid deadlocks), checked
+    against the state the caller saw, and must be reviewable; otherwise nothing is written
+    (404 / 409 / invalid transition). Each change gets its own audit event with the actor.
+    """
+    if not actor or not actor.strip():
+        raise ValueError("actor is required")
+    expected = expected or {}
+    unique_ids = sorted(set(data_ids))
+    result = await db.execute(
+        select(FinancialData)
+        .where(FinancialData.id.in_(unique_ids), FinancialData.deleted_at.is_(None))
+        .order_by(FinancialData.id)
+        .with_for_update(of=FinancialData)
+    )
+    rows = {row.id: row for row in result.scalars().all()}
+    missing = [d for d in unique_ids if d not in rows]
+    if missing:
+        raise ObservationNotFoundError(f"FinancialData not found: {', '.join(missing)}")
+    for d_id in unique_ids:
+        exp_status, exp_updated_at = expected.get(d_id, (None, None))
+        check_expected_state(rows[d_id], exp_status, exp_updated_at)
+        if rows[d_id].status not in ("extracted", "needs_review") or not can_review(
+            rows[d_id].status, rows[d_id].value_normalized
+        ):
+            raise InvalidTransitionError(
+                f"FinancialData '{d_id}' cannot be reviewed from status '{rows[d_id].status}'"
+            )
+
+    now = datetime.now(UTC)
+    for d_id in unique_ids:
+        row = rows[d_id]
+        previous_status, value_before = row.status, row.value_normalized
+        row.status = "reviewed"
+        if reviewer_notes:
+            row.notes = (
+                f"{row.notes} | Bulk Review: {reviewer_notes}" if row.notes else f"Bulk Review: {reviewer_notes}"
+            )
+        row.updated_at = now
+        _record_event(db, row, action="review", previous_status=previous_status,
+                      reason=_clean(reviewer_notes), actor=actor.strip(), value_before=value_before)
 
     await db.commit()
-    return updated_ids
+    return unique_ids
 
 
 async def get_financial_data_quality_summary(db: AsyncSession):
@@ -514,8 +538,9 @@ async def get_financial_data_quality_summary(db: AsyncSession):
     rejected_c = counts.get("rejected", 0)
     total_c = extracted_c + needs_review_c + reviewed_c + verified_c + rejected_c
 
-    verif_rate = round(verified_c / total_c, 4) if total_c > 0 else 0.0
-    needs_review_rate = round(needs_review_c / total_c, 4) if total_c > 0 else 0.0
+    # No observation: a rate is undefined (None), never 0 %.
+    verif_rate = round(verified_c / total_c, 4) if total_c > 0 else None
+    needs_review_rate = round(needs_review_c / total_c, 4) if total_c > 0 else None
 
     # Distinct institutions and metrics
     inst_q = select(func.count(func.distinct(FinancialData.institution_id))).where(

@@ -1,7 +1,8 @@
 {
   "metadata": {
     "title": "UMOA Banking Intelligence",
-    "description": "Financial intelligence platform for WAEMU (UMOA) banks and regulators"
+    "description": "Financial intelligence platform for WAEMU (UMOA) banks and regulators",
+    "keywords": "UMOA, WAEMU, BCEAO, banks, financial data, West Africa, deals"
   },
   "nav": {
     "home": "Dashboard",
@@ -13,7 +14,8 @@
     "rankings": "Rankings",
     "comparisons": "Comparisons",
     "financial_data": "Financial data",
-    "data_quality": "Data quality"
+    "data_quality": "Data quality",
+    "deals": "Deals"
   },
   "sidebar": {
     "notice_title": "Official sources",
@@ -191,7 +193,20 @@
     "notes": "Notes",
     "calculated_value": "Calculated value",
     "formula": "Applied formula",
-    "components_title": "Calculation components ({count})"
+    "components_title": "Calculation components ({count})",
+    "methods": {
+      "pdf_table": "PDF table",
+      "pdf_text": "PDF text",
+      "ocr": "OCR",
+      "web_html": "Web page",
+      "manual": "Manual entry"
+    },
+    "roles": {
+      "numerator": "numerator",
+      "denominator": "denominator",
+      "current": "current",
+      "previous": "previous"
+    }
   },
   "dashboard": {
     "title": "Sector dashboard",
@@ -557,7 +572,10 @@
     "source_pages_unknown": "Page not specified",
     "source_values": "{count, plural, one {# value} other {# values}}",
     "documents_title": "Linked documents",
-    "documents_empty": "No document linked to this institution."
+    "documents_empty": "No document linked to this institution.",
+    "deals_link": "Deals involving this institution",
+    "label_sep": ":",
+    "financial_data_link": "Financial data of this institution"
   },
   "data_explorer": {
     "title": "UMOA financial data",
@@ -632,7 +650,10 @@
       "reviewed": "Reviewed",
       "verified": "Verified",
       "rejected": "Rejected",
-      "total": "Stored observations"
+      "total": "Stored observations",
+      "deals_needs_review": "Deals — needs review",
+      "deals_duplicate_candidates": "Duplicate candidates",
+      "deals_verified": "Deals — verified"
     },
     "detail": {
       "title": "Observation",
@@ -658,7 +679,9 @@
       "updated_at": "Updated at",
       "verified_by": "Verified by",
       "missing": "Missing",
-      "provenance": "Show provenance"
+      "provenance": "Show provenance",
+      "notes": "Notes",
+      "scope_not_detected": "Scope not detected by the extraction: confirm on the document whether these are individual or consolidated statements before reviewing."
     },
     "competing": {
       "title": "Competing observations (same institution, indicator, year, period and scope)",
@@ -682,7 +705,8 @@
       "empty": "No decision recorded for this observation.",
       "by": "by {actor}",
       "unknown_actor": "identifier not provided",
-      "value_change": "Value: {before} → {after}"
+      "value_change": "Value: {before} → {after}",
+      "created": "created"
     },
     "actions": {
       "title": "Decision",
@@ -715,7 +739,204 @@
     "action_names": {
       "review": "Review",
       "verify": "Verification",
-      "reject": "Rejection"
+      "reject": "Rejection",
+      "import": "Structured import",
+      "mark_same_deal": "Same deal",
+      "mark_distinct": "Distinct deals",
+      "mark_same_deal_multi_source": "Same deal (several sources)"
+    },
+    "tabs": {
+      "observations": "Observations",
+      "deals": "Deals"
+    },
+    "deals_queue": {
+      "title": "Deals needing a decision",
+      "empty_title": "No deal to decide",
+      "empty_hint": "No deal matches this status.",
+      "count": "{total, plural, =0 {No deal} one {# deal} other {# deals}}",
+      "status": "Status",
+      "open": "Examine",
+      "duplicates_title": "Duplicate candidates — needs review",
+      "duplicates_empty": "No open duplicate candidate.",
+      "duplicates_hint": "A candidate is only a possible duplicate: explicit criteria match, nothing is merged or deleted until a person decides."
+    },
+    "deal_review": {
+      "back": "Back to the deal queue",
+      "title": "Deal under review",
+      "open_detail": "Open the deal page"
+    }
+  },
+  "deals": {
+    "title": "Deals",
+    "subtitle": "Financing transactions recorded by structured import from official documents. Terms that are not published stay unavailable.",
+    "import_note": "Deals are added only by structured import referencing a document, a source and a page. No automatic extraction.",
+    "count": "{total, plural, =0 {No deal} one {# deal} other {# deals}}",
+    "empty_title": "No deal",
+    "empty_hint": "No deal matches the selected filters.",
+    "filters": {
+      "country": "Country",
+      "bank": "Bank (any role)",
+      "deal_type": "Deal type",
+      "sector": "Sector",
+      "year": "Year (signing, else announcement)",
+      "currency": "Currency",
+      "status": "Status",
+      "participant_role": "Participant role",
+      "borrower": "Borrower",
+      "arranger": "Arranger",
+      "all": "All",
+      "text_placeholder": "Name or identifier",
+      "include_merged": "Include deals attached to another deal",
+      "reset": "Reset filters"
+    },
+    "table": {
+      "deal": "Deal",
+      "type": "Type",
+      "country": "Country",
+      "borrower": "Borrower",
+      "arranger": "Arranger",
+      "amount": "Amount",
+      "date": "Date",
+      "status": "Status",
+      "duplicates": "Duplicate candidates",
+      "open": "Open"
+    },
+    "types": {
+      "term_loan": "Term loan",
+      "syndicated_loan": "Syndicated loan",
+      "project_finance": "Project finance",
+      "trade_finance": "Trade finance",
+      "bond": "Bond",
+      "guarantee": "Guarantee",
+      "other": "Other"
+    },
+    "roles": {
+      "borrower": "Borrower",
+      "lender": "Lender",
+      "arranger": "Arranger",
+      "co_arranger": "Co-arranger",
+      "agent": "Agent",
+      "guarantor": "Guarantor",
+      "sponsor": "Sponsor",
+      "advisor": "Advisor",
+      "investor": "Investor"
+    },
+    "rate_types": {
+      "fixed": "Fixed",
+      "floating": "Floating"
+    },
+    "units": {
+      "units": "units",
+      "thousands": "thousands",
+      "millions": "millions",
+      "billions": "billions"
+    },
+    "analytics": {
+      "title": "Descriptive overview",
+      "dimension": "Group by",
+      "dimensions": {
+        "country": "Country",
+        "year": "Year",
+        "type": "Deal type",
+        "sector": "Sector",
+        "institution": "Institution involved"
+      },
+      "group": "Group",
+      "deals": "Deals",
+      "by_status": "By status",
+      "amounts": "Published amounts",
+      "amount_deals": "{count, plural, one {# deal} other {# deals}}",
+      "without_amount": "{count, plural, =0 {All with an amount} one {# without published amount} other {# without published amount}}",
+      "no_amount": "No reviewed or verified amount",
+      "not_specified": "Not specified",
+      "basis": "Counts exclude rejected deals and deals attached to another deal. Amounts: reviewed or verified deals only, per currency and unit — never converted, never added across currencies.",
+      "empty": "No deal to describe."
+    },
+    "detail": {
+      "back": "Back to deals",
+      "not_found": "Deal not found.",
+      "summary": "Deal summary",
+      "financial_terms": "Financial terms",
+      "participants": "Participants",
+      "timeline": "Timeline",
+      "project_borrower": "Project / Borrower",
+      "guarantees": "Guarantees",
+      "sources": "Sources / Provenance",
+      "review_history": "Review history",
+      "merged_deals": "Deals attached to this deal (sources kept)",
+      "merged_into": "This deal was attached to another deal by a human decision. Its sources and history are kept.",
+      "open_primary": "Open the deal it is attached to",
+      "review_link": "Open in the Review Center",
+      "unavailable": "Unavailable",
+      "not_published": "Not published",
+      "months": "{count, plural, one {# month} other {# months}}",
+      "bps": "{value} bps",
+      "page": "p. {page}",
+      "attests": "Attests:",
+      "open_document": "Open the document",
+      "no_participants": "No participant published.",
+      "no_sources": "No source.",
+      "commitment": "Commitment",
+      "institution": "Institution in the directory",
+      "not_in_directory": "Not in the directory",
+      "verified_by": "Verified by {actor}",
+      "fields": {
+        "title": "Title",
+        "deal_type": "Deal type",
+        "country_code": "Country",
+        "sector": "Sector",
+        "project_name": "Project",
+        "amount": "Amount",
+        "amount_original": "Amount as published",
+        "currency": "Currency",
+        "unit": "Unit",
+        "interest_rate": "Interest rate",
+        "interest_rate_type": "Rate type",
+        "benchmark": "Benchmark",
+        "spread_bps": "Spread",
+        "maturity_months": "Maturity",
+        "grace_period_months": "Grace period",
+        "fees": "Fees",
+        "guarantees": "Guarantees",
+        "announcement_date": "Announcement",
+        "signing_date": "Signing",
+        "financial_close_date": "Financial close",
+        "closing_date": "Closing",
+        "status": "Status"
+      }
+    },
+    "duplicates": {
+      "title": "Duplicate candidates",
+      "none": "No duplicate candidate.",
+      "badge": "Possible duplicate",
+      "criteria": "Matching criteria:",
+      "criteria_names": {
+        "borrower": "Same borrower",
+        "project": "Same project",
+        "currency_amount": "Same currency, close amount (±5 %)",
+        "dates": "Close dates (≤ 90 days)",
+        "deal_type": "Same deal type",
+        "participants": "Shared participant"
+      },
+      "state": {
+        "duplicate_candidate": "Duplicate candidate — needs review",
+        "same_deal": "Same deal (decided by {actor})",
+        "distinct_deals": "Distinct deals (decided by {actor})",
+        "same_deal_multi_source": "Same deal reported by several sources (decided by {actor})"
+      },
+      "other": "Other deal:",
+      "note": "Similarity is never proof: only a human decision attaches a deal to another, and nothing is deleted.",
+      "decide": {
+        "title": "Decide",
+        "decision": "Decision",
+        "same_deal": "Same deal",
+        "distinct_deals": "Distinct deals",
+        "same_deal_multi_source": "Same deal reported by several sources",
+        "primary": "Deal kept as reference",
+        "confirm": "Confirm this decision? It is recorded in the audit trail with your identifier and reason.",
+        "submit": "Record the decision",
+        "done": "Decision recorded."
+      }
     }
   }
 }

@@ -109,6 +109,9 @@ class HistoricalSeries(BaseModel):
     institution_id: str
     institution_name: str | None = None
     metric_code: str
+    # A series never mixes period types nor scopes (Phase 13).
+    period_type: str | None = None
+    scope: str | None = None
     first_year: int | None = None
     last_year: int | None = None
     available_years: list[int] = Field(default_factory=list)

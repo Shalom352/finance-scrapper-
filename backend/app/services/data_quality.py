@@ -20,6 +20,7 @@ from app.schemas.data_quality import (
     ReviewEventRead,
     ReviewObservation,
 )
+from app.services.deal import deal_counts
 from app.services.financial_data import (
     conflict_observations,
     get_financial_data_by_id,
@@ -44,6 +45,7 @@ async def get_data_quality_counts(db: AsyncSession) -> DataQualityCounts:
         conflict_keys=len({logical_key(o) for o in conflicts}),
         conflict_observations=len(conflicts),
         unresolved=summary.needs_review_count + len(extra_unresolved),
+        **await deal_counts(db),
     )
 
 

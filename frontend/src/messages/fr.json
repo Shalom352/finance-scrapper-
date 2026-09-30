@@ -1,7 +1,8 @@
 {
   "metadata": {
     "title": "UMOA Banking Intelligence",
-    "description": "Plateforme d'intelligence financière pour les banques et régulateurs de l'UMOA"
+    "description": "Plateforme d'intelligence financière pour les banques et régulateurs de l'UMOA",
+    "keywords": "UMOA, UEMOA, BCEAO, banques, données financières, Afrique de l'Ouest, transactions"
   },
   "nav": {
     "home": "Tableau de bord",
@@ -13,7 +14,8 @@
     "rankings": "Classements",
     "comparisons": "Comparaisons",
     "financial_data": "Données financières",
-    "data_quality": "Qualité des données"
+    "data_quality": "Qualité des données",
+    "deals": "Transactions"
   },
   "sidebar": {
     "notice_title": "Sources officielles",
@@ -191,7 +193,20 @@
     "notes": "Notes",
     "calculated_value": "Valeur calculée",
     "formula": "Formule appliquée",
-    "components_title": "Composants du calcul ({count})"
+    "components_title": "Composants du calcul ({count})",
+    "methods": {
+      "pdf_table": "Tableau PDF",
+      "pdf_text": "Texte PDF",
+      "ocr": "OCR",
+      "web_html": "Page web",
+      "manual": "Saisie manuelle"
+    },
+    "roles": {
+      "numerator": "numérateur",
+      "denominator": "dénominateur",
+      "current": "courant",
+      "previous": "précédent"
+    }
   },
   "dashboard": {
     "title": "Tableau de bord sectoriel",
@@ -557,7 +572,10 @@
     "source_pages_unknown": "Page non indiquée",
     "source_values": "{count, plural, one {# valeur} other {# valeurs}}",
     "documents_title": "Documents rattachés",
-    "documents_empty": "Aucun document rattaché à cet établissement."
+    "documents_empty": "Aucun document rattaché à cet établissement.",
+    "deals_link": "Transactions impliquant cet établissement",
+    "label_sep": " :",
+    "financial_data_link": "Données financières de cet établissement"
   },
   "data_explorer": {
     "title": "Données financières UMOA",
@@ -632,7 +650,10 @@
       "reviewed": "Revues",
       "verified": "Vérifiées",
       "rejected": "Rejetées",
-      "total": "Observations enregistrées"
+      "total": "Observations enregistrées",
+      "deals_needs_review": "Transactions à revoir",
+      "deals_duplicate_candidates": "Doublons potentiels",
+      "deals_verified": "Transactions vérifiées"
     },
     "detail": {
       "title": "Observation",
@@ -658,7 +679,9 @@
       "updated_at": "Modifiée le",
       "verified_by": "Vérifiée par",
       "missing": "Donnée non renseignée",
-      "provenance": "Afficher la provenance"
+      "provenance": "Afficher la provenance",
+      "notes": "Notes",
+      "scope_not_detected": "Périmètre non détecté par l’extraction : vérifier sur le document s’il s’agit de comptes individuels ou consolidés avant de revoir."
     },
     "competing": {
       "title": "Observations concurrentes (même institution, indicateur, année, période et périmètre)",
@@ -682,7 +705,8 @@
       "empty": "Aucune décision enregistrée pour cette observation.",
       "by": "par {actor}",
       "unknown_actor": "identifiant non renseigné",
-      "value_change": "Valeur : {before} → {after}"
+      "value_change": "Valeur : {before} → {after}",
+      "created": "création"
     },
     "actions": {
       "title": "Décision",
@@ -715,7 +739,204 @@
     "action_names": {
       "review": "Revue",
       "verify": "Vérification",
-      "reject": "Rejet"
+      "reject": "Rejet",
+      "import": "Import structuré",
+      "mark_same_deal": "Même transaction",
+      "mark_distinct": "Transactions distinctes",
+      "mark_same_deal_multi_source": "Même transaction (plusieurs sources)"
+    },
+    "tabs": {
+      "observations": "Observations",
+      "deals": "Transactions"
+    },
+    "deals_queue": {
+      "title": "Transactions à décider",
+      "empty_title": "Aucune transaction à décider",
+      "empty_hint": "Aucune transaction ne correspond à ce statut.",
+      "count": "{total, plural, =0 {Aucune transaction} one {# transaction} other {# transactions}}",
+      "status": "Statut",
+      "open": "Examiner",
+      "duplicates_title": "Doublons potentiels — à revoir",
+      "duplicates_empty": "Aucun doublon potentiel ouvert.",
+      "duplicates_hint": "Un doublon potentiel n'est qu'une hypothèse : des critères explicites concordent, rien n'est fusionné ni supprimé avant la décision d'une personne."
+    },
+    "deal_review": {
+      "back": "Retour à la file des transactions",
+      "title": "Transaction en revue",
+      "open_detail": "Ouvrir la fiche de la transaction"
+    }
+  },
+  "deals": {
+    "title": "Transactions",
+    "subtitle": "Opérations de financement enregistrées par import structuré à partir de documents officiels. Les conditions non publiées restent non disponibles.",
+    "import_note": "Les transactions sont ajoutées uniquement par import structuré citant un document, une source et une page. Aucune extraction automatique.",
+    "count": "{total, plural, =0 {Aucune transaction} one {# transaction} other {# transactions}}",
+    "empty_title": "Aucune transaction",
+    "empty_hint": "Aucune transaction ne correspond aux filtres sélectionnés.",
+    "filters": {
+      "country": "Pays",
+      "bank": "Banque (tout rôle)",
+      "deal_type": "Type de transaction",
+      "sector": "Secteur",
+      "year": "Année (signature, sinon annonce)",
+      "currency": "Devise",
+      "status": "Statut",
+      "participant_role": "Rôle du participant",
+      "borrower": "Emprunteur",
+      "arranger": "Arrangeur",
+      "all": "Tous",
+      "text_placeholder": "Nom ou identifiant",
+      "include_merged": "Inclure les transactions rattachées à une autre",
+      "reset": "Réinitialiser les filtres"
+    },
+    "table": {
+      "deal": "Transaction",
+      "type": "Type",
+      "country": "Pays",
+      "borrower": "Emprunteur",
+      "arranger": "Arrangeur",
+      "amount": "Montant",
+      "date": "Date",
+      "status": "Statut",
+      "duplicates": "Doublons potentiels",
+      "open": "Ouvrir"
+    },
+    "types": {
+      "term_loan": "Prêt à terme",
+      "syndicated_loan": "Prêt syndiqué",
+      "project_finance": "Financement de projet",
+      "trade_finance": "Financement du commerce",
+      "bond": "Emprunt obligataire",
+      "guarantee": "Garantie",
+      "other": "Autre"
+    },
+    "roles": {
+      "borrower": "Emprunteur",
+      "lender": "Prêteur",
+      "arranger": "Arrangeur",
+      "co_arranger": "Co-arrangeur",
+      "agent": "Agent",
+      "guarantor": "Garant",
+      "sponsor": "Sponsor",
+      "advisor": "Conseil",
+      "investor": "Investisseur"
+    },
+    "rate_types": {
+      "fixed": "Fixe",
+      "floating": "Variable"
+    },
+    "units": {
+      "units": "unités",
+      "thousands": "milliers",
+      "millions": "millions",
+      "billions": "milliards"
+    },
+    "analytics": {
+      "title": "Vue descriptive",
+      "dimension": "Regrouper par",
+      "dimensions": {
+        "country": "Pays",
+        "year": "Année",
+        "type": "Type de transaction",
+        "sector": "Secteur",
+        "institution": "Établissement impliqué"
+      },
+      "group": "Groupe",
+      "deals": "Transactions",
+      "by_status": "Par statut",
+      "amounts": "Montants publiés",
+      "amount_deals": "{count, plural, one {# transaction} other {# transactions}}",
+      "without_amount": "{count, plural, =0 {Toutes avec un montant} one {# sans montant publié} other {# sans montant publié}}",
+      "no_amount": "Aucun montant revu ou vérifié",
+      "not_specified": "Non renseigné",
+      "basis": "Les comptages excluent les transactions rejetées et celles rattachées à une autre. Montants : transactions revues ou vérifiées uniquement, par devise et unité — jamais convertis, jamais additionnés entre devises.",
+      "empty": "Aucune transaction à décrire."
+    },
+    "detail": {
+      "back": "Retour aux transactions",
+      "not_found": "Transaction introuvable.",
+      "summary": "Résumé de la transaction",
+      "financial_terms": "Conditions financières",
+      "participants": "Participants",
+      "timeline": "Chronologie",
+      "project_borrower": "Projet / Emprunteur",
+      "guarantees": "Garanties",
+      "sources": "Sources / Provenance",
+      "review_history": "Historique de revue",
+      "merged_deals": "Transactions rattachées à celle-ci (sources conservées)",
+      "merged_into": "Cette transaction a été rattachée à une autre par une décision humaine. Ses sources et son historique sont conservés.",
+      "open_primary": "Ouvrir la transaction de rattachement",
+      "review_link": "Ouvrir dans le centre de revue",
+      "unavailable": "Non disponible",
+      "not_published": "Non publié",
+      "months": "{count, plural, one {# mois} other {# mois}}",
+      "bps": "{value} pb",
+      "page": "p. {page}",
+      "attests": "Atteste :",
+      "open_document": "Ouvrir le document",
+      "no_participants": "Aucun participant publié.",
+      "no_sources": "Aucune source.",
+      "commitment": "Engagement",
+      "institution": "Établissement du répertoire",
+      "not_in_directory": "Hors répertoire",
+      "verified_by": "Vérifiée par {actor}",
+      "fields": {
+        "title": "Intitulé",
+        "deal_type": "Type de transaction",
+        "country_code": "Pays",
+        "sector": "Secteur",
+        "project_name": "Projet",
+        "amount": "Montant",
+        "amount_original": "Montant tel que publié",
+        "currency": "Devise",
+        "unit": "Unité",
+        "interest_rate": "Taux d'intérêt",
+        "interest_rate_type": "Type de taux",
+        "benchmark": "Taux de référence",
+        "spread_bps": "Marge",
+        "maturity_months": "Maturité",
+        "grace_period_months": "Différé",
+        "fees": "Commissions",
+        "guarantees": "Garanties",
+        "announcement_date": "Annonce",
+        "signing_date": "Signature",
+        "financial_close_date": "Bouclage financier",
+        "closing_date": "Clôture",
+        "status": "Statut"
+      }
+    },
+    "duplicates": {
+      "title": "Doublons potentiels",
+      "none": "Aucun doublon potentiel.",
+      "badge": "Doublon potentiel",
+      "criteria": "Critères concordants :",
+      "criteria_names": {
+        "borrower": "Même emprunteur",
+        "project": "Même projet",
+        "currency_amount": "Même devise, montant proche (±5 %)",
+        "dates": "Dates proches (≤ 90 jours)",
+        "deal_type": "Même type de transaction",
+        "participants": "Participant commun"
+      },
+      "state": {
+        "duplicate_candidate": "Doublon potentiel — à revoir",
+        "same_deal": "Même transaction (décidé par {actor})",
+        "distinct_deals": "Transactions distinctes (décidé par {actor})",
+        "same_deal_multi_source": "Même transaction publiée par plusieurs sources (décidé par {actor})"
+      },
+      "other": "Autre transaction :",
+      "note": "Une ressemblance n'est jamais une preuve : seule une décision humaine rattache une transaction à une autre, et rien n'est supprimé.",
+      "decide": {
+        "title": "Décider",
+        "decision": "Décision",
+        "same_deal": "Même transaction",
+        "distinct_deals": "Transactions distinctes",
+        "same_deal_multi_source": "Même transaction publiée par plusieurs sources",
+        "primary": "Transaction de référence",
+        "confirm": "Confirmer cette décision ? Elle est enregistrée dans la piste d'audit avec votre identifiant et votre motif.",
+        "submit": "Enregistrer la décision",
+        "done": "Décision enregistrée."
+      }
     }
   }
 }

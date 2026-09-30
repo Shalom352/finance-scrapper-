@@ -21,8 +21,16 @@ from app.schemas.data_quality import (
     ReviewDetail,
     ReviewEventRead,
 )
+from app.schemas.deal import DealDetail, DealDuplicateRead, DealListItem, DuplicateDecisionRequest
 from app.schemas.financial_data import FinancialDataExplorerItem, FinancialDataRead
 from app.services.data_quality import get_data_quality_counts, get_review_detail, get_review_history
+from app.services.deal import (
+    decide_deal,
+    decide_duplicate,
+    get_deal,
+    list_deals,
+    list_open_duplicates,
+)
 from app.services.financial_data import (
     get_financial_data,
     reject_financial_data,
@@ -79,6 +87,66 @@ async def review_queue(
 @router.get("/summary", summary="Descriptive counters of stored observations", response_model=DataQualityCounts)
 async def summary(db: AsyncSession = Depends(get_db_session)) -> DataQualityCounts:
     return await get_data_quality_counts(db)
+
+
+# --------------------------------------------------------------------------- deals (Phase 13)
+# Declared BEFORE /{data_id}: same Review Center, same guarantees (actor, reason, 404, 409,
+# row lock, audit event in the same transaction).
+
+
+@router.get("/deals", summary="Deal review queue (needs_review by default)",
+            response_model=PaginatedResponse[DealListItem])
+async def deal_queue(
+    page: int = Query(1, ge=1, le=10_000),
+    page_size: int = Query(20, ge=1, le=100),
+    status: Literal["extracted", "needs_review", "reviewed", "verified", "rejected"] = Query("needs_review"),
+    country: str | None = Query(None, pattern=r"^[A-Z]{2}$"),
+    db: AsyncSession = Depends(get_db_session),
+) -> PaginatedResponse[DealListItem]:
+    return await list_deals(db, page=page, page_size=page_size, status=status, country=country)
+
+
+@router.get("/deal-duplicates", summary="Open duplicate candidates (never merged automatically)",
+            response_model=PaginatedResponse[DealDuplicateRead])
+async def deal_duplicates(
+    page: int = Query(1, ge=1, le=10_000),
+    page_size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db_session),
+) -> PaginatedResponse[DealDuplicateRead]:
+    return await list_open_duplicates(db, page=page, page_size=page_size)
+
+
+@router.post("/deal-duplicates/{candidate_id}/decide", summary="Human decision on a duplicate candidate",
+             response_model=DealDuplicateRead)
+async def decide_deal_duplicate(candidate_id: str, payload: DuplicateDecisionRequest,
+                                db: AsyncSession = Depends(get_db_session)):
+    return await _decide(
+        lambda: decide_duplicate(
+            db, candidate_id, decision=payload.decision, actor=payload.actor, reason=payload.reason,
+            primary_deal_id=payload.primary_deal_id, expected_state=payload.expected_state,
+        ),
+        db,
+    )
+
+
+@router.get("/deals/{deal_id}", summary="Deal under review", response_model=DealDetail)
+async def deal_detail(deal_id: str, db: AsyncSession = Depends(get_db_session)) -> DealDetail:
+    result = await get_deal(db, deal_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Deal not found")
+    return result
+
+
+@router.post("/deals/{deal_id}/{action}", summary="review / verify / reject a deal", response_model=DealDetail)
+async def decide_on_deal(deal_id: str, action: Literal["review", "verify", "reject"], payload: ReviewActionRequest,
+                         db: AsyncSession = Depends(get_db_session)):
+    return await _decide(
+        lambda: decide_deal(
+            db, deal_id, action, actor=payload.actor, reason=payload.reason,
+            expected_status=payload.expected_status, expected_updated_at=payload.expected_updated_at,
+        ),
+        db,
+    )
 
 
 @router.get("/{data_id}", summary="Observation under review, competing observations, allowed actions",

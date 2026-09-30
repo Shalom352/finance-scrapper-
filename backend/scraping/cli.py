@@ -5,6 +5,7 @@ Allows running discovery, downloading, and pipeline tasks from the terminal:
     python -m scraping discover --source bceao --limit 10
     python -m scraping download --source bceao --limit 5
     python -m scraping run --source all --limit 10
+    python -m scraping import-deals --file deals.json --actor analyst-1 [--dry-run]
 """
 import argparse
 import asyncio
@@ -127,12 +128,53 @@ def build_parser() -> argparse.ArgumentParser:
         help="Maximum documents to extract financial data from (default: 5)",
     )
 
+    # ------------------------------------------------------------------
+    # Import deals (Phase 13): structured import only, no extraction
+    # ------------------------------------------------------------------
+    deals_p = subparsers.add_parser(
+        "import-deals",
+        help="Import deals from a JSON or CSV file (provenance required; every deal starts as needs_review)",
+    )
+    deals_p.add_argument("--file", type=str, required=True, help="Path to a .json or .csv file")
+    deals_p.add_argument("--actor", type=str, required=True, help="Person responsible for the import (audit trail)")
+    deals_p.add_argument("--dry-run", action="store_true", help="Validate everything, write nothing")
+
     return parser
+
+
+async def run_import_deals(args: argparse.Namespace) -> int:
+    """All-or-nothing import. Exit code 0 = imported (or dry run OK), 2 = refused, nothing written."""
+    from pathlib import Path
+
+    from scraping.deals.importer import DealImportError, import_file
+
+    path = Path(args.file)
+    try:
+        text = path.read_text(encoding="utf-8-sig")
+    except (OSError, UnicodeDecodeError) as err:
+        print(f"[!] Cannot read {path.name}: {err.__class__.__name__}")
+        return 2
+    async with AsyncSessionLocal() as session:
+        try:
+            report = await import_file(session, path.name, text, actor=args.actor, dry_run=args.dry_run)
+        except DealImportError as err:
+            print(f"[!] Import refused ({len(err.issues)} issue(s)); nothing was written:")
+            for issue in err.issues:
+                where = f"record {issue.row}" if issue.row else "file"
+                print(f"    - {where} / {issue.field}: [{issue.code}] {issue.message}")
+            return 2
+    verb = "validated (dry run, nothing written)" if report.dry_run else "imported as needs_review"
+    print(f"[+] {len(report.created_ids)} deal(s) {verb}.")
+    for new_id, other_id, criteria in report.duplicate_candidates:
+        print(f"    duplicate candidate: {new_id} <-> {other_id} ({', '.join(criteria)}) -> human review required")
+    return 0
 
 
 async def run_cli(args: argparse.Namespace) -> int:
     """Execute the parsed CLI command."""
     configure_logging()
+    if args.command == "import-deals":
+        return await run_import_deals(args)
     pipeline = ScrapingPipeline()
 
     sources = ["bceao", "cb-umoa"] if getattr(args, "source", None) == "all" else [getattr(args, "source", "bceao")]

@@ -208,13 +208,21 @@ frontend/src/
 #### Routes V1
 
 ```
-/[locale]                     (Dashboard)
+/[locale]                          (Dashboard)
 /[locale]/institutions
 /[locale]/institutions/[id]
-/[locale]/documents
-/[locale]/documents/[id]
-/[locale]/financial-data
+/[locale]/countries
+/[locale]/countries/[country]
+/[locale]/analytics
 /[locale]/rankings
+/[locale]/comparisons
+/[locale]/financial-data           (Financial Data Explorer)
+/[locale]/data-quality             (Review Center : observations | transactions)
+/[locale]/data-quality/[dataId]
+/[locale]/data-quality/deals/[dealId]
+/[locale]/deals                    (Deal Explorer — Phase 13)
+/[locale]/deals/[dealId]
+/[locale]/documents
 /[locale]/search
 ```
 
@@ -228,25 +236,40 @@ frontend/src/
 
 - **Provenance** et **statut** affichés partout où une donnée est présentée.
 - **Comparaison** uniquement entre données comparables (même métrique, période, scope, type de période, unité, devise normalisée).
-- Les **rankings** n'utilisent que les données `verified` et une devise unique.
+- Les **classements** n'utilisent que les valeurs admissibles selon la règle d'éligibilité
+  (jamais `rejected`, jamais un conflit, jamais une valeur `needs_review`) dans une devise unique :
+  voir `docs/data-quality.md`.
 
-#### Authentification (future)
+#### Authentification
 
-L'architecture est préparée pour l'ajout d'authentification sans reconstruction :
-- Middleware Next.js pour la protection des routes
-- Providers de contexte utilisateur
-- Backend : structure JWT-ready
+**Aucune authentification n'existe** dans cette version (limite connue, voir `docs/deployment.md`).
+Les décisions humaines enregistrent un identifiant `actor` **déclaré** par l'opérateur. La plateforme
+doit être déployée derrière un accès réseau restreint (VPN / reverse proxy authentifiant).
 
 ---
 
 ### Infrastructure — Docker
 
 **Fichiers** :
-- `docker-compose.yml` : services requis (PostgreSQL)
+- `docker-compose.yml` : `postgres`, `backend` (FastAPI, migrations Alembic au démarrage), `frontend` (Next.js standalone)
+- `backend/Dockerfile`, `frontend/Dockerfile` : images non-root avec healthchecks
 - `docker-compose.override.yml.example` : services optionnels (pgAdmin)
+- `scripts/backup.sh`, `scripts/restore.sh` : sauvegarde / restauration PostgreSQL
 
 **Volumes** :
 - `postgres_data` : persistance des données PostgreSQL
+- `documents_data` : documents téléchargés (backend)
+
+Déploiement détaillé : `docs/deployment.md`.
+
+---
+
+### Deal Intelligence (Phase 13)
+
+Module intégré à la même plateforme (`app/models/deal.py`, `scraping/deals/`, `app/api/v1/deals.py`,
+`frontend/src/app/[locale]/deals`). Réutilise : `institutions`, `documents`, `sources` (provenance),
+les règles de transition du Review Center et la table d'audit unique. Alimentation par import
+structuré uniquement (pas d'extracteur). Voir `docs/deal-intelligence.md`.
 
 **Networks** :
 - `umoa_network` : communication inter-services
@@ -275,3 +298,7 @@ L'architecture est conçue pour supporter :
 **V3** : modules `backend/transactions/` et `backend/relationships/` pour M&A, obligations, actionnaires
 
 Aucune reconstruction architecturale majeure ne sera nécessaire.
+
+> État au terme de la Phase 13 (dernière phase) : le suivi des transactions de financement est
+> livré sous forme de *Deal Intelligence* (import structuré, sans extraction automatique). Les
+> éléments V2/V3 ci-dessus non livrés restent des pistes, pas des engagements.

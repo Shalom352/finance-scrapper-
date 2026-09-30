@@ -37,17 +37,18 @@ class ConflictDetector:
             for obs in observations
         ]
 
-        grouped: dict[tuple[str, str, int, str], list[ObservationSummary]] = defaultdict(list)
+        # Scope is part of the key: individual vs consolidated is never a conflict (Phase 13).
+        grouped: dict[tuple[str, str, int, str, str | None], list[ObservationSummary]] = defaultdict(list)
         for obs in parsed_obs:
             metric_code = getattr(obs, "metric_code", "")
             if not metric_code and hasattr(obs, "metric"):
                 metric_code = getattr(obs.metric, "code", "")
-            key = (obs.institution_id, metric_code, obs.period_year, obs.period_type)
+            key = (obs.institution_id, metric_code, obs.period_year, obs.period_type, obs.scope)
             grouped[key].append(obs)
 
         conflicts: list[ConflictRecord] = []
 
-        for (inst_id, metric_code, year, p_type), items in grouped.items():
+        for (inst_id, metric_code, year, p_type, _scope), items in grouped.items():
             if len(items) < 2:
                 continue
 

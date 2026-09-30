@@ -31,7 +31,7 @@ export async function generateMetadata({
   return {
     title: t("title"),
     description: t("description"),
-    keywords: ["UMOA", "banking", "finance", "BCEAO", "West Africa", "données financières"],
+    keywords: t("keywords").split(", "),
     authors: [{ name: "UMOA Banking Intelligence" }],
   };
 }

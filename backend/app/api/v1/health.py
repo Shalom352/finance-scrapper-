@@ -9,11 +9,15 @@ Provides:
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.logging import get_logger
 from app.db.session import get_db_session
+
+logger = get_logger(__name__)
 
 router = APIRouter(tags=["health"])
 
@@ -35,37 +39,33 @@ async def health_check() -> dict:
     }
 
 
-@router.get("/api/v1/health", summary="Full health check including database")
+@router.get("/api/v1/health", summary="Readiness check including database (503 when unavailable)")
 async def full_health_check(
     db: AsyncSession = Depends(get_db_session),
-) -> dict:
+) -> JSONResponse:
     """
     Returns full application health including database connectivity.
-    Suitable for readiness probes.
+    Suitable for readiness probes: HTTP 503 when the database is not reachable,
+    never "ok" without a successful query. Connection details and driver errors
+    are logged server-side (without credentials) and never returned.
     """
     settings = get_settings()
-    db_status = "unknown"
-    db_error: str | None = None
-
+    db_status = "ok"
     try:
         result = await db.execute(text("SELECT 1"))
         result.scalar_one()
-        db_status = "ok"
     except Exception as exc:
-        db_status = "error"
-        db_error = str(exc)
+        db_status = "unavailable"
+        logger.error("health_database_unavailable", error_type=type(exc).__name__)
 
-    return {
-        "status": "ok" if db_status == "ok" else "degraded",
-        "app": "UMOA Banking Intelligence",
-        "version": "0.1.0",
-        "env": settings.app_env,
-        "database": {
-            "status": db_status,
-            "host": settings.postgres_host,
-            "port": settings.postgres_port,
-            "db": settings.postgres_db,
-            **({"error": db_error} if db_error else {}),
+    return JSONResponse(
+        status_code=200 if db_status == "ok" else 503,
+        content={
+            "status": "ok" if db_status == "ok" else "unavailable",
+            "app": "UMOA Banking Intelligence",
+            "version": "0.1.0",
+            "env": settings.app_env,
+            "database": {"status": db_status},
+            "timestamp": datetime.now(UTC).isoformat(),
         },
-        "timestamp": datetime.now(UTC).isoformat(),
-    }
+    )

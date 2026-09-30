@@ -7,10 +7,16 @@ IMPORTANT: Do not add banking groups without verifiable sourcing.
 If information is uncertain, leave the field null rather than inventing it.
 """
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:  # relationship targets, resolved by SQLAlchemy at runtime
+    from app.models.institution import Institution
+    from app.models.source import Source
 
 
 class BankingGroup(Base):

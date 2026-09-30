@@ -5,14 +5,15 @@ This is the main application factory. It:
 - Configures structured logging
 - Creates the FastAPI application instance
 - Registers routers
-- Adds middleware (CORS)
+- Adds middleware (CORS, security headers, access log)
 - Handles application lifecycle (startup/shutdown)
 """
 
+import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.health import router as health_router
@@ -22,6 +23,7 @@ from app.core.logging import configure_logging, get_logger
 # Initialize logging before anything else
 configure_logging()
 logger = get_logger(__name__)
+access_logger = get_logger("app.access")
 
 
 @asynccontextmanager
@@ -57,11 +59,33 @@ def create_app() -> FastAPI:
             "of the West African Monetary Union (UMOA)."
         ),
         version="0.1.0",
-        docs_url="/docs",
-        redoc_url="/redoc",
-        openapi_url="/openapi.json",
+        # Interactive API docs are not exposed in production.
+        docs_url=None if settings.is_production else "/docs",
+        redoc_url=None if settings.is_production else "/redoc",
+        openapi_url=None if settings.is_production else "/openapi.json",
         lifespan=lifespan,
     )
+
+    # ------------------------------------------------------------------
+    # Security headers + minimal access log (route, status, duration).
+    # Never logged: bodies, headers, query strings, credentials.
+    # ------------------------------------------------------------------
+    @app.middleware("http")
+    async def security_headers_and_access_log(request: Request, call_next):
+        started = time.perf_counter()
+        response = await call_next(request)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        if request.url.path not in ("/health", "/api/v1/health"):
+            access_logger.info(
+                "request",
+                method=request.method,
+                path=request.url.path,
+                status=response.status_code,
+                duration_ms=round((time.perf_counter() - started) * 1000, 1),
+            )
+        return response
 
     # ------------------------------------------------------------------
     # CORS — allow configured origins
@@ -84,6 +108,7 @@ def create_app() -> FastAPI:
     from app.api.v1.comparisons import router as comparisons_router
     from app.api.v1.countries import router as countries_router
     from app.api.v1.data_quality import router as data_quality_router
+    from app.api.v1.deals import router as deals_router
     from app.api.v1.documents import router as documents_router
     from app.api.v1.financial_data import router as financial_data_router
     from app.api.v1.institutions import router as institutions_router
@@ -104,6 +129,7 @@ def create_app() -> FastAPI:
     app.include_router(search_router)
     app.include_router(analytics_router)
     app.include_router(data_quality_router)
+    app.include_router(deals_router)
 
     from app.core.exceptions import register_exception_handlers
     register_exception_handlers(app)

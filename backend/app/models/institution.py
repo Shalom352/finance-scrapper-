@@ -17,10 +17,19 @@ Institution types (open string):
   other               : other regulated financial institution
 """
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:  # relationship targets, resolved by SQLAlchemy at runtime
+    from app.models.banking_group import BankingGroup
+    from app.models.country import Country
+    from app.models.document import Document
+    from app.models.financial_data import FinancialData
+    from app.models.source import Source
 
 
 class Institution(Base):

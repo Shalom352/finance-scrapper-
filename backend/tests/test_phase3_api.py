@@ -113,7 +113,9 @@ class TestHealthChecks:
         finally:
             app.dependency_overrides.clear()
 
-    def test_health_readiness_db_degraded(self):
+    def test_health_readiness_db_unavailable(self):
+        """Phase 13: a readiness probe must fail (503) when the database is down, and the
+        driver error / connection details are logged server-side, never returned."""
         mock_db = AsyncMock()
         mock_db.execute = AsyncMock(side_effect=Exception("Connection refused"))
 
@@ -121,11 +123,11 @@ class TestHealthChecks:
         try:
             c = TestClient(app)
             resp = c.get("/api/v1/health")
-            assert resp.status_code == 200
+            assert resp.status_code == 503
             data = resp.json()
-            assert data["status"] == "degraded"
-            assert data["database"]["status"] == "error"
-            assert "Connection refused" in data["database"]["error"]
+            assert data["status"] == "unavailable"
+            assert data["database"] == {"status": "unavailable"}
+            assert "Connection refused" not in resp.text
         finally:
             app.dependency_overrides.clear()
 

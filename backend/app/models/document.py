@@ -19,6 +19,7 @@ Never overwrite an existing document's provenance.
 """
 
 from datetime import date, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     CheckConstraint,
@@ -32,6 +33,11 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:  # relationship targets, resolved by SQLAlchemy at runtime
+    from app.models.financial_data import FinancialData
+    from app.models.institution import Institution
+    from app.models.source import Source
 
 
 class Document(Base):

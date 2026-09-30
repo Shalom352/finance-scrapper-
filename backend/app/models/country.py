@@ -8,10 +8,15 @@ Source: BCEAO official list of UMOA member states
 https://www.bceao.int/fr/content/presentation-de-lumoa
 """
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy import Boolean, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:  # relationship targets, resolved by SQLAlchemy at runtime
+    from app.models.institution import Institution
 
 
 class Country(Base):

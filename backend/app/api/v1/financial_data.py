@@ -38,6 +38,7 @@ from app.services.financial_data import (
     verify_financial_data,
 )
 from scraping.financial_data.export import EXPORT_MAX_ROWS, ExportTooLargeError
+from scraping.financial_data.review import ObservationNotFoundError, StaleStateError
 
 router = APIRouter(prefix="/api/v1", tags=["financial-data"])
 
@@ -142,13 +143,36 @@ async def historical_quality(
     )
 
 
-@router.post("/financial-data/bulk-review", summary="Bulk review financial data", response_model=list[str])
+@router.post("/financial-data/bulk-review", summary="Bulk review (max 100, all-or-nothing, audited)",
+             response_model=list[str])
 async def bulk_review(
     payload: FinancialDataBulkReviewRequest,
     db: AsyncSession = Depends(get_db_session),
 ) -> list[str]:
-    """Bulk transition data points to reviewed status."""
-    return await bulk_review_financial_data(db, payload.data_ids, reviewer_notes=payload.reviewer_notes)
+    """Bulk transition data points to reviewed status (locked, audited, no partial write)."""
+    expected = {e.data_id: (e.expected_status, e.expected_updated_at) for e in payload.expected}
+    return await _legacy_decide(
+        lambda: bulk_review_financial_data(
+            db, payload.data_ids, actor=payload.actor, reviewer_notes=payload.reviewer_notes, expected=expected
+        ),
+        db,
+    )
+
+
+async def _legacy_decide(action, db: AsyncSession):
+    """Pre-existing contract kept (invalid transition -> 400) with the Review Center guarantees:
+    missing observation -> 404, stale state -> 409, never a partial or silent write."""
+    try:
+        return await action()
+    except ObservationNotFoundError as err:
+        await db.rollback()
+        raise HTTPException(status_code=404, detail=str(err)) from err
+    except StaleStateError as err:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail=str(err)) from err
+    except ValueError as err:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(err)) from err
 
 
 SortQ = Literal["institution", "country", "indicator", "year", "value"]
@@ -273,16 +297,19 @@ async def review_datum(
     payload: FinancialDataReviewRequest,
     db: AsyncSession = Depends(get_db_session),
 ) -> FinancialDataRead:
-    """Transition financial data point to 'reviewed' status."""
-    try:
-        return await review_financial_data(
+    """Transition financial data point to 'reviewed' status (value override audited)."""
+    return await _legacy_decide(
+        lambda: review_financial_data(
             db,
             data_id,
             reviewer_notes=payload.reviewer_notes,
             value_normalized_override=payload.value_normalized_override,
-        )
-    except ValueError as err:
-        raise HTTPException(status_code=400, detail=str(err)) from err
+            actor=payload.actor,
+            expected_status=payload.expected_status,
+            expected_updated_at=payload.expected_updated_at,
+        ),
+        db,
+    )
 
 
 @router.post("/financial-data/{data_id}/verify", summary="Verify financial data point", response_model=FinancialDataRead)
@@ -292,15 +319,17 @@ async def verify_datum(
     db: AsyncSession = Depends(get_db_session),
 ) -> FinancialDataRead:
     """Transition financial data point from 'reviewed' to 'verified' status."""
-    try:
-        return await verify_financial_data(
+    return await _legacy_decide(
+        lambda: verify_financial_data(
             db,
             data_id,
             verified_by=payload.verified_by,
             verification_notes=payload.verification_notes,
-        )
-    except ValueError as err:
-        raise HTTPException(status_code=400, detail=str(err)) from err
+            expected_status=payload.expected_status,
+            expected_updated_at=payload.expected_updated_at,
+        ),
+        db,
+    )
 
 
 @router.post("/financial-data/{data_id}/reject", summary="Reject financial data point", response_model=FinancialDataRead)
@@ -310,11 +339,14 @@ async def reject_datum(
     db: AsyncSession = Depends(get_db_session),
 ) -> FinancialDataRead:
     """Transition financial data point to 'rejected' status."""
-    try:
-        return await reject_financial_data(
+    return await _legacy_decide(
+        lambda: reject_financial_data(
             db,
             data_id,
             reason=payload.reason,
-        )
-    except ValueError as err:
-        raise HTTPException(status_code=400, detail=str(err)) from err
+            actor=payload.actor,
+            expected_status=payload.expected_status,
+            expected_updated_at=payload.expected_updated_at,
+        ),
+        db,
+    )

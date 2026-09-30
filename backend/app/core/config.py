@@ -8,7 +8,7 @@ Never hardcode secrets or environment-specific values here.
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, computed_field
+from pydantic import Field, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -99,6 +99,16 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"
+
+    @model_validator(mode="after")
+    def production_guards(self) -> "Settings":
+        """Refuse an unsafe production configuration instead of starting with it."""
+        if self.is_production:
+            if not self.cors_origins_list or "*" in self.cors_origins_list:
+                raise ValueError("CORS_ORIGINS must list explicit origins in production (no '*')")
+            if self.backend_debug:
+                raise ValueError("BACKEND_DEBUG must be false in production")
+        return self
 
 
 @lru_cache(maxsize=1)

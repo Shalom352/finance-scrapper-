@@ -210,6 +210,9 @@ describe("institution detail", () => {
     }
     expect(screen.getByText("Banque A")).toBeTruthy();
     expect(state.apiCalls).toContain("financials:individual:annual"); // safe defaults
+    // Phase 13: Institution -> Financial Data Explorer and Institution -> Deals, filtered on this institution.
+    expect(screen.getByTestId("institution-financial-data-link").getAttribute("href")).toMatch(/^\/financial-data\?inst=/);
+    expect(screen.getByTestId("institution-deals-link").getAttribute("href")).toMatch(/^\/deals\?bank=/);
   });
 
   it("missing and non-certified values show — and their reason, never 0", async () => {

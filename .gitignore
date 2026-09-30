@@ -97,3 +97,9 @@ logs/
 # ----------------------------
 *.db
 *.sqlite3
+
+# ----------------------------
+# Database backups (scripts/backup.sh) — never committed
+# ----------------------------
+backups/
+*.dump

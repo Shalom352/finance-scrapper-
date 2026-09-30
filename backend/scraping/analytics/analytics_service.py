@@ -27,6 +27,9 @@ from scraping.analytics.sector_analysis import SectorAnalyzer
 from scraping.consolidation.duplicate_detector import DuplicateDetector
 from scraping.consolidation.models import ObservationSummary
 
+# Derived values admissible in a comparison (same rule as the Phase 9 comparisons).
+COMPARABLE_STATUSES = ("calculated", "calculated_from_verified")
+
 # Ratios, growth and sector aggregates are annual indicators (RATIO_DEFINITIONS frequency="annual"):
 # semi-annual or quarterly observations must never be mixed into them.
 ANNUAL = "annual"
@@ -68,7 +71,9 @@ class AnalyticsService:
             return [], 0
 
         # Query relevant institutions
-        inst_query = select(Institution).options(selectinload(Institution.country))
+        inst_query = select(Institution).options(selectinload(Institution.country)).where(
+            Institution.deleted_at.is_(None)
+        )
         if institution_id:
             inst_query = inst_query.where(Institution.id == institution_id)
         if country_code:
@@ -155,7 +160,9 @@ class AnalyticsService:
         """
         target_metrics = [metric_code] if metric_code else CORE_GROWTH_METRICS
 
-        inst_query = select(Institution).options(selectinload(Institution.country))
+        inst_query = select(Institution).options(selectinload(Institution.country)).where(
+            Institution.deleted_at.is_(None)
+        )
         if institution_id:
             inst_query = inst_query.where(Institution.id == institution_id)
         if country_code:
@@ -251,6 +258,7 @@ class AnalyticsService:
         # Count institutions per country
         inst_counts_query = (
             select(Institution.country_id, func.count(Institution.id))
+            .where(Institution.deleted_at.is_(None))
             .group_by(Institution.country_id)
         )
         counts_res = (await db.execute(inst_counts_query)).all()
@@ -388,7 +396,8 @@ class AnalyticsService:
         year: int,
         data_scope: str = SECTOR_SCOPE,
     ):
-        """Authoritative annual value of one metric in one scope, or None if absent or in conflict."""
+        """(value, currency) of the authoritative annual observation of one metric in one scope,
+        or (None, None) when absent, in conflict or still needs_review."""
         query = (
             select(FinancialData)
             .options(
@@ -407,9 +416,10 @@ class AnalyticsService:
         rows = (await db.execute(query)).scalars().all()
         candidates = [self.duplicate_detector.observation_from_orm(r) for r in rows]
         best, conflict = self.sector_aggregator.eligibility.select_authoritative_observation(candidates)
-        if best is None or conflict:
-            return None
-        return best.value_normalized
+        # Conflicts and unreviewed values are never presented as comparable values (Phase 13).
+        if best is None or conflict or best.status == "needs_review" or best.value_normalized is None:
+            return None, None
+        return best.value_normalized, best.currency_normalized
 
     async def compare_entities(
         self,
@@ -440,14 +450,18 @@ class AnalyticsService:
                 r_b, _ = await self.get_ratios(
                     db, institution_id=entity_b, ratio_code=metric_or_ratio, year=year, data_scope=data_scope
                 )
-                val_a = r_a[0].value_percent if r_a and r_a[0].value_percent is not None else None
-                val_b = r_b[0].value_percent if r_b and r_b[0].value_percent is not None else None
+                # Only ratios computed from admissible inputs are compared (same rule as /comparisons).
+                val_a = r_a[0].value_percent if r_a and r_a[0].status in COMPARABLE_STATUSES else None
+                val_b = r_b[0].value_percent if r_b and r_b[0].status in COMPARABLE_STATUSES else None
                 unit = "%"
             else:
-                # Authoritative annual value per institution (rejected excluded, conflicts → None)
-                val_a = await self._authoritative_metric_value(db, entity_a, metric_or_ratio, year, data_scope)
-                val_b = await self._authoritative_metric_value(db, entity_b, metric_or_ratio, year, data_scope)
-                unit = "XOF"
+                # Authoritative annual value per institution (rejected excluded, conflicts and
+                # needs_review → None). The unit is the observed currency, never assumed.
+                val_a, cur_a = await self._authoritative_metric_value(db, entity_a, metric_or_ratio, year, data_scope)
+                val_b, cur_b = await self._authoritative_metric_value(db, entity_b, metric_or_ratio, year, data_scope)
+                if cur_a and cur_b and cur_a != cur_b:
+                    val_a = val_b = None  # never compare values in different currencies
+                unit = cur_a or cur_b
 
             return self.sector_analyzer.compare_institutions(
                 inst_a_name=name_a,

@@ -27,6 +27,7 @@ import { RatioDataTable } from "@/components/tables/RatioDataTable";
 import { CoverageIndicator } from "@/components/common/CoverageIndicator";
 import { TableSkeleton } from "@/components/common/LoadingSkeleton";
 import { EmptyState, ErrorState } from "@/components/common/EmptyState";
+import { useReasonLabel } from "@/components/rankings/ReasonLabel";
 
 const CORE_METRICS = [
   "total_actifs",
@@ -229,6 +230,7 @@ function RatiosTab({ year, country }: { year: number; country: string }) {
 
 function GrowthTab({ year, country }: { year: number; country: string }) {
   const t = useTranslations("analytics.growth");
+  const reasonLabel = useReasonLabel();
   const fmt = useFormatters();
   const labels = useLabels();
   const { get, set } = useQueryParams();
@@ -285,13 +287,14 @@ function GrowthTab({ year, country }: { year: number; country: string }) {
             <tbody className="divide-y divide-gray-800/60">
               {state.data.map((g, idx) => {
                 const pct = g.growth_percent;
-                const tone = pct === null ? "text-gray-500" : pct > 0 ? "text-emerald-400" : pct < 0 ? "text-rose-400" : "text-gray-300";
+                // Neutral colours: a variation is a fact, not a judgement (the arrow gives the sign).
+                const tone = pct === null ? "text-gray-500" : "text-gray-200";
                 const arrow = pct === null ? "" : pct > 0 ? "▲ " : pct < 0 ? "▼ " : "";
                 return (
                   <tr key={`${g.institution_id}-${idx}`} className="hover:bg-gray-800/30 transition-colors">
                     <td className="py-3.5 px-4 font-bold text-gray-200">
                       {g.institution_name ?? g.institution_id}
-                      {g.reason && <span className="block text-[11px] font-normal text-amber-400/90">{g.reason}</span>}
+                      {g.reason && <span className="block text-[11px] font-normal text-amber-400/90">{reasonLabel(g.reason)}</span>}
                     </td>
                     <td className="py-3.5 px-4 font-mono font-bold text-emerald-400">{g.country_code ?? MISSING}</td>
                     <td className="py-3.5 px-4 text-right text-gray-300">

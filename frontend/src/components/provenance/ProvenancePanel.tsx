@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { FinancialDataDetail, ProvenanceRef, RatioResult } from "@/types";
 import { StatusBadge } from "@/components/common/StatusBadge";
@@ -8,6 +8,13 @@ import { MISSING, orMissing } from "@/lib/formatters";
 import { useFormatters } from "@/lib/useFormatters";
 import { useLabels } from "@/lib/useLabels";
 import { useFinancialDataDetail } from "@/lib/useFinancialDataDetail";
+import { useReasonLabel } from "@/components/rankings/ReasonLabel";
+
+/** Translated code; an unknown code is shown as received, a missing one as MISSING. */
+function useCodeLabel(namespace: "provenance.methods" | "provenance.roles") {
+  const t = useTranslations(namespace);
+  return (code: string | null | undefined) => (code ? (t.has(code) ? t(code) : code) : MISSING);
+}
 
 interface ProvenancePanelProps {
   /** Financial data row id: the panel loads the full record from the API. */
@@ -22,6 +29,12 @@ export function ProvenancePanel({ dataId, ratioPoint, sources, onClose }: Proven
   const t = useTranslations("provenance");
   const tc = useTranslations("common");
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
+  // Escape closes the dialog (keyboard users).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
   const hasSources = !!sources && sources.length > 0;
   if (!dataId && !ratioPoint && !hasSources) return null;
   const detailId = dataId ?? selectedSource;
@@ -31,11 +44,11 @@ export function ProvenancePanel({ dataId, ratioPoint, sources, onClose }: Proven
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="provenance-title"
+      aria-labelledby="provenance-dialog-title"
     >
       <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-gray-800 bg-gray-950 p-6 md:p-8 shadow-2xl">
         <div className="flex items-start justify-between pb-4 border-b border-gray-800">
-          <span className="text-emerald-400 text-sm font-semibold tracking-wide uppercase">{t("title")}</span>
+          <span id="provenance-dialog-title" className="text-emerald-400 text-sm font-semibold tracking-wide uppercase">{t("title")}</span>
           <button
             onClick={onClose}
             className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
@@ -76,6 +89,7 @@ function Row({ label, value, testId }: { label: string; value: React.ReactNode; 
 }
 
 function DataPointProvenance({ dataId }: { dataId: string }) {
+  const methodLabel = useCodeLabel("provenance.methods");
   const t = useTranslations("provenance");
   const tc = useTranslations("common");
   const fmt = useFormatters();
@@ -133,7 +147,7 @@ function DataPointProvenance({ dataId }: { dataId: string }) {
           value={
             d.document?.url ? (
               <a href={d.document.url} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline">
-                {d.document.title} ↗
+                {orMissing(d.document.title)} ↗
               </a>
             ) : (
               orMissing(d.document?.title)
@@ -141,7 +155,7 @@ function DataPointProvenance({ dataId }: { dataId: string }) {
           }
         />
         <Row label={t("page")} value={orMissing(d.page_number)} testId="prov-page" />
-        <Row label={t("method")} value={orMissing(d.extraction_method)} />
+        <Row label={t("method")} value={methodLabel(d.extraction_method)} />
         <Row
           label={t("confidence")}
           value={d.confidence_score === null ? MISSING : fmt.percent(d.confidence_score * 100, 1)}
@@ -163,6 +177,8 @@ function DataPointProvenance({ dataId }: { dataId: string }) {
 
 function RatioProvenance({ ratio }: { ratio: RatioResult }) {
   const t = useTranslations("provenance");
+  const reasonLabel = useReasonLabel();
+  const roleLabel = useCodeLabel("provenance.roles");
   const fmt = useFormatters();
   const labels = useLabels();
 
@@ -176,7 +192,7 @@ function RatioProvenance({ ratio }: { ratio: RatioResult }) {
           <StatusBadge status={ratio.status} />
         </div>
         <p className="text-xs text-gray-400">
-          {ratio.period_year} — {orMissing(ratio.institution_name)}
+          {orMissing(ratio.period_year)} — {orMissing(ratio.institution_name)}
         </p>
       </div>
 
@@ -184,7 +200,7 @@ function RatioProvenance({ ratio }: { ratio: RatioResult }) {
         <div>
           <span className="text-xs text-gray-400 block mb-1">{t("calculated_value")}</span>
           <span className="text-2xl font-black text-emerald-400">{fmt.percent(ratio.value_percent, 2)}</span>
-          {ratio.reason && <span className="text-xs text-amber-400 block mt-1">{ratio.reason}</span>}
+          {ratio.reason && <span className="text-xs text-amber-400 block mt-1">{reasonLabel(ratio.reason)}</span>}
         </div>
         <div className="text-right">
           <span className="text-xs text-gray-400 block mb-1">{t("formula")}</span>
@@ -204,9 +220,9 @@ function RatioProvenance({ ratio }: { ratio: RatioResult }) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-gray-200">{labels.metric(comp.metric_code)}</span>
-                  <span className="text-gray-400">({comp.period_year})</span>
+                  <span className="text-gray-400">({orMissing(comp.period_year)})</span>
                   {comp.role && (
-                    <span className="px-1.5 py-0.5 rounded bg-gray-800 text-[10px] text-gray-400 uppercase">{comp.role}</span>
+                    <span className="px-1.5 py-0.5 rounded bg-gray-800 text-[10px] text-gray-400 uppercase">{roleLabel(comp.role)}</span>
                   )}
                 </div>
                 <StatusBadge status={comp.status} size="sm" />
@@ -254,7 +270,7 @@ function SourcesList({
         >
           <span className="font-bold text-gray-200">{labels.metric(src.metric_code)}</span>{" "}
           <span className="text-gray-400">
-            ({src.period_year} · {labels.periodType(src.period_type)} · {labels.scope(src.scope)})
+            ({orMissing(src.period_year)} · {labels.periodType(src.period_type)} · {labels.scope(src.scope)})
           </span>
           <span className="block text-gray-500 mt-0.5">
             {orMissing(src.source_name)} · {orMissing(src.document_title)} · {t("page")} {orMissing(src.page_number)}

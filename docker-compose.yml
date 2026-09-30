@@ -2,19 +2,22 @@
 # UMOA Banking Intelligence — Docker Compose
 # ============================================================
 #
-# Services included:
-#   - postgres: PostgreSQL 16 database (required)
+# Services:
+#   - postgres : PostgreSQL 16 database
+#   - backend  : FastAPI API (applies Alembic migrations at start-up)
+#   - frontend : Next.js UI
 #
 # Optional services (see docker-compose.override.yml.example):
 #   - pgadmin: PostgreSQL admin UI
 #
+# Configuration comes from the root .env (see .env.example). No secret is written here.
+#
 # Usage:
-#   docker-compose up -d          # Start all services
-#   docker-compose down           # Stop all services
-#   docker-compose down -v        # Stop and remove volumes
+#   docker compose up -d --build   # Build and start all services
+#   docker compose ps              # Health of each service
+#   docker compose down            # Stop all services (data volumes kept)
+#   docker compose down -v         # Stop and DELETE the data volumes
 # ============================================================
-
-version: "3.9"
 
 services:
   postgres:
@@ -39,8 +42,58 @@ services:
     networks:
       - umoa_network
 
+  backend:
+    build:
+      context: ./backend
+    container_name: umoa_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-umoa_banking}
+      POSTGRES_USER: ${POSTGRES_USER:-umoa_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+      # Empty on purpose: the DSN is built from the POSTGRES_* values above (container network),
+      # never from a host-side DATABASE_URL.
+      DATABASE_URL: ""
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      BACKEND_DEBUG: "false"
+      BACKEND_LOG_LEVEL: ${BACKEND_LOG_LEVEL:-INFO}
+      DOCUMENTS_STORAGE_PATH: /app/data/downloads
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - documents_data:/app/data
+    networks:
+      - umoa_network
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Browser-side API URL, inlined at build time.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    container_name: umoa_frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      # Server-side rendering calls the API on the container network.
+      INTERNAL_API_URL: http://backend:8000
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    networks:
+      - umoa_network
+
 volumes:
   postgres_data:
+    driver: local
+  documents_data:
     driver: local
 
 networks:

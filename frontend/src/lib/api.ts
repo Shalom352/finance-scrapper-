@@ -12,7 +12,14 @@ import type {
   ComponentProvenance,
   ComparisonRow,
   CountryComparison,
+  DealAnalytics,
+  DealDetail,
+  DealDimension,
+  DealDuplicate,
+  DealListItem,
+  DealParticipant,
   Document,
+  DuplicateDecision,
   FinancialDataDetail,
   FinancialDataExplorerItem,
   FinancialDataFacets,
@@ -43,39 +50,72 @@ import type {
   SectorStructure,
 } from "@/types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+/**
+ * Browser: the public API URL (inlined at build time). Server components: INTERNAL_API_URL
+ * when set (e.g. http://backend:8000 inside Docker), read at runtime, else the public URL.
+ */
+const API_BASE =
+  (typeof window === "undefined" ? process.env.INTERNAL_API_URL : undefined) ??
+  process.env.NEXT_PUBLIC_API_URL ??
+  "http://localhost:8000";
 
 /** Backend hard limit on `page_size` for every paginated route. */
 const MAX_PAGE_SIZE = 100;
 /** Safety bound for pagination loops (100 pages × 100 rows). */
 const MAX_PAGES = 100;
 
+/**
+ * status 0 = network failure (no answer). `code` / `message` come from the backend envelope
+ * `{ error: { code, message } }` when present; they are for logic and diagnostics — the UI
+ * always shows its own translated message, never a raw backend text.
+ */
 export class ApiError extends Error {
+  public code: string;
+
   constructor(
     public status: number,
     message: string,
+    code?: string,
   ) {
     super(message);
     this.name = "ApiError";
+    this.code = code ?? (status === 0 ? "NETWORK_ERROR" : `HTTP_${status}`);
+  }
+}
+
+/** Build an ApiError from a non-2xx response, reading the backend error envelope when present. */
+export async function errorFromResponse(response: Response): Promise<ApiError> {
+  const text = await response.text().catch(() => "");
+  try {
+    const body = JSON.parse(text) as { error?: { code?: unknown; message?: unknown }; detail?: unknown };
+    const code = typeof body.error?.code === "string" ? body.error.code : undefined;
+    const raw = body.error?.message ?? body.detail;
+    const message = typeof raw === "string" ? raw : `HTTP ${response.status}`;
+    return new ApiError(response.status, message, code);
+  } catch {
+    return new ApiError(response.status, `HTTP ${response.status}`);
+  }
+}
+
+async function readJson<T>(response: Response): Promise<T> {
+  try {
+    return (await response.json()) as T;
+  } catch {
+    // An answer was received but is not valid JSON: not a network failure.
+    throw new ApiError(response.status, "Invalid JSON response", "INVALID_RESPONSE");
   }
 }
 
 async function apiFetch<T>(path: string): Promise<T> {
-  const url = `${API_BASE}${path}`;
-
+  let response: Response;
   try {
-    const response = await fetch(url, { headers: { "Content-Type": "application/json" } });
-
-    if (!response.ok) {
-      const text = await response.text().catch(() => "Unknown error");
-      throw new ApiError(response.status, text);
-    }
-
-    return (await response.json()) as T;
+    // No Content-Type on a GET: nothing is sent, and it would force a CORS preflight.
+    response = await fetch(`${API_BASE}${path}`, { headers: { Accept: "application/json" } });
   } catch (err) {
-    if (err instanceof ApiError) throw err;
     throw new ApiError(0, err instanceof Error ? err.message : "Network error");
   }
+  if (!response.ok) throw await errorFromResponse(response);
+  return readJson<T>(response);
 }
 
 /** POST JSON; a non-2xx answer becomes an ApiError carrying the HTTP status (404 / 409 / 422…). */
@@ -84,14 +124,14 @@ async function apiPost<T>(path: string, body: unknown): Promise<T> {
   try {
     response = await fetch(`${API_BASE}${path}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(body),
     });
   } catch (err) {
     throw new ApiError(0, err instanceof Error ? err.message : "Network error");
   }
-  if (!response.ok) throw new ApiError(response.status, await response.text().catch(() => "Unknown error"));
-  return (await response.json()) as T;
+  if (!response.ok) throw await errorFromResponse(response);
+  return readJson<T>(response);
 }
 
 function buildQuery(params: Record<string, string | number | boolean | null | undefined>): string {
@@ -279,7 +319,7 @@ export async function exportFinancialDataCsv(params: FinancialDataExplorerQuery)
     throw new ApiError(0, err instanceof Error ? err.message : "Network error");
   }
   if (response.status === 413) return { status: "too_large" };
-  if (!response.ok) throw new ApiError(response.status, await response.text().catch(() => "Unknown error"));
+  if (!response.ok) throw await errorFromResponse(response);
   return { status: "ok", blob: await response.blob() };
 }
 
@@ -302,6 +342,8 @@ export async function getDataQualityCounts(): Promise<ReviewCenterCounts> {
   return apiFetch<ReviewCenterCounts>("/api/v1/data-quality/summary");
 }
 
+const normalizeEvent = (e: ReviewEvent): ReviewEvent => numericFields(e, ["value_before", "value_after"]);
+
 const normalizeReviewObservation = (o: ReviewObservation): ReviewObservation =>
   numericFields(o, ["value_normalized", "difference"]);
 
@@ -310,14 +352,15 @@ export async function getReviewDetail(id: string): Promise<ReviewDetail> {
   return {
     ...d,
     observation: normalizeDetail(d.observation),
-    competing: d.competing.map(normalizeReviewObservation),
-    not_comparable: d.not_comparable.map(normalizeReviewObservation),
+    competing: (d.competing ?? []).map(normalizeReviewObservation),
+    not_comparable: (d.not_comparable ?? []).map(normalizeReviewObservation),
+    allowed_actions: d.allowed_actions ?? [],
   };
 }
 
 export async function getReviewHistory(id: string): Promise<ReviewEvent[]> {
   const rows = await apiFetch<ReviewEvent[]>(`/api/v1/data-quality/${encodeURIComponent(id)}/history`);
-  return rows.map((e) => numericFields(e, ["value_before", "value_after"]));
+  return (rows ?? []).map(normalizeEvent);
 }
 
 export interface ReviewDecision {
@@ -550,3 +593,114 @@ export async function getInstitutionCoverage(id: string, params: ProfileQuery = 
   return numericFields(res, ["coverage_ratio"]);
 }
 
+
+// ============================================================
+// Phase 13 — Deal Intelligence (read) + Review Center decisions on deals
+// ============================================================
+
+export interface DealQuery {
+  country?: string;
+  bank?: string;
+  deal_type?: string;
+  sector?: string;
+  year?: number;
+  currency?: string;
+  status?: string;
+  participant_role?: string;
+  borrower?: string;
+  arranger?: string;
+  include_merged?: boolean;
+}
+
+const normalizeParticipant = (p: DealParticipant): DealParticipant => numericFields(p, ["commitment_amount"]);
+
+const normalizeDealItem = <T extends DealListItem>(d: T): T => ({
+  ...numericFields(d, ["amount"] as (keyof T)[]),
+  borrowers: d.borrowers ?? [],
+  arrangers: d.arrangers ?? [],
+});
+
+const normalizeDeal = (d: DealDetail): DealDetail => ({
+  ...normalizeDealItem(numericFields(d, ["interest_rate", "spread_bps"])),
+  participants: (d.participants ?? []).map(normalizeParticipant),
+  sources: d.sources ?? [],
+  field_provenance: d.field_provenance ?? {},
+  duplicates: (d.duplicates ?? []).map((c) => ({ ...c, matched_criteria: c.matched_criteria ?? [] })),
+  merged_deals: (d.merged_deals ?? []).map((m) => ({
+    ...m,
+    sources: m.sources ?? [],
+    participants: (m.participants ?? []).map(normalizeParticipant),
+  })),
+  allowed_actions: d.allowed_actions ?? [],
+});
+
+export async function getDeals(
+  params: DealQuery & { page?: number; page_size?: number },
+): Promise<PaginatedResponse<DealListItem>> {
+  const res = await apiFetch<PaginatedResponse<DealListItem>>(`/api/v1/deals${buildQuery({ ...params })}`);
+  return mapPage(res, normalizeDealItem);
+}
+
+export async function getDeal(id: string): Promise<DealDetail> {
+  return normalizeDeal(await apiFetch<DealDetail>(`/api/v1/deals/${encodeURIComponent(id)}`));
+}
+
+export async function getDealHistory(id: string): Promise<ReviewEvent[]> {
+  const rows = await apiFetch<ReviewEvent[]>(`/api/v1/deals/${encodeURIComponent(id)}/history`);
+  return (rows ?? []).map(normalizeEvent);
+}
+
+export async function getDealAnalytics(dimension: DealDimension): Promise<DealAnalytics> {
+  const res = await apiFetch<DealAnalytics>(`/api/v1/deals/analytics${buildQuery({ dimension })}`);
+  return {
+    ...res,
+    rows: (res.rows ?? []).map((r) => ({
+      ...r,
+      by_status: r.by_status ?? {},
+      amounts: (r.amounts ?? []).map((a) => numericFields(a, ["total"])),
+    })),
+  };
+}
+
+export async function getDealQueue(params: {
+  status?: string;
+  country?: string;
+  page?: number;
+  page_size?: number;
+}): Promise<PaginatedResponse<DealListItem>> {
+  const res = await apiFetch<PaginatedResponse<DealListItem>>(
+    `/api/v1/data-quality/deals${buildQuery({ ...params })}`,
+  );
+  return mapPage(res, normalizeDealItem);
+}
+
+export async function getOpenDealDuplicates(
+  params: { page?: number; page_size?: number } = {},
+): Promise<PaginatedResponse<DealDuplicate>> {
+  const res = await apiFetch<PaginatedResponse<DealDuplicate>>(
+    `/api/v1/data-quality/deal-duplicates${buildQuery({ ...params })}`,
+  );
+  return mapPage(res, (c) => ({ ...c, matched_criteria: c.matched_criteria ?? [] }));
+}
+
+/** A human decision on a deal. The resulting status is decided by the backend. */
+export async function postDealReviewAction(
+  id: string,
+  action: ReviewAction,
+  decision: ReviewDecision,
+): Promise<DealDetail> {
+  return normalizeDeal(
+    await apiPost<DealDetail>(`/api/v1/data-quality/deals/${encodeURIComponent(id)}/${action}`, decision),
+  );
+}
+
+/** Human decision on a duplicate candidate: never an automatic merge, never a deletion. */
+export async function postDuplicateDecision(
+  candidateId: string,
+  body: { decision: DuplicateDecision; primary_deal_id?: string; actor: string; reason: string },
+): Promise<DealDuplicate> {
+  return apiPost<DealDuplicate>(`/api/v1/data-quality/deal-duplicates/${encodeURIComponent(candidateId)}/decide`, {
+    ...body,
+    expected_state: "duplicate_candidate",
+  });
+}

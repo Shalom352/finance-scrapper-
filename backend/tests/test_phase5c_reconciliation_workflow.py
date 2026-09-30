@@ -358,23 +358,24 @@ async def test_workflow_reject_requires_reason():
 
 @pytest.mark.asyncio
 async def test_workflow_bulk_review():
-    """Bulk review updates candidate rows with value_normalized."""
+    """Bulk review: one locked query, all rows reviewed, one audited event per row (actor required)."""
     r1 = MagicMock(spec=FinancialData, id="d1", status="extracted", value_normalized=Decimal("10"), notes="")
     r2 = MagicMock(spec=FinancialData, id="d2", status="needs_review", value_normalized=Decimal("20"), notes="")
 
     db = AsyncMock()
     db.add = MagicMock()  # AsyncSession.add is synchronous (audit event)
-    # Mock finding r1 then r2
-    res1 = MagicMock()
-    res1.scalar_one_or_none.return_value = r1
-    res2 = MagicMock()
-    res2.scalar_one_or_none.return_value = r2
-    db.execute.side_effect = [res1, res2]
+    res = MagicMock()
+    res.scalars.return_value.all.return_value = [r1, r2]
+    db.execute.return_value = res
 
-    updated = await bulk_review_financial_data(db, ["d1", "d2"], reviewer_notes="Batch review OK")
+    updated = await bulk_review_financial_data(db, ["d2", "d1"], actor="analyst-1", reviewer_notes="Batch review OK")
     assert updated == ["d1", "d2"]
     assert r1.status == "reviewed"
     assert r2.status == "reviewed"
+    assert db.execute.await_count == 1  # a single SELECT ... FOR UPDATE for the whole batch
+    events = [c.args[0] for c in db.add.call_args_list]
+    assert [(e.financial_data_id, e.actor) for e in events] == [("d1", "analyst-1"), ("d2", "analyst-1")]
+    db.commit.assert_awaited_once()
 
 
 @pytest.mark.asyncio

@@ -4,7 +4,7 @@ import React from "react";
 import { useTranslations } from "next-intl";
 import type { ReviewObservation } from "@/types";
 import { Link } from "@/i18n/navigation";
-import { displayCurrency, MISSING } from "@/lib/formatters";
+import { displayCurrency, MISSING, orMissing } from "@/lib/formatters";
 import { useFormatters } from "@/lib/useFormatters";
 import { useLabels } from "@/lib/useLabels";
 import { StatusBadge } from "@/components/common/StatusBadge";
@@ -62,7 +62,7 @@ export function CompetingObservations({ currentId, rows, comparable, hrefFor }: 
               <td className="py-2 px-3 text-right font-mono font-bold text-gray-100">{num(o.value_normalized)}</td>
               <td className="py-2 px-3 text-gray-400">{displayCurrency(o.currency_normalized) || MISSING}</td>
               <td className="py-2 px-3 text-gray-400">{o.unit_normalized || MISSING}</td>
-              <td className="py-2 px-3 text-gray-300">{o.period_year}</td>
+              <td className="py-2 px-3 text-gray-300">{orMissing(o.period_year)}</td>
               <td className="py-2 px-3 text-gray-400">{labels.periodType(o.period_type)}</td>
               <td className="py-2 px-3 text-gray-400">{labels.scope(o.scope)}</td>
               <td className="py-2 px-3 text-gray-400">

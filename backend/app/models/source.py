@@ -8,10 +8,18 @@ Sources are seeded from well-known official institutions.
 No invented sources.
 """
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy import Boolean, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:  # relationship targets, resolved by SQLAlchemy at runtime
+    from app.models.banking_group import BankingGroup
+    from app.models.document import Document
+    from app.models.financial_data import FinancialData
+    from app.models.institution import Institution
 
 
 class Source(Base):

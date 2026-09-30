@@ -5,8 +5,9 @@ Descriptive counters and review payloads only: plain counts of stored observatio
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
+from app.schemas.common import ACTOR_MAX_LENGTH
 from app.schemas.financial_data import FinancialDataRead
 
 
@@ -23,6 +24,13 @@ class DataQualityCounts(BaseModel):
     conflict_observations: int
     # needs_review observations ∪ observations in conflict (each counted once).
     unresolved: int
+    # Deals (Phase 13): not attached to another deal; open duplicate candidates.
+    deals_total: int = 0
+    deals_needs_review: int = 0
+    deals_reviewed: int = 0
+    deals_verified: int = 0
+    deals_rejected: int = 0
+    deals_duplicate_candidates: int = 0
 
 
 class ReviewObservation(BaseModel):
@@ -58,8 +66,12 @@ class ReviewDetail(BaseModel):
 
 
 class ReviewEventRead(BaseModel):
+    """One audit event. Targets an observation OR a deal (single journal)."""
+
     id: str
-    financial_data_id: str
+    financial_data_id: str | None = None
+    deal_id: str | None = None
+    deal_duplicate_candidate_id: str | None = None
     action: str
     previous_status: str
     new_status: str
@@ -75,7 +87,7 @@ class ReviewEventRead(BaseModel):
 class ReviewActionRequest(BaseModel):
     """A human decision. The resulting status is decided by the backend, never sent."""
 
-    actor: str
+    actor: str = Field(max_length=ACTOR_MAX_LENGTH)
     reason: str
     # State the reviewer saw when deciding (optimistic concurrency -> 409 if it changed).
     expected_status: str | None = None

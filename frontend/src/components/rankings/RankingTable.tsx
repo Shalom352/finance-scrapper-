@@ -153,7 +153,9 @@ export function RankHistoryTable({ history, unit }: { history: RankHistory; unit
                 </td>
                 <td className="py-2 px-4 text-right text-gray-300">{formatValue(p.value, unit, p.currency)}</td>
                 <td className="py-2 px-4 text-gray-500">
-                  {p.coverage_ratio === null ? MISSING : `${p.ranked_count} / ${p.expected_count}`}
+                  {p.coverage_ratio === null || p.ranked_count == null || p.expected_count == null
+                    ? MISSING
+                    : `${p.ranked_count} / ${p.expected_count}`}
                 </td>
               </tr>
             ))}
