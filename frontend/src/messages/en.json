@@ -822,7 +822,23 @@
       "bond": "Bond",
       "guarantee": "Guarantee",
       "other": "Other",
-      "sovereign_bond": "Sovereign bond"
+      "sovereign_bond": "Sovereign bond",
+      "equity": "Equity",
+      "ipo": "IPO",
+      "corporate_bond": "Corporate bond",
+      "sukuk": "Sukuk",
+      "blended_finance": "Blended finance",
+      "m_and_a": "M&A",
+      "sovereign_bond_ape": "Sovereign public bond offering",
+      "corporate_bond_ape": "Public bond offering",
+      "corporate_bond_private": "Private bond placement",
+      "debt_buyback": "Public debt buyback",
+      "debt_exchange": "Debt exchange",
+      "debt_reprofiling": "Debt reprofiling",
+      "securitisation": "Securitisation",
+      "capital_increase": "Capital increase",
+      "share_sale_public": "Public share sale",
+      "takeover_offer": "Takeover / squeeze-out / exchange offer"
     },
     "roles": {
       "borrower": "Borrower",
@@ -834,7 +850,21 @@
       "sponsor": "Sponsor",
       "advisor": "Advisor",
       "investor": "Investor",
-      "issuer": "Issuer"
+      "issuer": "Issuer",
+      "insurer": "Insurer",
+      "reinsurer": "Reinsurer",
+      "underwriter": "Underwriter",
+      "trustee": "Trustee",
+      "facility_agent": "Facility agent",
+      "security_agent": "Security agent",
+      "lead_manager": "Lead manager",
+      "co_lead_manager": "Co-lead manager",
+      "placement_syndicate_member": "Placement syndicate member",
+      "financial_advisor": "Financial advisor",
+      "anchor_investor": "Anchor investor",
+      "refinanced_lender": "Refinanced lender",
+      "selling_shareholder": "Selling shareholder",
+      "paying_agent": "Paying agent"
     },
     "rate_types": {
       "fixed": "Fixed",
@@ -924,7 +954,10 @@
         "auction_date": "Auction date",
         "value_date": "Value date",
         "maturity_date": "Maturity date",
-        "yield_rate": "Weighted average yield"
+        "yield_rate": "Weighted average yield",
+        "use_of_proceeds": "Use of proceeds",
+        "use_of_proceeds_categories": "Use-of-proceeds categories",
+        "filing_agent_raw": "Filing SGI (AMF API)"
       },
       "instrument": "Public security (auction)",
       "entity": "Entity: {name}",
@@ -932,6 +965,37 @@
         "global_total_rounded": "Printed global total rounded (tranche amounts kept)",
         "issuer_label_truncated": "Truncated issuer label — country confirmed by the ISIN",
         "page_lists_buyback_securities": "Buyback lines of the page ignored (justified by the buyback page of the PDF)"
+      },
+      "use_of_proceeds": "Use of proceeds",
+      "filing_agent_note": "Raw field of the AMF API: the SGI that filed with the regulator. It is not a role.",
+      "published_on": "Published on {date}",
+      "paywalled": "Paywalled article: title, date and link only",
+      "open_article": "Read the source",
+      "extraction_methods": {
+        "text": "read in the text",
+        "visual_logo": "read on a logo (to review)",
+        "visual_scan": "read on a scan (to review)"
+      },
+      "source_classes": {
+        "primary_regulatory": "Approved information note",
+        "primary_market": "Market source",
+        "issuer_official": "Official release",
+        "issuer_press_release": "Issuer release",
+        "regulator_index": "AMF index (metadata)",
+        "press_reported": "Press (to cross-check)"
+      },
+      "proceeds_categories": {
+        "budget_financing": "Budget financing",
+        "infrastructure_project": "Infrastructure project",
+        "refinancing": "Refinancing",
+        "working_capital": "Working capital",
+        "capital_adequacy": "Capital strengthening",
+        "housing_refinancing": "Housing refinancing",
+        "sme_financing": "SME financing",
+        "green": "Green",
+        "social": "Social",
+        "privatisation": "Privatisation",
+        "other": "Other"
       }
     },
     "duplicates": {

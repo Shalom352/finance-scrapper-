@@ -19,6 +19,7 @@ from sqlalchemy import extract, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.constants.deals import SECONDARY_SOURCE_CLASSES
 from app.models.country import Country
 from app.models.deal import Deal, DealDuplicateCandidate, DealParticipant, DealSource
 from app.models.review_event import FinancialDataReviewEvent
@@ -55,6 +56,21 @@ class DealNotFoundError(ObservationNotFoundError):
 
 class UnresolvedDuplicateError(StaleStateError):
     """Verification refused while a duplicate candidate involving the deal is undecided."""
+
+
+class SecondarySourceOnlyError(StaleStateError):
+    """Verification refused while the deal is attested only by press / AMF index sources (D4)."""
+
+
+async def _secondary_only(db: AsyncSession, deal_id: str) -> bool:
+    """True when every classified source of the deal is secondary (press_reported / regulator_index).
+
+    Legacy sources (class NULL, before Phase 19) keep the previous behaviour.
+    """
+    classes = set(
+        (await db.execute(select(DealSource.source_class).where(DealSource.deal_id == deal_id))).scalars()
+    )
+    return bool(classes) and None not in classes and classes <= set(SECONDARY_SOURCE_CLASSES)
 
 
 def _escape_like(value: str) -> str:
@@ -191,7 +207,8 @@ def _source_read(s: DealSource, fields: list[str]) -> DealSourceRead:
         document_title=s.document.title if s.document else None,
         document_url=s.document.url if s.document else None,
         source_id=s.source_id, source_name=s.source.name if s.source else None,
-        page_number=s.page_number, excerpt=s.excerpt, fields=fields,
+        page_number=s.page_number, excerpt=s.excerpt, fields=fields, source_class=s.source_class,
+        publisher=s.publisher, title=s.title, url=s.url, published_at=s.published_at, paywalled=s.paywalled,
     )
 
 
@@ -201,7 +218,8 @@ def _participant_read(p: DealParticipant) -> DealParticipantRead:
         institution_name=p.institution.name_official if p.institution else None,
         entity_id=p.entity_id, entity_name=p.entity.canonical_name if p.entity else None, role=p.role,
         commitment_amount=p.commitment_amount, commitment_currency=p.commitment_currency,
-        deal_source_id=p.deal_source_id,
+        deal_source_id=p.deal_source_id, page_number=p.page_number, excerpt=p.excerpt,
+        extraction_method=p.extraction_method,
     )
 
 
@@ -295,7 +313,9 @@ async def get_deal(db: AsyncSession, deal_id: str) -> DealDetail | None:
         guarantees=deal.guarantees, financial_close_date=deal.financial_close_date,
         closing_date=deal.closing_date, auction_reference=deal.auction_reference, auction_date=deal.auction_date,
         maturity_date=deal.maturity_date, yield_rate=deal.yield_rate,
-        validation_flags=list(deal.validation_flags or []), notes=deal.notes, verified_at=deal.verified_at,
+        validation_flags=list(deal.validation_flags or []), use_of_proceeds=deal.use_of_proceeds,
+        use_of_proceeds_categories=list(deal.use_of_proceeds_categories or []),
+        filing_agent_raw=deal.filing_agent_raw, notes=deal.notes, verified_at=deal.verified_at,
         verified_by=deal.verified_by, created_at=deal.created_at,
         participants=[_participant_read(p) for p in deal.participants],
         sources=[_source_read(s, sorted(by_source[s.id])) for s in deal.sources],
@@ -375,6 +395,11 @@ async def decide_deal(
         if open_c:
             raise UnresolvedDuplicateError(
                 "unresolved_duplicate_candidate: decide the duplicate candidate(s) before verifying"
+            )
+        if await _secondary_only(db, deal.id):
+            raise SecondarySourceOnlyError(
+                "secondary_source_only: add a primary source (note, release, UMOA-Titres / BRVM notice) "
+                "before verifying a deal attested only by the press or the AMF index"
             )
         deal.status = "verified"
         deal.verified_by = actor

@@ -189,3 +189,33 @@ créent jamais de transaction.
 - Extraction automatique limitée aux résultats d'adjudication UMOA-Titres (OAT) ; les autres
   transactions dépendent d'imports structurés.
 - Détection de doublons en Python sur les transactions portant un ancrage (volume V1).
+
+## 9. Sourcing des rôles (Phase 19, migration `0016_deal_sourcing_roles`)
+
+Implémente les décisions D1 à D5 du 05/10/2026 (`audits/ape_amf/07_proposition.md`).
+
+- **Types** ajoutés : `sovereign_bond_ape`, `corporate_bond_ape`, `corporate_bond_private`, `debt_buyback`,
+  `debt_exchange`, `debt_reprofiling`, `securitisation`, `capital_increase`, `share_sale_public`,
+  `takeover_offer`. Les valeurs existantes restent valides ; `bond`, `corporate_bond` et `equity` ne
+  sont plus utilisés pour les nouvelles saisies. Le type vient de la nature AMF et du document, jamais
+  du seul libellé.
+- **Rôles** ajoutés, uniquement s'ils sont nommés : `lead_manager`, `co_lead_manager`,
+  `placement_syndicate_member` (seulement si la note énumère les membres), `financial_advisor`,
+  `anchor_investor`, `refinanced_lender`, `selling_shareholder`, `paying_agent`.
+  « Arrangeur et chef de file : X » = deux participations (`arranger` + `lead_manager`, D1).
+  Chaque participation peut porter sa page, sa citation et sa méthode de lecture
+  (`text`, `visual_logo`, `visual_scan`).
+- **Utilisation des fonds** : `use_of_proceeds` (citation) et `use_of_proceeds_categories` (liste fermée,
+  plusieurs valeurs), avec provenance au niveau du champ.
+- **`filing_agent_raw`** : la SGI déclarante de l'API AMF, stockée en texte brut. Ce n'est jamais un rôle (D2) :
+  une source `regulator_index` ne peut attester aucune participation.
+- **Classes de source** (`deal_sources.source_class`) : `primary_regulatory`, `primary_market`,
+  `issuer_official`, `issuer_press_release`, `regulator_index`, `press_reported`. Presse : éditeur, titre,
+  URL, date, `paywalled` ; jamais le corps de l'article (D4). Un article payant n'atteste aucun champ ni rôle.
+- **Garde de vérification** : une transaction attestée uniquement par `press_reported` / `regulator_index`
+  ne peut pas passer `verified` (409 `secondary_source_only`) tant qu'une source primaire n'est pas ajoutée.
+- **`institution_links`** : lien SGI → banque à deux niveaux (D3). `documented_bank` désigne une
+  institution de la liste officielle ; `documented_group_only` ne garde que le libellé du groupe et
+  n'attribue aucune transaction à une banque. Source, citation et date d'observation obligatoires ;
+  statut `needs_review` par défaut.
+- Le downgrade de `0016` est refusé tant que le nouveau vocabulaire ou les nouvelles colonnes sont utilisés.

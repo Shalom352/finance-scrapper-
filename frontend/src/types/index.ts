@@ -775,9 +775,25 @@ export const DEAL_TYPES = [
   "project_finance",
   "trade_finance",
   "bond",
-  "sovereign_bond",
   "guarantee",
+  "equity",
+  "ipo",
+  "sovereign_bond",
+  "corporate_bond",
+  "sukuk",
+  "blended_finance",
+  "m_and_a",
   "other",
+  "sovereign_bond_ape",
+  "corporate_bond_ape",
+  "corporate_bond_private",
+  "debt_buyback",
+  "debt_exchange",
+  "debt_reprofiling",
+  "securitisation",
+  "capital_increase",
+  "share_sale_public",
+  "takeover_offer",
 ] as const;
 export const PARTICIPANT_ROLES = [
   "borrower",
@@ -789,7 +805,21 @@ export const PARTICIPANT_ROLES = [
   "sponsor",
   "advisor",
   "investor",
+  "insurer",
+  "reinsurer",
   "issuer",
+  "underwriter",
+  "trustee",
+  "facility_agent",
+  "security_agent",
+  "lead_manager",
+  "co_lead_manager",
+  "placement_syndicate_member",
+  "financial_advisor",
+  "anchor_investor",
+  "refinanced_lender",
+  "selling_shareholder",
+  "paying_agent",
 ] as const;
 export const DEAL_STATUSES: DealStatus[] = ["extracted", "needs_review", "reviewed", "verified", "rejected"];
 
@@ -804,6 +834,10 @@ export interface DealParticipant {
   commitment_amount: number | null;
   commitment_currency: string | null;
   deal_source_id: string;
+  /** Where the role is named (Phase 19). */
+  page_number?: number | null;
+  excerpt?: string | null;
+  extraction_method?: "text" | "visual_logo" | "visual_scan" | null;
 }
 
 export interface DealSource {
@@ -817,6 +851,13 @@ export interface DealSource {
   page_number: number;
   excerpt: string | null;
   fields: string[];
+  /** Confidence class (Phase 19); null for sources recorded before. */
+  source_class?: string | null;
+  publisher?: string | null;
+  title?: string | null;
+  url?: string | null;
+  published_at?: string | null;
+  paywalled?: boolean | null;
 }
 
 export interface DealDuplicate {
@@ -881,6 +922,11 @@ export interface DealDetail extends DealListItem {
   maturity_date?: string | null;
   yield_rate?: number | null;
   validation_flags?: { code: string; detail: string }[];
+  /** Quoted use of proceeds and closed categories (Phase 19). */
+  use_of_proceeds?: string | null;
+  use_of_proceeds_categories?: string[];
+  /** Raw "SGI déclarante" of the AMF API — never a role. */
+  filing_agent_raw?: string | null;
   notes: string | null;
   verified_at: string | null;
   verified_by: string | null;

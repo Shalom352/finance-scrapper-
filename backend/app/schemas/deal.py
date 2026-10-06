@@ -24,6 +24,9 @@ class DealParticipantRead(BaseModel):
     commitment_amount: Decimal | None = None
     commitment_currency: str | None = None
     deal_source_id: str
+    page_number: int | None = None
+    excerpt: str | None = None
+    extraction_method: str | None = None
 
 
 class DealSourceRead(BaseModel):
@@ -37,6 +40,12 @@ class DealSourceRead(BaseModel):
     page_number: int
     excerpt: str | None = None
     fields: list[str] = Field(default_factory=list)
+    source_class: str | None = None
+    publisher: str | None = None
+    title: str | None = None
+    url: str | None = None
+    published_at: date | None = None
+    paywalled: bool | None = None
 
 
 class DealDuplicateRead(BaseModel):
@@ -103,6 +112,10 @@ class DealDetail(DealListItem):
     yield_rate: Decimal | None = None
     # Validation rules applied by an automated ingestion ([{code, detail}]); never a value change.
     validation_flags: list[dict] = Field(default_factory=list)
+    use_of_proceeds: str | None = None
+    use_of_proceeds_categories: list[str] = Field(default_factory=list)
+    # "SGI déclarante" as given by the AMF API: raw text, never a role.
+    filing_agent_raw: str | None = None
     notes: str | None = None
     verified_at: datetime | None = None
     verified_by: str | None = None

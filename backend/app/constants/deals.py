@@ -19,6 +19,19 @@ DEAL_TYPES = (
     "blended_finance",
     "m_and_a",
     "other",
+    # Phase 19 (audits/ape_amf/07_proposition.md §1): the type comes from the AMF nature and the
+    # document, never from the label alone. ``bond``, ``corporate_bond`` and ``equity`` stay valid
+    # for existing rows but are frozen for new manual entries in favour of the values below.
+    "sovereign_bond_ape",
+    "corporate_bond_ape",
+    "corporate_bond_private",
+    "debt_buyback",
+    "debt_exchange",
+    "debt_reprofiling",
+    "securitisation",
+    "capital_increase",
+    "share_sale_public",
+    "takeover_offer",
 )
 
 PARTICIPANT_ROLES = (
@@ -38,7 +51,81 @@ PARTICIPANT_ROLES = (
     "trustee",
     "facility_agent",
     "security_agent",
+    # Phase 19 (07_proposition.md §2) — only when NAMED in the source, never deduced.
+    # "Arrangeur et chef de file : X" gives two participations (arranger + lead_manager).
+    "lead_manager",
+    "co_lead_manager",
+    "placement_syndicate_member",  # only if the note LISTS members ("toutes les SGI" creates nothing)
+    "financial_advisor",
+    "anchor_investor",
+    "refinanced_lender",
+    "selling_shareholder",
+    "paying_agent",
 )
+
+# Roles through which an institution PROVIDES or ORGANISES financing (used by the targeting view).
+FINANCING_ROLES = (
+    "lender",
+    "arranger",
+    "co_arranger",
+    "lead_manager",
+    "co_lead_manager",
+    "underwriter",
+    "guarantor",
+    "investor",
+    "anchor_investor",
+    "facility_agent",
+    "agent",
+    "refinanced_lender",
+)
+
+# How a participation was read in the source (07_proposition.md §2). visual_* is always needs_review.
+PARTICIPANT_EXTRACTION_METHODS = ("text", "visual_logo", "visual_scan")
+
+# Use of proceeds — closed list, several values allowed (07_proposition.md §3).
+USE_OF_PROCEEDS_CATEGORIES = (
+    "budget_financing",
+    "infrastructure_project",
+    "refinancing",
+    "working_capital",
+    "capital_adequacy",
+    "housing_refinancing",
+    "sme_financing",
+    "green",
+    "social",
+    "privatisation",
+    "other",
+)
+
+# Confidence class of a deal source (07_proposition.md §5). NULL = legacy row (before Phase 19).
+SOURCE_CLASSES = (
+    "primary_regulatory",  # information note with an AMF visa
+    "primary_market",  # UMOA-Titres result, BRVM notice, DC/BR sheet
+    "issuer_official",  # release on the issuer's / bank's own domain
+    "issuer_press_release",  # signed issuer release reproduced in full
+    "regulator_index",  # AMF API metadata: never a role (D2)
+    "press_reported",  # press article: needs a primary source before verification (D4)
+)
+# A deal attested ONLY by these classes cannot be verified (409) until a primary source is added.
+SECONDARY_SOURCE_CLASSES = ("press_reported", "regulator_index")
+
+# Sectors of intervention (TOMASTEED offer) — closed list used by deals.sector for new entries
+# and by the targeting view. Existing free-text sectors are kept as they are.
+SECTORS = (
+    "infrastructure_public",
+    "energy",
+    "agriculture",
+    "industry",
+    "telecom_media_tech",
+    "real_estate",
+    "financial_services",
+    "public_finance",
+    "other",
+)
+
+# SGI -> bank link (07_proposition.md §4, decision D3).
+LINK_LEVELS = ("documented_bank", "documented_group_only")
+LINK_RELATIONS = ("subsidiary", "shareholder")
 
 INTEREST_RATE_TYPES = ("fixed", "floating")
 
@@ -87,6 +174,12 @@ INSTRUMENT_PROVENANCE_FIELDS = (
     "yield_rate",
 )
 PROVENANCE_FIELDS = PROVENANCE_FIELDS + INSTRUMENT_PROVENANCE_FIELDS
+# Phase 14-18 vocabulary, kept for the migration 0016 downgrade.
+PHASE18_PROVENANCE_FIELDS = PROVENANCE_FIELDS
+
+# Use of proceeds and raw AMF filing agent (migration 0016), tracked field by field as well.
+SOURCING_PROVENANCE_FIELDS = ("use_of_proceeds", "use_of_proceeds_categories", "filing_agent_raw")
+PROVENANCE_FIELDS = PROVENANCE_FIELDS + SOURCING_PROVENANCE_FIELDS
 
 # Public securities as named by the issuing Treasury / UMOA-Titres. Closed list: never guessed.
 #   OAT = Obligation Assimilable du Trésor · BAT = Bon Assimilable du Trésor

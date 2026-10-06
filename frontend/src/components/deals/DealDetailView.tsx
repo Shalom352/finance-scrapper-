@@ -42,12 +42,27 @@ function FieldSources({ ids, byId }: { ids: string[] | undefined; byId: Map<stri
 
 function SourceCard({ s, fieldLabel }: { s: DealSource; fieldLabel: (f: string) => string }) {
   const t = useTranslations("deals.detail");
+  const locale = useLocale();
   return (
     <li id={`deal-source-${s.id}`} className="p-3 rounded-xl border border-gray-800 bg-gray-950/40 text-xs space-y-1" data-testid="deal-source">
       <div className="text-gray-200 font-semibold">
-        {s.document_title ?? MISSING} · {t("page", { page: s.page_number })}
+        {s.source_class && (
+          <span className="px-1.5 py-0.5 mr-2 rounded bg-gray-800 text-[10px] text-gray-300" data-testid="deal-source-class">
+            {t(`source_classes.${s.source_class}`)}
+          </span>
+        )}
+        {s.title ?? s.document_title ?? MISSING} · {t("page", { page: s.page_number })}
       </div>
-      <div className="text-gray-400">{s.source_name ?? MISSING}</div>
+      <div className="text-gray-400">
+        {s.publisher ?? s.source_name ?? MISSING}
+        {s.published_at && <> · {t("published_on", { date: formatDay(s.published_at, locale) })}</>}
+      </div>
+      {s.paywalled && <div className="text-amber-300">{t("paywalled")}</div>}
+      {s.url && (
+        <a href={s.url} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline">
+          {t("open_article")} ↗
+        </a>
+      )}
       {s.excerpt && <blockquote className="text-gray-300 italic border-l-2 border-gray-700 pl-2">{s.excerpt}</blockquote>}
       {s.fields.length > 0 && (
         <div className="text-gray-500">{t("attests")} {s.fields.map(fieldLabel).join(", ")}</div>
@@ -186,8 +201,14 @@ export function DealDetailView({ deal, history, reviewHref }: { deal: DealDetail
                         ? t("entity", { name: p.entity_name ?? p.participant_name })
                         : t("not_in_directory")}
                     {p.commitment_amount !== null && <> · {t("commitment")} {amount(p.commitment_amount, p.commitment_currency, null)}</>}
-                    {s && <> · <a href={`#deal-source-${s.id}`} className="hover:text-emerald-300">{t("page", { page: s.page_number })}</a></>}
+                    {s && <> · <a href={`#deal-source-${s.id}`} className="hover:text-emerald-300">{t("page", { page: p.page_number ?? s.page_number })}</a></>}
+                    {p.extraction_method && <> · {t(`extraction_methods.${p.extraction_method}`)}</>}
                   </span>
+                  {p.excerpt && (
+                    <blockquote className="mt-1 text-gray-300 italic border-l-2 border-gray-700 pl-2" data-testid="deal-participant-excerpt">
+                      {p.excerpt}
+                    </blockquote>
+                  )}
                 </li>
               );
             })}
@@ -220,6 +241,27 @@ export function DealDetailView({ deal, history, reviewHref }: { deal: DealDetail
             <dt className="text-gray-500">{labels.role("sponsor")}</dt>
             <dd className="text-gray-100 font-medium">{sponsors.length ? sponsors.map((p) => p.participant_name).join(", ") : unavailable}</dd>
           </div>
+        </dl>
+      </Section>
+
+      <Section title={t("use_of_proceeds")} testId="deal-use-of-proceeds">
+        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-xs">
+          {row("use_of_proceeds", deal.use_of_proceeds, Boolean(deal.use_of_proceeds))}
+          {row(
+            "use_of_proceeds_categories",
+            (deal.use_of_proceeds_categories ?? []).map((c) => t(`proceeds_categories.${c}`)).join(", "),
+            (deal.use_of_proceeds_categories ?? []).length > 0,
+          )}
+          {deal.filing_agent_raw && (
+            <div>
+              <dt className="text-gray-500">{tf("filing_agent_raw")}</dt>
+              <dd className="text-gray-100 font-medium" data-testid="deal-field-filing_agent_raw">
+                {deal.filing_agent_raw}
+                <span className="block text-gray-500 font-normal">{t("filing_agent_note")}</span>
+                <FieldSources ids={prov.filing_agent_raw} byId={byId} />
+              </dd>
+            </div>
+          )}
         </dl>
       </Section>
 

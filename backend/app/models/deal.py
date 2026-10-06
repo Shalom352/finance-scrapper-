@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     CheckConstraint,
     Date,
     DateTime,
@@ -41,8 +42,12 @@ from app.constants.deals import (
     DUPLICATE_STATES,
     INSTRUMENT_TYPES,
     INTEREST_RATE_TYPES,
+    LINK_LEVELS,
+    LINK_RELATIONS,
+    PARTICIPANT_EXTRACTION_METHODS,
     PARTICIPANT_ROLES,
     PROVENANCE_FIELDS,
+    SOURCE_CLASSES,
     sql_in,
 )
 from app.db.base import Base
@@ -141,6 +146,12 @@ class Deal(Base):
     # Validation rules applied by an automated ingestion: [{code, detail}] (migration 0015).
     validation_flags: Mapped[list[dict] | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
 
+    # Sourcing (migration 0016): use of proceeds quoted from the source, closed categories,
+    # and the raw "SGI déclarante" of the AMF API — kept as text, NEVER converted into a role (D2).
+    use_of_proceeds: Mapped[str | None] = mapped_column(Text, nullable=True)
+    use_of_proceeds_categories: Mapped[list[str] | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
+    filing_agent_raw: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="needs_review")
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -173,6 +184,10 @@ class DealSource(Base):
         UniqueConstraint("deal_id", "document_id", "page_number", name="uq_deal_sources_deal_document_page"),
         Index("ix_deal_sources_deal", "deal_id"),
         Index("ix_deal_sources_document", "document_id"),
+        CheckConstraint(
+            f"source_class IS NULL OR source_class IN ({sql_in(SOURCE_CLASSES)})", name="ck_deal_sources_source_class"
+        ),
+        Index("ix_deal_sources_source_class", "source_class"),
     )
 
     deal_id: Mapped[str] = mapped_column(ForeignKey("deals.id", ondelete="RESTRICT"), nullable=False)
@@ -180,6 +195,14 @@ class DealSource(Base):
     source_id: Mapped[str] = mapped_column(ForeignKey("sources.id", ondelete="RESTRICT"), nullable=False)
     page_number: Mapped[int] = mapped_column(Integer, nullable=False)
     excerpt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Confidence class (migration 0016); NULL for rows imported before Phase 19.
+    source_class: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    # Press / release metadata only — an article body is never stored (decision D4).
+    publisher: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    title: Mapped[str | None] = mapped_column(Text, nullable=True)
+    url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    published_at: Mapped[date | None] = mapped_column(Date, nullable=True)
+    paywalled: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
     deal: Mapped[Deal] = relationship("Deal", back_populates="sources", lazy="noload")
     document: Mapped["Document"] = relationship("Document", lazy="noload")
@@ -219,6 +242,11 @@ class DealParticipant(Base):
         Index("ix_deal_participants_deal", "deal_id"),
         Index("ix_deal_participants_institution_role", "institution_id", "role"),
         Index("ix_deal_participants_entity_role", "entity_id", "role"),
+        CheckConstraint("page_number IS NULL OR page_number > 0", name="ck_deal_participants_page_positive"),
+        CheckConstraint(
+            f"extraction_method IS NULL OR extraction_method IN ({sql_in(PARTICIPANT_EXTRACTION_METHODS)})",
+            name="ck_deal_participants_extraction_method",
+        ),
     )
 
     deal_id: Mapped[str] = mapped_column(ForeignKey("deals.id", ondelete="RESTRICT"), nullable=False)
@@ -228,10 +256,14 @@ class DealParticipant(Base):
     )
     # Entity Hub link (e.g. a sovereign_state issuer); set only from an explicit published name.
     entity_id: Mapped[str | None] = mapped_column(ForeignKey("entities.id", ondelete="RESTRICT"), nullable=True)
-    role: Mapped[str] = mapped_column(String(20), nullable=False)
+    role: Mapped[str] = mapped_column(String(40), nullable=False)
     commitment_amount: Mapped[Decimal | None] = mapped_column(Numeric(24, 6), nullable=True)
     commitment_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
     deal_source_id: Mapped[str] = mapped_column(ForeignKey("deal_sources.id", ondelete="RESTRICT"), nullable=False)
+    # Where the role is NAMED (migration 0016): page, short quotation, reading method.
+    page_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    excerpt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    extraction_method: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     deal: Mapped[Deal] = relationship("Deal", back_populates="participants", lazy="noload")
     institution: Mapped["Institution | None"] = relationship("Institution", lazy="noload")
@@ -262,3 +294,52 @@ class DealDuplicateCandidate(Base):
     decided_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     decision_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class InstitutionLink(Base):
+    """SGI -> bank link at two levels (decision D3, migration 0016).
+
+    ``documented_bank``: a public source names one institution of the official list (to_institution_id).
+    ``documented_group_only``: the source only names a group (group_label); NO deal is ever attributed
+    to a bank of the list through such a link. No link is created from a name resemblance or from the
+    AMF "website" field. Shareholdings change: every link is dated (observed_at).
+    """
+
+    __tablename__ = "institution_links"
+    __table_args__ = (
+        CheckConstraint(f"link_level IN ({sql_in(LINK_LEVELS)})", name="ck_institution_links_level"),
+        CheckConstraint(f"relation IN ({sql_in(LINK_RELATIONS)})", name="ck_institution_links_relation"),
+        CheckConstraint(
+            "status IN ('needs_review', 'reviewed', 'verified', 'rejected')", name="ck_institution_links_status"
+        ),
+        CheckConstraint(
+            "(link_level = 'documented_bank' AND to_institution_id IS NOT NULL AND group_label IS NULL) OR "
+            "(link_level = 'documented_group_only' AND to_institution_id IS NULL AND group_label IS NOT NULL)",
+            name="ck_institution_links_level_target",
+        ),
+        CheckConstraint("pct IS NULL OR (pct > 0 AND pct <= 100)", name="ck_institution_links_pct"),
+        CheckConstraint(
+            "status != 'verified' OR (verified_at IS NOT NULL AND verified_by IS NOT NULL)",
+            name="ck_institution_links_verified_requires_validator",
+        ),
+        Index("ix_institution_links_from_name", "from_name"),
+        Index("ix_institution_links_to_institution", "to_institution_id"),
+    )
+
+    from_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    from_entity_id: Mapped[str | None] = mapped_column(ForeignKey("entities.id", ondelete="RESTRICT"), nullable=True)
+    link_level: Mapped[str] = mapped_column(String(30), nullable=False)
+    to_institution_id: Mapped[str | None] = mapped_column(
+        ForeignKey("institutions.id", ondelete="RESTRICT"), nullable=True
+    )
+    group_label: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    relation: Mapped[str] = mapped_column(String(20), nullable=False)
+    pct: Mapped[Decimal | None] = mapped_column(Numeric(7, 4), nullable=True)
+    source_url: Mapped[str] = mapped_column(Text, nullable=False)
+    excerpt: Mapped[str] = mapped_column(Text, nullable=False)
+    observed_at: Mapped[date] = mapped_column(Date, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="needs_review", server_default="needs_review")
+    verified_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    to_institution: Mapped["Institution | None"] = relationship("Institution", lazy="noload")

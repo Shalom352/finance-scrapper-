@@ -8,6 +8,7 @@ from app.models.deal import (
     DealFieldSource,
     DealParticipant,
     DealSource,
+    InstitutionLink,
 )
 from app.models.discovery import (
     DiscoveryGap,
@@ -43,6 +44,7 @@ __all__ = [
     "FinancialDataReviewEvent",
     "Deal",
     "DealSource",
+    "InstitutionLink",
     "DealFieldSource",
     "DealParticipant",
     "DealDuplicateCandidate",

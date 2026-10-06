@@ -210,6 +210,42 @@ describe("Deal detail", () => {
     expect(view.container.textContent).not.toMatch(NO_JUNK);
   });
 
+  it("shows named roles with page and quotation, use of proceeds, source class; the AMF filing agent is never a role", async () => {
+    state.deal = detail({
+      use_of_proceeds: "financer les besoins de trésorerie prévus dans la Loi de Finances 2025",
+      use_of_proceeds_categories: ["budget_financing"],
+      filing_agent_raw: "ABCO BOURSE",
+      participants: [
+        { id: "p3", participant_name: "Société Générale Sénégal", institution_id: "inst-a", institution_name: "Société Générale Sénégal",
+          role: "co_arranger", commitment_amount: null, commitment_currency: null, deal_source_id: "src-1",
+          page_number: 52, excerpt: "Co-arrangeur : Société Générale Sénégal", extraction_method: "text" },
+      ],
+      sources: [
+        { id: "src-1", deal_id: "deal-1", document_id: "doc-1", document_title: "Note d'information", document_url: null,
+          source_id: "s1", source_name: "FGI Bourse", page_number: 15, excerpt: null, source_class: "primary_regulatory",
+          fields: ["title", "use_of_proceeds", "use_of_proceeds_categories", "filing_agent_raw"] },
+        { id: "src-2", deal_id: "deal-1", document_id: "doc-2", document_title: "Article", document_url: null,
+          source_id: "s2", source_name: "Presse", page_number: 1, excerpt: null, source_class: "press_reported",
+          publisher: "Financial Afrik", url: "https://www.financialafrik.com/x", published_at: "2026-01-12", paywalled: true,
+          fields: [] },
+      ],
+      field_provenance: { title: ["src-1"], use_of_proceeds: ["src-1"], use_of_proceeds_categories: ["src-1"], filing_agent_raw: ["src-1"] },
+    });
+    const view = renderWithIntl(<DealPage params={params("deal-1")} />, "fr");
+    await screen.findByTestId("deal-title");
+    const part = screen.getByTestId("deal-participant");
+    expect(part.textContent).toMatch(/Co-arrangeur/);
+    expect(part.textContent).toMatch(/p\. 52/);
+    expect(part.textContent).toMatch(/lu dans le texte/);
+    expect(screen.getByTestId("deal-participant-excerpt").textContent).toContain("Co-arrangeur : Société Générale Sénégal");
+    expect(screen.getByTestId("deal-field-use_of_proceeds_categories").textContent).toMatch(/Financement du budget/);
+    expect(screen.getByTestId("deal-field-filing_agent_raw").textContent).toMatch(/Ce n'est pas un rôle/);
+    const classes = screen.getAllByTestId("deal-source-class").map((e) => e.textContent);
+    expect(classes).toEqual(["Note d'information visée", "Presse (à recouper)"]);
+    expect(view.container.textContent).toMatch(/Article payant/);
+    expect(view.container.textContent).not.toMatch(NO_JUNK);
+  });
+
   it("links participants to the institution directory only when the id is known (Deal → Institution)", async () => {
     renderWithIntl(<DealPage params={params("deal-1")} />, "fr");
     await screen.findByTestId("deal-title");

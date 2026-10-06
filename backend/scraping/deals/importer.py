@@ -336,6 +336,8 @@ async def import_deals(
                 auction_date=r.auction_date, value_date=r.value_date, maturity_date=r.maturity_date,
                 yield_rate=r.yield_rate, ingestion_key=r.ingestion_key,
                 validation_flags=[f.model_dump() for f in r.validation_flags] or None,
+                use_of_proceeds=r.use_of_proceeds, use_of_proceeds_categories=r.use_of_proceeds_categories,
+                filing_agent_raw=r.filing_agent_raw,
                 status=IMPORT_STATUS,
             )
             db.add(deal)
@@ -343,7 +345,9 @@ async def import_deals(
             by_ref: dict[str, DealSource] = {}
             for s in r.sources:
                 ds = DealSource(deal_id=deal.id, document_id=s.document_id, source_id=s.source_id,
-                                page_number=s.page, excerpt=s.excerpt)
+                                page_number=s.page, excerpt=s.excerpt, source_class=s.source_class,
+                                publisher=s.publisher, title=s.title, url=s.url, published_at=s.published_at,
+                                paywalled=s.paywalled)
                 db.add(ds)
                 by_ref[s.ref] = ds
             await db.flush()
@@ -355,7 +359,8 @@ async def import_deals(
                     deal_id=deal.id, participant_name=p.name, institution_id=p.institution_id,
                     entity_id=p.entity_id, role=p.role,
                     commitment_amount=p.commitment_amount, commitment_currency=p.commitment_currency,
-                    deal_source_id=by_ref[p.source_ref].id,
+                    deal_source_id=by_ref[p.source_ref].id, page_number=p.page, excerpt=p.excerpt,
+                    extraction_method=p.extraction_method,
                 ))
             db.add(FinancialDataReviewEvent(
                 deal_id=deal.id, action="import", previous_status="none", new_status=IMPORT_STATUS,

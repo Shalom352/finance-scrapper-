@@ -25,8 +25,11 @@ from app.constants.deals import (
     INSTRUMENT_TYPES,
     INTEREST_RATE_TYPES,
     ISO_4217_CURRENCIES,
+    PARTICIPANT_EXTRACTION_METHODS,
     PARTICIPANT_ROLES,
     PROVENANCE_FIELDS,
+    SOURCE_CLASSES,
+    USE_OF_PROCEEDS_CATEGORIES,
 )
 
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
@@ -38,6 +41,9 @@ RateType = Literal[INTEREST_RATE_TYPES]  # type: ignore[valid-type]
 Unit = Literal[AMOUNT_UNITS]  # type: ignore[valid-type]
 ProvenanceField = Literal[PROVENANCE_FIELDS]  # type: ignore[valid-type]
 InstrumentType = Literal[INSTRUMENT_TYPES]  # type: ignore[valid-type]
+SourceClass = Literal[SOURCE_CLASSES]  # type: ignore[valid-type]
+ExtractionMethod = Literal[PARTICIPANT_EXTRACTION_METHODS]  # type: ignore[valid-type]
+ProceedsCategory = Literal[USE_OF_PROCEEDS_CATEGORIES]  # type: ignore[valid-type]
 Isin = Annotated[str, StringConstraints(pattern=r"^[A-Z]{2}[A-Z0-9]{9}[0-9]$")]
 
 
@@ -61,6 +67,24 @@ class SourceRef(BaseModel):
     excerpt: str | None = None
     # Deal fields this source attests (field-level provenance).
     fields: list[ProvenanceField] = Field(default_factory=list)
+    # Phase 19 — confidence class and press / release metadata (an article body is never stored).
+    source_class: SourceClass | None = None
+    publisher: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)] | None = None
+    title: str | None = None
+    url: Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^https?://")] | None = None
+    published_at: date | None = None
+    paywalled: bool | None = None
+
+    @model_validator(mode="after")
+    def press_rules(self) -> "SourceRef":
+        if self.source_class == "press_reported" and (self.url is None or self.publisher is None):
+            raise ValueError("a press_reported source requires url and publisher")
+        if self.paywalled and self.fields:
+            raise ValueError("a paywalled article gives title, date and URL only: it cannot attest fields")
+        if self.source_class == "regulator_index" and set(self.fields) - {"filing_agent_raw", "title",
+                                                                           "deal_type", "country_code"}:
+            raise ValueError("a regulator_index source (AMF API) only attests title, type, country and filing agent")
+        return self
 
 
 class ValidationFlag(BaseModel):
@@ -82,6 +106,10 @@ class ParticipantImport(BaseModel):
     commitment_amount: Decimal | None = Field(default=None, gt=0)
     commitment_currency: str | None = None
     source_ref: Ref
+    # Where the role is NAMED in the source (Phase 19).
+    page: int | None = Field(default=None, gt=0)
+    excerpt: str | None = None
+    extraction_method: ExtractionMethod | None = None
 
     @field_validator("commitment_currency")
     @classmethod
@@ -130,6 +158,10 @@ class DealImportRecord(BaseModel):
     # Deterministic idempotence key of an automated ingestion (not a published field).
     ingestion_key: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)] | None = None
     validation_flags: list[ValidationFlag] = Field(default_factory=list)
+    # Sourcing (Phase 19): quoted use of proceeds, closed categories, raw AMF filing agent (never a role).
+    use_of_proceeds: str | None = None
+    use_of_proceeds_categories: list[ProceedsCategory] | None = None
+    filing_agent_raw: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)] | None = None
     participants: list[ParticipantImport] = Field(default_factory=list)
     sources: list[SourceRef] = Field(min_length=1)
 
@@ -139,7 +171,8 @@ class DealImportRecord(BaseModel):
         return _currency(value)
 
     @field_validator(
-        "sector", "project_name", "amount_original", "benchmark", "fees", "guarantees", mode="before"
+        "sector", "project_name", "amount_original", "benchmark", "fees", "guarantees", "use_of_proceeds",
+        mode="before",
     )
     @classmethod
     def blank_is_missing(cls, value: object) -> object:
@@ -165,4 +198,16 @@ class DealImportRecord(BaseModel):
         unknown = sorted({p.source_ref for p in self.participants} - set(refs))
         if unknown:
             raise ValueError(f"participants reference unknown source refs: {', '.join(unknown)}")
+        if self.use_of_proceeds_categories is not None:
+            if not self.use_of_proceeds_categories:
+                raise ValueError("use_of_proceeds_categories must be omitted, not empty")
+            if len(set(self.use_of_proceeds_categories)) != len(self.use_of_proceeds_categories):
+                raise ValueError("use_of_proceeds_categories must not repeat a value")
+        by_ref = {s.ref: s for s in self.sources}
+        for p in self.participants:
+            src = by_ref[p.source_ref]
+            if src.paywalled:
+                raise ValueError(f"participant '{p.name}': a paywalled article cannot attest a role")
+            if src.source_class == "regulator_index":
+                raise ValueError(f"participant '{p.name}': the AMF API index is never a source of roles (D2)")
         return self

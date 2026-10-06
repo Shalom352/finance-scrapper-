@@ -397,13 +397,14 @@ def _alembic_on(pg, revision: str, direction: str) -> None:
 def test_downgrade_refused_while_instrument_data_exists(pg, ingested):
     flagged = asyncio.run(_fetchval(pg["dsn"], "SELECT count(*) FROM deals WHERE validation_flags IS NOT NULL"))
     assert flagged > 0
+    head = asyncio.run(_fetchval(pg["dsn"], "SELECT version_num FROM alembic_version"))
     # 0015 first: refused while deals carry validation flags (the whole downgrade is rolled back).
     with pytest.raises(RuntimeError, match="downgrade of 0015 refused"):
         _alembic_on(pg, "0014_public_debt_instruments", "downgrade")
     with pytest.raises(RuntimeError, match="downgrade of 0015 refused"):
         _alembic_on(pg, "0013_institutional_discovery", "downgrade")
-    assert asyncio.run(_fetchval(pg["dsn"], "SELECT version_num FROM alembic_version")) == \
-        "0015_deal_validation_flags"
+    # Later revisions (0016+) are rolled back with it: the database stays at its head.
+    assert asyncio.run(_fetchval(pg["dsn"], "SELECT version_num FROM alembic_version")) == head
     assert asyncio.run(_fetchval(pg["dsn"], "SELECT count(*) FROM deals WHERE validation_flags IS NOT NULL")) == \
         flagged
     assert asyncio.run(_fetchval(pg["dsn"], "SELECT count(*) FROM deals WHERE isin IS NOT NULL")) == 7
@@ -447,7 +448,7 @@ def test_migration_0015_roundtrip() -> None:
     params, name = _fresh_db("phase18_migration_0015_pytest")
     dsn = _dsn(params, name)
     try:
-        _alembic("head")
+        _alembic("0015_deal_validation_flags")
         assert asyncio.run(_fetchval(dsn, "SELECT version_num FROM alembic_version")) == "0015_deal_validation_flags"
         _alembic("0014_public_debt_instruments", "downgrade")
         assert asyncio.run(_fetchval(dsn, "SELECT count(*) FROM information_schema.columns "
