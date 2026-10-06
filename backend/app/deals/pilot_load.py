@@ -170,26 +170,11 @@ async def _register(db, manifest: dict[str, Any], files_root: Path | None, repor
     return out
 
 
-async def _institutions_by_name(db, names: set[str]) -> dict[str, str]:
-    """EXACT official name (case-insensitive) -> id, only when exactly one institution matches."""
-    from sqlalchemy import func, select
+async def _institutions_by_name(db, names: set[str]):
+    """Exact names after typographic normalization (official, commercial, former names, acronyms)."""
+    from app.directory.resolve import resolve_names
 
-    from app.models.institution import Institution
-
-    if not names:
-        return {}
-    rows = (
-        await db.execute(
-            select(Institution.id, Institution.name_official).where(
-                func.upper(Institution.name_official).in_([n.upper() for n in names]),
-                Institution.deleted_at.is_(None),
-            )
-        )
-    ).all()
-    found: dict[str, list[str]] = {}
-    for inst_id, name in rows:
-        found.setdefault(name.upper(), []).append(inst_id)
-    return {n: ids[0] for n in names if len(ids := found.get(n.upper(), [])) == 1}
+    return await resolve_names(db, names)
 
 
 def _records(manifest: dict[str, Any], docs: dict[str, tuple[str, str]], insts: dict[str, str],
@@ -211,9 +196,12 @@ def _records(manifest: dict[str, Any], docs: dict[str, tuple[str, str]], insts: 
         for p in deal.get("participants", []):
             q = {k: v for k, v in p.items() if k != "institution_name"}
             if p.get("institution_name"):
-                inst = insts.get(p["institution_name"])
-                if inst:
-                    q["institution_id"] = inst
+                hit = insts.get(p["institution_name"])
+                if hit and (hit.institution_id or hit.entity_id):
+                    if hit.institution_id:
+                        q["institution_id"] = hit.institution_id
+                    if hit.entity_id:
+                        q["entity_id"] = hit.entity_id
                 else:
                     report.unresolved_names.append(p["institution_name"])
             rec["participants"].append(q)
@@ -247,7 +235,8 @@ async def load(db, manifest: dict[str, Any], *, files_root: Path | None, actor: 
                 continue
             to_id = None
             if link["link_level"] == "documented_bank":
-                to_id = insts.get(link["to_institution_name"])
+                hit = insts.get(link["to_institution_name"])
+                to_id = hit.institution_id if hit else None
                 if to_id is None:  # never attributed to a bank that is not found EXACTLY
                     report.unresolved_names.append(link["to_institution_name"])
                     report.links_skipped += 1

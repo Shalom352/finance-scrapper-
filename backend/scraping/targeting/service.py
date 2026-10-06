@@ -245,6 +245,11 @@ async def find_candidates(db: AsyncSession, req: TargetingRequest) -> list[Candi
         )).all()
         ids = [b.id for b, _ in banks]
         parts = await _participations(db, DealParticipant.institution_id, ids)
+        # participations recorded on the bank's Entity Hub record (no institution row at import time)
+        by_entity = {b.entity_id: b.id for b, _ in banks if b.entity_id}
+        for ent_id, rows in (await _participations(db, DealParticipant.entity_id, list(by_entity))).items():
+            known = {(p.id) for p, _, _ in parts.get(by_entity[ent_id], [])}
+            parts.setdefault(by_entity[ent_id], []).extend(r for r in rows if r[0].id not in known)
         equity = await _latest_equity(db, ids)
         contacts = await _contacts(db, MandateCounterparty.institution_id, ids)
         sgi = await _via_sgi(db, ids, req)

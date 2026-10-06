@@ -239,3 +239,16 @@ def test_downgrade_0017_refused_while_mandates_exist(pg_db):
     cfg.set_main_option("script_location", str(BACKEND / "migrations"))
     with pytest.raises(RuntimeError, match="downgrade of 0017 refused"):
         command.downgrade(cfg, "0016_deal_sourcing_roles")
+
+
+@pytest.mark.asyncio
+async def test_directory_resolution_is_exact_after_typographic_normalization(maker, pg_db):
+    from app.directory.resolve import resolve_names
+
+    i = pg_db["ids"]
+    async with maker() as db:
+        got = await resolve_names(db, {"Société Générale Côte d’Ivoire", "Société Générale", "BOAD",
+                                       "Banque Ouest Africaine de Développement", "BANQUE"})
+    assert got["Société Générale Côte d’Ivoire"].institution_id == i["sgci"]  # accents / apostrophe only
+    assert got["BOAD"].entity_id == got["Banque Ouest Africaine de Développement"].entity_id == i["boad"]
+    assert "Société Générale" not in got and "BANQUE" not in got  # never a partial match

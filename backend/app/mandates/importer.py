@@ -140,11 +140,9 @@ def parse_csv(text: str, model: type[BaseModel]) -> list[Any]:
 
 async def import_mandates(db, mandates: list[MandateRow], contacts: list[ContactRow], *, actor: str,
                           dry_run: bool = False) -> MandateReport:
-    from sqlalchemy import func, or_, select
+    from sqlalchemy import select
 
     from app.models.country import Country
-    from app.models.entity import Entity
-    from app.models.institution import Institution
     from app.models.mandate import Mandate, MandateCounterparty
 
     if not actor or not actor.strip():
@@ -163,28 +161,26 @@ async def import_mandates(db, mandates: list[MandateRow], contacts: list[Contact
                               Mandate.deleted_at.is_(None)))).scalars()}
     known_codes = set(codes) | set(existing)
 
+    from app.directory.resolve import resolve_names
+
+    resolved = await resolve_names(db, {c.institution_name for c in contacts if c.institution_name}
+                                   | {c.entity_name for c in contacts if c.entity_name})
     inst_ids: dict[str, str] = {}
     ent_ids: dict[str, str] = {}
     for c in contacts:
         if c.mandate_code not in known_codes:
             issues.append(f"contact {c.counterparty_name}: unknown mandate {c.mandate_code}")
-        if c.institution_name and c.institution_name not in inst_ids:
-            rows = (await db.execute(select(Institution.id).where(
-                func.upper(Institution.name_official) == c.institution_name.upper(),
-                Institution.deleted_at.is_(None)))).scalars().all()
-            if len(rows) != 1:
-                issues.append(f"institution '{c.institution_name}' not found exactly once in the directory")
-            else:
-                inst_ids[c.institution_name] = rows[0]
-        if c.entity_name and c.entity_name not in ent_ids:
-            rows = (await db.execute(select(Entity.id).where(
-                or_(func.upper(Entity.canonical_name) == c.entity_name.upper(),
-                    func.upper(Entity.short_name) == c.entity_name.upper()),
-                Entity.deleted_at.is_(None)))).scalars().all()
-            if len(rows) != 1:
-                issues.append(f"entity '{c.entity_name}' not found exactly once in the directory")
-            else:
-                ent_ids[c.entity_name] = rows[0]
+        for name in (c.institution_name, c.entity_name):
+            if not name:
+                continue
+            hit = resolved.get(name)
+            if hit is None or not (hit.institution_id or hit.entity_id):
+                issues.append(f"'{name}' not found exactly once in the directory")
+                continue
+            if hit.institution_id:
+                inst_ids[name] = hit.institution_id
+            if hit.entity_id:
+                ent_ids[name] = hit.entity_id
     if issues:
         raise MandateImportError(issues)
 
@@ -206,8 +202,9 @@ async def import_mandates(db, mandates: list[MandateRow], contacts: list[Contact
         await db.flush()
         for c in contacts:
             mandate = by_code[c.mandate_code]
-            inst = inst_ids.get(c.institution_name or "")
-            ent = ent_ids.get(c.entity_name or "")
+            name = c.institution_name or c.entity_name or ""
+            inst = inst_ids.get(name)
+            ent = ent_ids.get(name)
             dup = (await db.execute(select(MandateCounterparty.id).where(
                 MandateCounterparty.mandate_id == mandate.id,
                 MandateCounterparty.counterparty_name == c.counterparty_name,
