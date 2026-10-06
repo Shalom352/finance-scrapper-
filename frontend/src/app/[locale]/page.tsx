@@ -2,13 +2,20 @@ import React, { Suspense } from "react";
 import { Link } from "@/i18n/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import { formatCompactCurrency, formatNumber, MISSING } from "@/lib/formatters";
-import { parseYearParam, resolveYear } from "@/lib/url";
+import { parseYearParam } from "@/lib/url";
 import { UMOA_COUNTRY_CODES, COUNTRY_FLAGS } from "@/lib/countries";
 import { FinancialBarChart } from "@/components/charts/FinancialBarChart";
 import { CoverageIndicator } from "@/components/common/CoverageIndicator";
 import { YearSelect } from "@/components/common/YearSelect";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import { getAggregations, getAvailableYears, getDocuments, getFinancialData, getInstitutions } from "@/lib/api";
+import {
+  getAggregations,
+  getAvailableYears,
+  getDocuments,
+  getFinancialData,
+  getInstitutions,
+  resolveSectorYear,
+} from "@/lib/api";
 import type { SectorAggregation } from "@/types";
 
 const REGIONAL_METRICS = [
@@ -50,20 +57,7 @@ export default async function DashboardPage({
 
   const availableYears = years ?? [];
   const requestedYear = parseYearParam(yearParam);
-  let year = resolveYear(requestedYear, availableYears);
-  // No explicit year: the newest year whose UMOA total assets are actually computable
-  // (a year holding only values still to review has no admissible aggregate).
-  if (requestedYear === null || !availableYears.includes(requestedYear)) {
-    for (const y of [...availableYears].sort((a, b) => b - a)) {
-      const agg = await getAggregations({ year: y, metric_code: "total_actifs", scope: "umoa" })
-        .then((res) => res.find((r) => r.metric_code === "total_actifs" && r.year === y) ?? null)
-        .catch(() => null);
-      if (agg && agg.total_value !== null) {
-        year = y;
-        break;
-      }
-    }
-  }
+  const year = await resolveSectorYear(requestedYear, availableYears);
 
   // One aggregation per metric; a failed or absent aggregation stays null.
   const aggregations: Record<string, SectorAggregation | null> = {};

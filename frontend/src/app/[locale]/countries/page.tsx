@@ -1,9 +1,9 @@
 import React, { Suspense } from "react";
 import { Link } from "@/i18n/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
-import { getAggregations, getAvailableYears, getInstitutions } from "@/lib/api";
+import { getAggregations, getAvailableYears, getInstitutions, resolveSectorYear } from "@/lib/api";
 import { formatCompactCurrency, formatNumber, MISSING } from "@/lib/formatters";
-import { parseYearParam, resolveYear } from "@/lib/url";
+import { parseYearParam } from "@/lib/url";
 import { COUNTRY_FLAGS, UMOA_COUNTRY_CODES } from "@/lib/countries";
 import { resolveKpi, SECTOR_KPI_BINDINGS } from "@/lib/countryKpis";
 import { CoverageIndicator } from "@/components/common/CoverageIndicator";
@@ -25,7 +25,7 @@ export default async function CountriesListPage({
 
   const years = await getAvailableYears().catch(() => null);
   const availableYears = years ?? [];
-  const year = resolveYear(parseYearParam(yearParam), availableYears);
+  const year = await resolveSectorYear(parseYearParam(yearParam), availableYears);
 
   const cards = await Promise.all(
     UMOA_COUNTRY_CODES.map(async (code) => {

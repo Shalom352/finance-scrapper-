@@ -15,6 +15,7 @@ import {
   getGrowth,
   getRatioDefinitions,
   getRatios,
+  resolveSectorYear,
 } from "@/lib/api";
 import { MISSING } from "@/lib/formatters";
 import { useFormatters } from "@/lib/useFormatters";
@@ -64,6 +65,7 @@ function AnalyticsContent() {
   const requestedYear = parseYearParam(get("year"));
 
   const [years, setYears] = useState<number[] | null>(null);
+  const [defaultYear, setDefaultYear] = useState<number | null>(null);
   const [yearsError, setYearsError] = useState(false);
 
   useEffect(() => {
@@ -72,14 +74,24 @@ function AnalyticsContent() {
     setYears(null);
     setYearsError(false);
     getAvailableYears({ country_code: country || undefined })
-      .then((y) => !cancelled && setYears(y))
+      .then(async (y) => {
+        // Default = newest year with a computable total-assets aggregate.
+        const d = await resolveSectorYear(null, y, country || undefined);
+        if (cancelled) return;
+        setDefaultYear(d);
+        setYears(y);
+      })
       .catch(() => !cancelled && setYearsError(true));
     return () => {
       cancelled = true;
     };
   }, [country]);
 
-  const year = years ? resolveYear(requestedYear, years) : null;
+  const year = years
+    ? requestedYear !== null && years.includes(requestedYear)
+      ? requestedYear
+      : (defaultYear ?? resolveYear(null, years))
+    : null;
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">

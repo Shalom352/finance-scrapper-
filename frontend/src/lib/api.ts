@@ -414,6 +414,26 @@ export async function getAvailableYears(params?: { country_code?: string }): Pro
   return [...years].sort((a, b) => b - a);
 }
 
+/**
+ * Default fiscal year for sector views: the requested year when it exists, otherwise the
+ * newest year whose total assets aggregate is actually computable (a year holding only
+ * values still to review has no admissible aggregate). Falls back to the newest year.
+ */
+export async function resolveSectorYear(
+  requested: number | null,
+  years: number[],
+  country_code?: string,
+): Promise<number | null> {
+  if (requested !== null && years.includes(requested)) return requested;
+  for (const y of [...years].sort((a, b) => b - a)) {
+    const aggs = await getAggregations(
+      country_code ? { year: y, metric_code: "total_actifs", country_code } : { year: y, metric_code: "total_actifs", scope: "umoa" },
+    ).catch(() => []);
+    if (aggs.some((a) => a.metric_code === "total_actifs" && a.year === y && a.total_value !== null)) return y;
+  }
+  return years.length > 0 ? Math.max(...years) : null;
+}
+
 // ============================================================
 // Analytics
 // ============================================================

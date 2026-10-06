@@ -5,11 +5,11 @@ import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import type { Institution, SectorAggregation, SectorStructure } from "@/types";
-import { getAggregations, getAvailableYears, getInstitutions, getSectorStructure } from "@/lib/api";
+import { getAggregations, getAvailableYears, getInstitutions, getSectorStructure, resolveSectorYear } from "@/lib/api";
 import { MISSING } from "@/lib/formatters";
 import { useFormatters } from "@/lib/useFormatters";
 import { useLabels } from "@/lib/useLabels";
-import { parseYearParam, resolveYear } from "@/lib/url";
+import { parseYearParam } from "@/lib/url";
 import { COUNTRY_FLAGS, isUmoaCountry } from "@/lib/countries";
 import { resolveKpi, SECTOR_KPI_BINDINGS, type KpiBinding } from "@/lib/countryKpis";
 import { CoverageIndicator } from "@/components/common/CoverageIndicator";
@@ -34,6 +34,7 @@ export default function CountryDetailPage({ params }: PageProps) {
 
 interface CountryData {
   years: number[];
+  year: number | null;
   institutions: Institution[];
   institutionsTotal: number | null;
   aggregations: SectorAggregation[];
@@ -56,7 +57,7 @@ function CountryDetail({ countryCode }: { countryCode: string }) {
   const [structureState, setStructureState] = useState<"loading" | "ready" | "unavailable">("loading");
 
   const known = isUmoaCountry(countryCode);
-  const year = data ? resolveYear(requestedYear, data.years) : null;
+  const year = data ? data.year : null;
 
   // Years, institutions and one aggregation per KPI binding.
   useEffect(() => {
@@ -67,7 +68,7 @@ function CountryDetail({ countryCode }: { countryCode: string }) {
 
     (async () => {
       const years = await getAvailableYears({ country_code: countryCode });
-      const y = resolveYear(requestedYear, years);
+      const y = await resolveSectorYear(requestedYear, years, countryCode);
       const [insts, ...aggs] = await Promise.all([
         getInstitutions({ country_code: countryCode, page_size: 100 }).catch(() => null),
         ...SECTOR_KPI_BINDINGS.map((b) =>
@@ -78,6 +79,7 @@ function CountryDetail({ countryCode }: { countryCode: string }) {
       ]);
       return {
         years,
+        year: y,
         institutions: (insts as { items: Institution[] } | null)?.items ?? [],
         institutionsTotal: (insts as { total: number } | null)?.total ?? null,
         aggregations: (aggs as SectorAggregation[][]).flat(),
