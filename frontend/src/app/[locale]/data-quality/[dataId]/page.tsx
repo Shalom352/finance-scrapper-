@@ -16,6 +16,7 @@ import { ProvenancePanel } from "@/components/provenance/ProvenancePanel";
 import { CompetingObservations } from "@/components/data-quality/CompetingObservations";
 import { ReviewHistory } from "@/components/data-quality/ReviewHistory";
 import { ReviewActions } from "@/components/data-quality/ReviewActions";
+import { AutoValidationPanel } from "@/components/data-quality/AutoValidationPanel";
 
 interface PageProps {
   params: Promise<{ dataId: string; locale: string }>;
@@ -172,6 +173,16 @@ function ReviewDetailContent({ dataId }: { dataId: string }) {
         <h2 className="text-sm font-bold text-white">{t("history.title")}</h2>
         <ReviewHistory events={history} />
       </section>
+
+      <AutoValidationPanel
+        kind="observation"
+        id={o.id}
+        status={o.status}
+        method={o.validation_method}
+        report={o.auto_validation}
+        blocked={o.auto_validation_blocked}
+        onDone={() => setReload((n) => n + 1)}
+      />
 
       <ReviewActions
         key={`${o.status}-${o.updated_at}`}

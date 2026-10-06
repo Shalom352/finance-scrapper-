@@ -13,7 +13,7 @@
 | `verified` | Vérifiée (uniquement depuis `reviewed`), validateur et date obligatoires | Review Center |
 | `rejected` | Rejetée avec motif obligatoire ; ne redevient jamais valide | Review Center |
 
-Aucun processus automatique ne pose `reviewed` ni `verified`. Une nouvelle extraction
+Aucun processus automatique ne pose `reviewed` ni `verified`, sauf la validation automatique réversible (§9). Une nouvelle extraction
 ne remplace **jamais** une ligne `reviewed`, `verified` ou `rejected` (garde du pipeline).
 
 ## 2. Qualifications calculées (non stockées)
@@ -84,3 +84,51 @@ sur doublons. Aucun code applicatif ne met à jour ni ne supprime un événement
 - Pas d'authentification : `actor` est déclaré par l'opérateur et enregistré tel quel.
 - Append-only garanti par le code applicatif, pas par un trigger PostgreSQL.
 - Le périmètre des observations extraites n'est pas détecté automatiquement (voir §4).
+
+## 9. Validation automatique réversible (Phase 21, migration `0018`)
+
+Décision du propriétaire (06/10/2026) : une ligne peut être validée **automatiquement** quand **tous** les
+contrôles passent ; une personne peut **retirer** cette validation à tout moment.
+
+```bash
+cd backend
+python -m app.validation.run --expect-db <base> --dry-run            # simulation
+python -m app.validation.run --expect-db <base>                      # observations + transactions
+python -m app.validation.run --expect-db <base> --revoke-all --actor <id> --reason "<motif>"   # tout retirer
+```
+
+Option : `AUTO_VALIDATION_ENABLED=true` lance la validation après chaque ingestion automatique ;
+`AUTO_VALIDATION_SCOPE_CLASSES` (défaut `A,B,C`) fixe les classes de preuve de périmètre acceptées
+(retirer `C` pour exiger une mention explicite du périmètre).
+
+**Observations financières** — contrôles (tous obligatoires, sauf « non applicable ») :
+
+| Contrôle | Règle |
+|---|---|
+| Provenance | établissement, source, document, page, valeur et unité d'origine ; devise pour un montant |
+| Normalisation | valeur d'origine × multiplicateur de l'unité = valeur normalisée ; devise inchangée |
+| Relecture du document | la valeur d'origine est **imprimée sur sa page** du fichier stocké (relu à chaque passage) ; fichier absent = échec |
+| Périmètre | classe de preuve dans les classes acceptées |
+| Signaux qualité | aucun signal bloquant (`cross_edition_mismatch`, `cross_statement_mismatch`…) |
+| Aucune valeur concurrente | aucune autre observation non rejetée de même clé avec une autre valeur (tolérance d'arrondi de l'unité) |
+| Cohérence comptable | postes du bilan ≤ total actif ; créances clientèle + interbancaires ≤ total actif ; dépôts + dettes interbancaires + capitaux propres ≤ total actif ; PNB et résultats ≤ total actif ; total passif = total actif (même document, même année). Total actif absent = échec |
+| Années voisines | poste de bilan entre ×0,2 et ×5 de l'année précédente / suivante (si elles existent) |
+| Corroboration | (information) un **autre document** donne la même valeur |
+
+Résultat : tous les contrôles passent **et** corroboration → `verified` (automatique) ; tous passent, source unique →
+`reviewed` (automatique) ; un échec → statut inchangé, rapport conservé (`auto_validation`) et affiché.
+
+**Transactions** — au moins une source primaire (note visée, résultat UMOA-Titres, communiqué de l'émetteur ;
+jamais la presse seule ni l'index AMF), tous les champs publiés attestés, rôles lus dans le texte (une lecture
+de logo ou de scan exige une personne), aucun doublon en suspens, montant positif avec devise.
+Deux documents **primaires** distincts (la presse et l'index AMF ne comptent pas) → `verified` ; sinon `reviewed`.
+
+**Garde-fous** : les décisions humaines ne sont jamais modifiées ; une revue humaine est marquée
+`validation_method = 'human'` ; le retrait (`POST /api/v1/data-quality/{id}/revoke-automatic`,
+`/deals/{id}/revoke-automatic`, ou bouton « Retirer la validation automatique ») remet la ligne en `needs_review`,
+efface le validateur, bloque toute nouvelle validation automatique de cette ligne et écrit l'événement
+`revoke_automatic` (acteur et motif obligatoires). Le downgrade de `0018` est refusé tant qu'une trace existe.
+
+**Limite** : « quasi infaillible » ne veut pas dire infaillible. Une valeur correctement imprimée mais mal
+rattachée à une ligne du tableau (bonne valeur, mauvais poste) n'est détectée que si elle viole une règle
+comptable ou temporelle ; c'est pourquoi une source unique ne donne que `reviewed`.

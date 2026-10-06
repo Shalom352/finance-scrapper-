@@ -274,6 +274,18 @@ class IngestionService:
             )
 
             await db.commit()
+            if get_settings().auto_validation_enabled:
+                from pathlib import Path
+
+                from scraping.validation.automatic import validate_deals, validate_financial_data
+
+                settings = get_settings()
+                fd = await validate_financial_data(
+                    db, storage_root=Path(settings.documents_storage_path),
+                    scope_classes=tuple(c.strip() for c in settings.auto_validation_scope_classes.split(",") if c.strip()),
+                )
+                dl = await validate_deals(db)
+                logger.info("auto_validation_finished", financial_data=fd.summary(), deals=dl.summary())
             logger.info(
                 "ingestion_run_finished",
                 run_id=run.id,

@@ -49,6 +49,13 @@ institution → source → document → page → période → métrique
 
 **Aucun processus automatique d'extraction, de parsing ou de normalisation ne peut attribuer directement `verified`.**
 
+> **Exception décidée par le propriétaire le 06/10/2026 (Phase 21) — validation automatique réversible.**
+> Le seul processus automatique autorisé à poser `reviewed` ou `verified` est `scraping/validation/automatic.py`,
+> et uniquement quand **tous** ses contrôles passent (voir `docs/data-quality.md` §9). Chaque décision est marquée
+> `validation_method = 'automatic'`, tracée (événement `auto_validate`, détail de chaque contrôle) et **retirable
+> par une personne** (`revoke_automatic`) : la ligne repasse `needs_review` et n'est plus jamais validée
+> automatiquement. L'extraction, le parsing et la normalisation restent interdits de poser ces statuts.
+
 Transitions autorisées :
 
 ```

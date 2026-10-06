@@ -73,7 +73,8 @@ de doublon ⇒ `decided_by` + `decided_at`, une transaction n'est jamais rattach
 | `0015_deal_validation_flags` | `deals.validation_flags` (JSONB) | refusé tant qu'une transaction porte un drapeau |
 | `0016_deal_sourcing_roles` | types et rôles étendus, page / citation / méthode des participations, utilisation des fonds, `filing_agent_raw`, classes de source, `institution_links` | refusé tant que le nouveau vocabulaire est utilisé |
 | `0017_directory_and_mandates` | type `guarantee_fund`, `entities.website`, `mandates`, `mandate_counterparties` | refusé tant qu'un mandat ou une entrée d'annuaire existe |
+| `0018_automatic_validation` | `validation_method`, `auto_validation`, `auto_validation_blocked` sur `financial_data` et `deals` ; actions d'audit `auto_validate`, `revoke_automatic` | refusé tant qu'une trace de validation automatique existe |
 
 Aucune migration n'est destructive à la montée. `alembic check` : aucun écart entre les
-modèles et le schéma migré (vérifié jusqu'à `0017`, le 06/10/2026). Tables de découverte et Entity Hub :
+modèles et le schéma migré (vérifié jusqu'à `0018`, le 06/10/2026). Tables de découverte et Entity Hub :
 voir `discovery-engine.md`.

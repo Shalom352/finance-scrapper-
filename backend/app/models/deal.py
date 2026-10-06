@@ -63,6 +63,11 @@ if TYPE_CHECKING:  # relationship targets, resolved by SQLAlchemy at runtime
 class Deal(Base):
     __tablename__ = "deals"
     __table_args__ = (
+        CheckConstraint(
+            "validation_method IS NULL OR validation_method IN ('human', 'automatic')",
+            name="ck_deals_validation_method",
+        ),
+        Index("ix_deals_validation_method", "validation_method"),
         CheckConstraint(f"deal_type IS NULL OR deal_type IN ({sql_in(DEAL_TYPES)})", name="ck_deals_deal_type"),
         CheckConstraint(f"status IN ({sql_in(DEAL_STATUSES)})", name="ck_deals_status"),
         CheckConstraint(
@@ -153,6 +158,13 @@ class Deal(Base):
     filing_agent_raw: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="needs_review")
+
+    # Automatic validation (Phase 21, migration 0018) — always reversible by a human.
+    validation_method: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    auto_validation: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
+    auto_validation_blocked: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     verified_by: Mapped[str | None] = mapped_column(String(255), nullable=True)

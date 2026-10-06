@@ -8,6 +8,7 @@ import { Link } from "@/i18n/navigation";
 import { TableSkeleton } from "@/components/common/LoadingSkeleton";
 import { EmptyState, ErrorState } from "@/components/common/EmptyState";
 import { ReviewActions } from "@/components/data-quality/ReviewActions";
+import { AutoValidationPanel } from "@/components/data-quality/AutoValidationPanel";
 import { DealDetailView } from "@/components/deals/DealDetailView";
 import { DuplicateDecisionForm } from "@/components/deals/DuplicateDecisionForm";
 
@@ -99,6 +100,16 @@ function DealReviewContent({ dealId }: { dealId: string }) {
         </section>
       )}
       {done === "duplicate" && <p className="text-xs text-emerald-300" data-testid="dup-done">{tDup("decide.done")}</p>}
+
+      <AutoValidationPanel
+        kind="deal"
+        id={deal.id}
+        status={deal.status}
+        method={deal.validation_method}
+        report={deal.auto_validation}
+        blocked={deal.auto_validation_blocked}
+        onDone={() => refresh(null)}
+      />
 
       <ReviewActions
         key={`${deal.status}-${deal.updated_at}`}

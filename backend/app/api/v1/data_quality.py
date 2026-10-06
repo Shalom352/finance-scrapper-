@@ -46,6 +46,49 @@ from scraping.financial_data.review import (
 router = APIRouter(prefix="/api/v1/data-quality", tags=["data-quality"])
 
 
+# --------------------------------------------------------------------------- Phase 21
+# A human withdraws an automatic validation: back to needs_review, never re-validated automatically.
+
+
+async def _revoke(model, row_id: str, payload: ReviewActionRequest, db: AsyncSession) -> None:
+    from sqlalchemy import select
+
+    from scraping.validation.automatic import RevokeError, revoke
+
+    row = (await db.execute(select(model).where(model.id == row_id, model.deleted_at.is_(None))
+                            .with_for_update(of=model))).unique().scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Not found")
+    if payload.expected_status is not None and row.status != payload.expected_status:
+        raise HTTPException(status_code=409, detail=f"Status is now '{row.status}'; reload before deciding")
+    try:
+        await revoke(db, row, actor=payload.actor, reason=payload.reason)
+    except RevokeError as err:
+        await db.rollback()
+        raise HTTPException(status_code=422, detail=str(err)) from err
+    await db.commit()
+
+
+@router.post("/deals/{deal_id}/revoke-automatic", summary="Withdraw an automatic validation (deal)",
+             response_model=DealDetail)
+async def revoke_deal_automatic(deal_id: str, payload: ReviewActionRequest, db: AsyncSession = Depends(get_db_session)):
+    from app.models.deal import Deal
+
+    await _revoke(Deal, deal_id, payload, db)
+    return await get_deal(db, deal_id)
+
+
+@router.post("/{data_id}/revoke-automatic", summary="Withdraw an automatic validation (observation)",
+             response_model=FinancialDataRead)
+async def revoke_observation_automatic(data_id: str, payload: ReviewActionRequest,
+                                       db: AsyncSession = Depends(get_db_session)):
+    from app.models.financial_data import FinancialData
+    from app.services.financial_data import get_financial_data_by_id
+
+    await _revoke(FinancialData, data_id, payload, db)
+    return await get_financial_data_by_id(db, data_id)
+
+
 @router.get(
     "",
     summary="Review queue: needs_review and conflicting observations (or one explicit status)",

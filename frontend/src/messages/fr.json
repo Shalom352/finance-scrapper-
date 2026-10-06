@@ -1118,5 +1118,43 @@
       "public_finance": "Finances publiques",
       "other": "Autre"
     }
+  },
+  "auto_validation": {
+    "title": "Validation automatique",
+    "automatic_verified": "Vérifiée automatiquement (corroborée par un second document)",
+    "automatic_reviewed": "Revue automatiquement (source unique, tous les contrôles réussis)",
+    "not_validated": "Non validée automatiquement : au moins un contrôle a échoué",
+    "blocked": "Validation automatique retirée par {actor} : le robot ne revalidera pas cette ligne.",
+    "ruleset": "Règles {ruleset}, contrôle du {date}",
+    "result": {
+      "pass": "réussi",
+      "fail": "échec",
+      "skip": "non applicable",
+      "info": "information"
+    },
+    "checks": {
+      "provenance": "Provenance complète",
+      "normalization": "Normalisation recalculée",
+      "source_text": "Valeur relue sur la page du document",
+      "scope_evidence": "Preuve du périmètre",
+      "quality_flags": "Aucun signal qualité bloquant",
+      "no_conflict": "Aucune valeur concurrente",
+      "accounting": "Cohérence comptable",
+      "time_series": "Cohérence avec les années voisines",
+      "corroboration": "Second document concordant",
+      "sources": "Sources et provenance des champs",
+      "primary_source": "Source primaire",
+      "participants": "Rôles lus dans le texte",
+      "duplicates": "Aucun doublon en suspens",
+      "amount": "Montant et devise"
+    },
+    "revoke": "Retirer la validation automatique",
+    "revoke_hint": "La ligne repasse « à revoir » et ne sera plus jamais validée automatiquement. Une personne peut ensuite la revoir normalement.",
+    "actor": "Votre identifiant",
+    "reason": "Motif (obligatoire)",
+    "confirm": "Confirmer le retrait",
+    "cancel": "Annuler",
+    "done": "Validation automatique retirée.",
+    "error": "Le retrait a échoué (la ligne a peut-être changé) : rechargez la page."
   }
 }

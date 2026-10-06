@@ -191,6 +191,10 @@ export interface FinancialDataDetail extends FinancialDataPoint {
   verified_by: string | null;
   created_at: string;
   updated_at: string;
+  /** Phase 21 — automatic validation (reversible by a human). */
+  validation_method?: "human" | "automatic" | null;
+  auto_validation?: AutoValidation | null;
+  auto_validation_blocked?: boolean;
   institution: Institution | null;
   source: SourceList | null;
   document: Document | null;
@@ -927,6 +931,9 @@ export interface DealDetail extends DealListItem {
   use_of_proceeds_categories?: string[];
   /** Raw "SGI déclarante" of the AMF API — never a role. */
   filing_agent_raw?: string | null;
+  validation_method?: "human" | "automatic" | null;
+  auto_validation?: AutoValidation | null;
+  auto_validation_blocked?: boolean;
   notes: string | null;
   verified_at: string | null;
   verified_by: string | null;
@@ -1055,4 +1062,20 @@ export interface TargetingQuery {
   amount?: number;
   currency?: string;
   kind?: "all" | "banks" | "institutions";
+}
+
+// Phase 21 — automatic validation report (every check with its result), reversible by a human.
+export interface AutoValidationCheck {
+  check: string;
+  result: "pass" | "fail" | "skip" | "info";
+  detail: string;
+}
+export interface AutoValidation {
+  ruleset: string;
+  checked_at: string;
+  outcome: "verified" | "reviewed" | "not_validated" | null;
+  checks: AutoValidationCheck[];
+  revoked_by?: string;
+  revoked_at?: string;
+  revoke_reason?: string;
 }

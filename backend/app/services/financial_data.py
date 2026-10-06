@@ -377,6 +377,7 @@ async def review_financial_data(
         raise InvalidTransitionError("Cannot review financial data: value_normalized must not be null")
 
     row.status = "reviewed"
+    row.validation_method = "human"
     if reviewer_notes:
         row.notes = f"{row.notes} | Review: {reviewer_notes}" if row.notes else f"Review: {reviewer_notes}"
 
@@ -418,6 +419,7 @@ async def verify_financial_data(
 
     now = datetime.now(UTC)
     row.status = "verified"
+    row.validation_method = "human"
     row.verified_by = verified_by.strip()
     row.verified_at = now
     row.updated_at = now
@@ -508,6 +510,7 @@ async def bulk_review_financial_data(
         row = rows[d_id]
         previous_status, value_before = row.status, row.value_normalized
         row.status = "reviewed"
+        row.validation_method = "human"
         if reviewer_notes:
             row.notes = (
                 f"{row.notes} | Bulk Review: {reviewer_notes}" if row.notes else f"Bulk Review: {reviewer_notes}"

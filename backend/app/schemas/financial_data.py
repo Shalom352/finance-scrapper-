@@ -83,6 +83,10 @@ class FinancialDataRead(BaseModel):
     verified_by: str | None = None
     created_at: datetime
     updated_at: datetime
+    # Phase 21 — 'human' | 'automatic' | None; report of the automatic checks; withdrawn by a human
+    validation_method: str | None = None
+    auto_validation: dict | None = None
+    auto_validation_blocked: bool = False
 
     institution: InstitutionList
     source: SourceList

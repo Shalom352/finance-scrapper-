@@ -24,6 +24,9 @@ REVIEW_EVENT_ACTIONS = (
     "mark_same_deal",
     "mark_distinct",
     "mark_same_deal_multi_source",
+    # Phase 21 — automatic validation and its withdrawal by a human.
+    "auto_validate",
+    "revoke_automatic",
 )
 
 

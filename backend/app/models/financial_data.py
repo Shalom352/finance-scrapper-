@@ -21,6 +21,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -29,6 +30,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -59,6 +61,11 @@ class FinancialData(Base):
 
     __tablename__ = "financial_data"
     __table_args__ = (
+        CheckConstraint(
+            "validation_method IS NULL OR validation_method IN ('human', 'automatic')",
+            name="ck_financial_data_validation_method",
+        ),
+        Index("ix_financial_data_validation_method", "validation_method"),
         # --- Enumerations (open strings guarded by CHECK) ---
         CheckConstraint(
             "scope IN ('individual', 'consolidated')",
@@ -208,6 +215,13 @@ class FinancialData(Base):
     quality_flags: Mapped[list[dict] | None] = mapped_column(JSONB, nullable=True)
     # Where the value was read, e.g. "p.23 · TOTAL DE L'ACTIF · col. 2023"
     source_location: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    # Automatic validation (Phase 21, migration 0018) — always reversible by a human.
+    validation_method: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    auto_validation: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
+    auto_validation_blocked: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
 
     # Relationships
     entity: Mapped["Entity | None"] = relationship(  # type: ignore[name-defined]

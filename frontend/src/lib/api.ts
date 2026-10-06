@@ -723,3 +723,15 @@ export async function getTargeting(query: TargetingQuery): Promise<TargetingResp
   const res = await apiFetch<TargetingResponse>(`/api/v1/targeting${buildQuery({ ...query })}`);
   return { ...res, items: res.items ?? [] };
 }
+
+/** Phase 21 — a human withdraws an automatic validation (back to needs_review, never re-validated). */
+export async function postRevokeAutomatic(
+  kind: "observation" | "deal",
+  id: string,
+  decision: { actor: string; reason: string; expected_status: string },
+): Promise<unknown> {
+  const path = kind === "deal"
+    ? `/api/v1/data-quality/deals/${encodeURIComponent(id)}/revoke-automatic`
+    : `/api/v1/data-quality/${encodeURIComponent(id)}/revoke-automatic`;
+  return apiPost<unknown>(path, decision);
+}

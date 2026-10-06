@@ -1118,5 +1118,43 @@
       "public_finance": "Public finance",
       "other": "Other"
     }
+  },
+  "auto_validation": {
+    "title": "Automatic validation",
+    "automatic_verified": "Verified automatically (corroborated by a second document)",
+    "automatic_reviewed": "Reviewed automatically (single source, every check passed)",
+    "not_validated": "Not validated automatically: at least one check failed",
+    "blocked": "Automatic validation withdrawn by {actor}: the robot will not validate this row again.",
+    "ruleset": "Rules {ruleset}, checked on {date}",
+    "result": {
+      "pass": "passed",
+      "fail": "failed",
+      "skip": "not applicable",
+      "info": "information"
+    },
+    "checks": {
+      "provenance": "Complete provenance",
+      "normalization": "Normalization recomputed",
+      "source_text": "Value re-read on the document page",
+      "scope_evidence": "Scope evidence",
+      "quality_flags": "No blocking quality flag",
+      "no_conflict": "No competing value",
+      "accounting": "Accounting consistency",
+      "time_series": "Consistency with adjacent years",
+      "corroboration": "Second matching document",
+      "sources": "Sources and field provenance",
+      "primary_source": "Primary source",
+      "participants": "Roles read in the text",
+      "duplicates": "No pending duplicate",
+      "amount": "Amount and currency"
+    },
+    "revoke": "Withdraw the automatic validation",
+    "revoke_hint": "The row goes back to \"to review\" and will never be validated automatically again. A person can then review it normally.",
+    "actor": "Your identifier",
+    "reason": "Reason (required)",
+    "confirm": "Confirm withdrawal",
+    "cancel": "Cancel",
+    "done": "Automatic validation withdrawn.",
+    "error": "Withdrawal failed (the row may have changed): reload the page."
   }
 }

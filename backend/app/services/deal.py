@@ -315,7 +315,8 @@ async def get_deal(db: AsyncSession, deal_id: str) -> DealDetail | None:
         maturity_date=deal.maturity_date, yield_rate=deal.yield_rate,
         validation_flags=list(deal.validation_flags or []), use_of_proceeds=deal.use_of_proceeds,
         use_of_proceeds_categories=list(deal.use_of_proceeds_categories or []),
-        filing_agent_raw=deal.filing_agent_raw, notes=deal.notes, verified_at=deal.verified_at,
+        filing_agent_raw=deal.filing_agent_raw, validation_method=deal.validation_method,
+        auto_validation=deal.auto_validation, auto_validation_blocked=deal.auto_validation_blocked, notes=deal.notes, verified_at=deal.verified_at,
         verified_by=deal.verified_by, created_at=deal.created_at,
         participants=[_participant_read(p) for p in deal.participants],
         sources=[_source_read(s, sorted(by_source[s.id])) for s in deal.sources],
@@ -385,6 +386,7 @@ async def decide_deal(
         if not can_review(deal.status, deal.title):
             raise InvalidTransitionError(f"Cannot review a deal in status '{deal.status}'")
         deal.status = "reviewed"
+        deal.validation_method = "human"
         _append_note(deal, "Review", reason)
     elif action == "verify":
         if not can_verify(deal.status, deal.title):
@@ -402,6 +404,7 @@ async def decide_deal(
                 "before verifying a deal attested only by the press or the AMF index"
             )
         deal.status = "verified"
+        deal.validation_method = "human"
         deal.verified_by = actor
         deal.verified_at = now
         _append_note(deal, "Verification", reason)

@@ -103,6 +103,12 @@ class Settings(BaseSettings):
     ingestion_concurrency_limit: int = 1
 
     # ------------------------------------------------------------------
+    # Automatic validation (Phase 21) — reversible by a human, see docs/data-quality.md §9
+    # ------------------------------------------------------------------
+    auto_validation_enabled: bool = False  # run after each automated ingestion
+    auto_validation_scope_classes: str = "A,B,C"  # scope evidence classes accepted
+
+    # ------------------------------------------------------------------
     # Entity & Source Discovery Engine (Phase 15) — disabled by default
     # ------------------------------------------------------------------
     discovery_enabled: bool = False

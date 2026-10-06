@@ -234,6 +234,9 @@ def make_mock_financial_data(
     row.extracted_at = datetime.now(UTC)
     row.verified_at = None
     row.verified_by = None
+    row.validation_method = None  # Phase 21
+    row.auto_validation = None
+    row.auto_validation_blocked = False
     row.created_at = datetime.now(UTC)
     row.updated_at = datetime.now(UTC)
 

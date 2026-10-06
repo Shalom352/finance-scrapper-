@@ -10,7 +10,6 @@ import asyncio
 import json
 import os
 from collections.abc import AsyncGenerator, Generator
-from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
@@ -18,7 +17,13 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
-from tests.test_migration_postgres_phase2 import _async_dsn, _exec_admin, _reachable, _run_alembic, _server_params
+from tests.test_migration_postgres_phase2 import (
+    _async_dsn,
+    _exec_admin,
+    _reachable,
+    _run_alembic,
+    _server_params,
+)
 
 BACKEND = Path(__file__).resolve().parents[1]
 
@@ -142,7 +147,13 @@ async def test_directory_seed_is_idempotent_and_never_touches_existing_entities(
 
 @pytest.mark.asyncio
 async def test_mandate_import_resolves_exact_names_and_keeps_history(maker, pg_db):
-    from app.mandates.importer import ContactRow, MandateImportError, MandateRow, import_mandates, parse_csv
+    from app.mandates.importer import (
+        ContactRow,
+        MandateImportError,
+        MandateRow,
+        import_mandates,
+        parse_csv,
+    )
 
     mandates = parse_csv(
         "code,title,client_name,country_code,sector,deal_type,amount,currency,year\n"

@@ -116,6 +116,9 @@ class DealDetail(DealListItem):
     use_of_proceeds_categories: list[str] = Field(default_factory=list)
     # "SGI déclarante" as given by the AMF API: raw text, never a role.
     filing_agent_raw: str | None = None
+    validation_method: str | None = None
+    auto_validation: dict | None = None
+    auto_validation_blocked: bool = False
     notes: str | None = None
     verified_at: datetime | None = None
     verified_by: str | None = None
