@@ -283,8 +283,9 @@ class IngestionService:
                 fd = await validate_financial_data(
                     db, storage_root=Path(settings.documents_storage_path),
                     scope_classes=tuple(c.strip() for c in settings.auto_validation_scope_classes.split(",") if c.strip()),
+                    single_source_status=settings.auto_validation_single_source_status,
                 )
-                dl = await validate_deals(db)
+                dl = await validate_deals(db, single_source_status=settings.auto_validation_single_source_status)
                 logger.info("auto_validation_finished", financial_data=fd.summary(), deals=dl.summary())
             logger.info(
                 "ingestion_run_finished",

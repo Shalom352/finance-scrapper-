@@ -310,3 +310,19 @@ def test_downgrade_0018_refused_while_traces_exist(pg_db):
     cfg.set_main_option("script_location", str(backend / "migrations"))
     with pytest.raises(RuntimeError, match="downgrade of 0018 refused"):
         command.downgrade(cfg, "0017_directory_and_mandates")
+
+
+@pytest.mark.asyncio
+async def test_owner_can_promote_single_source_rows_to_verified(maker, pg_db, storage):
+    """Run after the kill switch: blocked rows stay untouched, others become verified (automatic)."""
+    from app.models.financial_data import FinancialData
+    from scraping.validation.automatic import ACTOR, validate_financial_data
+
+    i = pg_db["ids"]
+    async with maker() as db:
+        await validate_financial_data(db, storage_root=storage, single_source_status="verified")
+    got = await rows(maker, FinancialData, [i["pnb"], i["equity"]])
+    # pnb was revoked by the kill switch -> blocked forever; equity is a human decision -> untouched
+    assert got[i["pnb"]].status == "needs_review" and got[i["pnb"]].auto_validation_blocked
+    assert got[i["equity"]].validation_method == "human"
+    _ = ACTOR

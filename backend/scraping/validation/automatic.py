@@ -9,7 +9,8 @@ again (``auto_validation_blocked``).
 
 Outcome
   every check passes AND an independent document gives the same value  -> verified  (automatic)
-  every check passes, single source                                     -> reviewed  (automatic)
+  every check passes, single source                                     -> reviewed  (automatic), or
+                                       verified when the owner sets single_source_status='verified'
   one check fails                                                       -> unchanged (report stored)
 Rows decided by a human (reviewed / verified / rejected with method 'human' or legacy) are never
 touched. ``reviewed`` rows validated automatically are upgraded to ``verified`` once corroborated.
@@ -243,7 +244,8 @@ def time_check(r: FinancialData, series: dict[int, list[FinancialData]]) -> dict
 
 
 async def validate_financial_data(db: AsyncSession, *, storage_root: Path, scope_classes=DEFAULT_SCOPE_CLASSES,
-                                  dry_run: bool = False, limit: int | None = None) -> AutoReport:
+                                  dry_run: bool = False, limit: int | None = None,
+                                  single_source_status: str = "reviewed") -> AutoReport:
     report = AutoReport()
     pages = PageTextCache(storage_root)
     cand_q = select(FinancialData).where(
@@ -308,7 +310,7 @@ async def validate_financial_data(db: AsyncSession, *, storage_root: Path, scope
             r.auto_validation = payload
             report.unchanged += 1
             continue
-        target = "verified" if corroborating else "reviewed"
+        target = "verified" if corroborating else single_source_status
         if r.status == target:
             r.auto_validation = {**payload, "outcome": target}
             report.unchanged += 1
@@ -335,7 +337,8 @@ async def validate_financial_data(db: AsyncSession, *, storage_root: Path, scope
     return report
 
 
-async def validate_deals(db: AsyncSession, *, dry_run: bool = False) -> AutoReport:
+async def validate_deals(db: AsyncSession, *, dry_run: bool = False,
+                         single_source_status: str = "reviewed") -> AutoReport:
     report = AutoReport()
     deals = (await db.execute(select(Deal).where(
         Deal.deleted_at.is_(None), Deal.merged_into_deal_id.is_(None), Deal.auto_validation_blocked.is_(False),
@@ -387,7 +390,7 @@ async def validate_deals(db: AsyncSession, *, dry_run: bool = False) -> AutoRepo
             d.auto_validation = {**payload, "outcome": "not_validated"}
             report.unchanged += 1
             continue
-        target = "verified" if corroborated else "reviewed"
+        target = "verified" if corroborated else single_source_status
         if d.status == target:
             d.auto_validation = {**payload, "outcome": target}
             report.unchanged += 1

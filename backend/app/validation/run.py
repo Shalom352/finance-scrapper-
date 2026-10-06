@@ -23,6 +23,8 @@ async def main_async() -> int:
     parser.add_argument("--target", choices=["all", "financial_data", "deals"], default="all")
     parser.add_argument("--scope-classes", default=None)
     parser.add_argument("--storage-root", default=None)
+    parser.add_argument("--single-source-status", choices=["reviewed", "verified"], default=None,
+                        help="Status when every check passes on a single source (default: setting, 'reviewed')")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--revoke-all", action="store_true")
     parser.add_argument("--actor", default=None)
@@ -50,6 +52,10 @@ async def main_async() -> int:
     classes = tuple(c.strip() for c in (args.scope_classes or settings.auto_validation_scope_classes).split(",")
                     if c.strip())
     root = Path(args.storage_root or settings.documents_storage_path)
+    single = args.single_source_status or settings.auto_validation_single_source_status
+    if single not in ("reviewed", "verified"):
+        print("ABANDON: single source status must be 'reviewed' or 'verified'", flush=True)
+        return 2
     out: dict = {"dry_run": args.dry_run}
     try:
         async with AsyncSessionLocal() as db:
@@ -62,9 +68,11 @@ async def main_async() -> int:
             else:
                 if args.target in ("all", "financial_data"):
                     out["financial_data"] = (await validate_financial_data(
-                        db, storage_root=root, scope_classes=classes, dry_run=args.dry_run)).summary()
+                        db, storage_root=root, scope_classes=classes, dry_run=args.dry_run,
+                        single_source_status=single)).summary()
                 if args.target in ("all", "deals"):
-                    out["deals"] = (await validate_deals(db, dry_run=args.dry_run)).summary()
+                    out["deals"] = (await validate_deals(db, dry_run=args.dry_run,
+                                                         single_source_status=single)).summary()
     except (TargetDatabaseError, RevokeError) as err:
         print(err, flush=True)
         return 2

@@ -107,6 +107,8 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------
     auto_validation_enabled: bool = False  # run after each automated ingestion
     auto_validation_scope_classes: str = "A,B,C"  # scope evidence classes accepted
+    # Status given when every check passes on a SINGLE source: "reviewed" (default) or "verified" (owner choice)
+    auto_validation_single_source_status: str = "reviewed"
 
     # ------------------------------------------------------------------
     # Entity & Source Discovery Engine (Phase 15) — disabled by default

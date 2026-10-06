@@ -118,6 +118,10 @@ Option : `AUTO_VALIDATION_ENABLED=true` lance la validation après chaque ingest
 Résultat : tous les contrôles passent **et** corroboration → `verified` (automatique) ; tous passent, source unique →
 `reviewed` (automatique) ; un échec → statut inchangé, rapport conservé (`auto_validation`) et affiché.
 
+Choix du propriétaire : `--single-source-status verified` (ou `AUTO_VALIDATION_SINGLE_SOURCE_STATUS=verified`)
+donne `verified` (automatique) aussi aux lignes à source unique dont tous les contrôles passent ; les lignes déjà
+`reviewed` automatiquement sont alors promues. Toujours retirable par une personne.
+
 **Transactions** — au moins une source primaire (note visée, résultat UMOA-Titres, communiqué de l'émetteur ;
 jamais la presse seule ni l'index AMF), tous les champs publiés attestés, rôles lus dans le texte (une lecture
 de logo ou de scan exige une personne), aucun doublon en suspens, montant positif avec devise.
