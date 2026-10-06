@@ -64,6 +64,9 @@ class Entity(Base):
         ForeignKey("countries.id", ondelete="RESTRICT"), nullable=True
     )
 
+    # Official website (Phase 20 directory); the only URL from which the entity was registered.
+    website: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+
     # Description & Status
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="active", server_default="active")

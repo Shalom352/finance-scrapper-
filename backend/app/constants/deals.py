@@ -207,3 +207,11 @@ ISO_4217_CURRENCIES = frozenset(
 def sql_in(values: tuple[str, ...]) -> str:
     """SQL literal list for CHECK constraints (static vocabulary only)."""
     return ", ".join(f"'{v}'" for v in values)
+
+
+# Internal mandates (Phase 20) — TOMASTEED's own pipeline, never published.
+MANDATE_STATUSES = ("prospect", "active", "on_hold", "closed_won", "closed_lost")
+# Answer of a bank / institution approached on a mandate, from first contact to disbursement.
+COUNTERPARTY_STAGES = ("approached", "interested", "declined", "term_sheet", "committed", "disbursed", "withdrawn")
+# Stages that show an appetite for the deal (used by the targeting view).
+POSITIVE_STAGES = ("interested", "term_sheet", "committed", "disbursed")

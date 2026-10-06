@@ -131,6 +131,7 @@ def create_app() -> FastAPI:
     from app.api.v1.rankings import router as rankings_router
     from app.api.v1.search import router as search_router
     from app.api.v1.sources import router as sources_router
+    from app.api.v1.targeting import router as targeting_router
 
     app.include_router(countries_router)
     app.include_router(sources_router)
@@ -146,6 +147,7 @@ def create_app() -> FastAPI:
     app.include_router(data_quality_router)
     app.include_router(deals_router)
     app.include_router(ingestion_router)
+    app.include_router(targeting_router)
 
     from app.core.exceptions import register_exception_handlers
     register_exception_handlers(app)

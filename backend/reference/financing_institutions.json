@@ -1,0 +1,22 @@
+{
+ "_note": "Development finance institutions and guarantee funds active in the UMOA. Each entry is registered from its OWN official website only (field `website`); nothing else is inferred. Review and extend by hand.",
+ "institutions": [
+  {"canonical_name": "Banque Ouest Africaine de Développement", "short_name": "BOAD", "entity_type": "development_bank", "country_code": "TG", "website": "https://www.boad.org", "scope": "regional_umoa"},
+  {"canonical_name": "Banque d'Investissement et de Développement de la CEDEAO", "short_name": "BIDC", "entity_type": "development_bank", "country_code": "TG", "website": "https://www.bidc-ebid.org", "scope": "regional_ecowas"},
+  {"canonical_name": "Banque Africaine de Développement", "short_name": "BAD", "entity_type": "development_bank", "country_code": "CI", "website": "https://www.afdb.org", "scope": "continental"},
+  {"canonical_name": "African Export-Import Bank", "short_name": "Afreximbank", "entity_type": "development_bank", "website": "https://www.afreximbank.com", "scope": "continental"},
+  {"canonical_name": "Africa Finance Corporation", "short_name": "AFC", "entity_type": "development_bank", "website": "https://www.africafc.org", "scope": "continental"},
+  {"canonical_name": "Africa50", "short_name": "Africa50", "entity_type": "development_bank", "website": "https://www.africa50.com", "scope": "continental"},
+  {"canonical_name": "Société Financière Internationale", "short_name": "IFC", "entity_type": "development_bank", "website": "https://www.ifc.org", "scope": "international"},
+  {"canonical_name": "Banque Européenne d'Investissement", "short_name": "BEI", "entity_type": "development_bank", "website": "https://www.eib.org", "scope": "international"},
+  {"canonical_name": "Banque Islamique de Développement", "short_name": "BID", "entity_type": "development_bank", "website": "https://www.isdb.org", "scope": "international"},
+  {"canonical_name": "Société Islamique pour le Développement du Secteur Privé", "short_name": "SID", "entity_type": "development_bank", "website": "https://icd-ps.org", "scope": "international"},
+  {"canonical_name": "Agence Française de Développement", "short_name": "AFD", "entity_type": "development_bank", "website": "https://www.afd.fr", "scope": "international"},
+  {"canonical_name": "Proparco", "short_name": "Proparco", "entity_type": "development_bank", "website": "https://www.proparco.fr", "scope": "international"},
+  {"canonical_name": "Nederlandse Financierings-Maatschappij voor Ontwikkelingslanden", "short_name": "FMO", "entity_type": "development_bank", "website": "https://www.fmo.nl", "scope": "international"},
+  {"canonical_name": "Deutsche Investitions- und Entwicklungsgesellschaft", "short_name": "DEG", "entity_type": "development_bank", "website": "https://www.deginvest.de", "scope": "international"},
+  {"canonical_name": "British International Investment", "short_name": "BII", "entity_type": "development_bank", "website": "https://www.bii.co.uk", "scope": "international"},
+  {"canonical_name": "Fonds de Garantie des Investissements Privés en Afrique de l'Ouest", "short_name": "GARI", "entity_type": "guarantee_fund", "country_code": "TG", "website": "https://www.fondsgari.org", "scope": "regional_ecowas"},
+  {"canonical_name": "African Guarantee Fund", "short_name": "AGF", "entity_type": "guarantee_fund", "website": "https://www.africanguaranteefund.com", "scope": "continental"}
+ ]
+}

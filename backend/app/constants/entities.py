@@ -29,6 +29,7 @@ ENTITY_TYPES = (
     "holding_group",
     "project_company",
     "other",
+    "guarantee_fund",  # Phase 20 (GARI, African Guarantee Fund…)
 )
 
 ENTITY_STATUSES = (
