@@ -19,7 +19,7 @@ Institution types (open string):
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -28,6 +28,7 @@ if TYPE_CHECKING:  # relationship targets, resolved by SQLAlchemy at runtime
     from app.models.banking_group import BankingGroup
     from app.models.country import Country
     from app.models.document import Document
+    from app.models.entity import Entity
     from app.models.financial_data import FinancialData
     from app.models.source import Source
 
@@ -43,6 +44,7 @@ class Institution(Base):
     """
 
     __tablename__ = "institutions"
+    __table_args__ = (UniqueConstraint("entity_id", name="uq_institutions_entity_id"),)
 
     # Official registered name
     name_official: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -89,7 +91,15 @@ class Institution(Base):
         ForeignKey("sources.id", ondelete="SET NULL"), nullable=True, index=True
     )
 
+    # Unified Entity Hub link (Phase 14)
+    entity_id: Mapped[str | None] = mapped_column(
+        ForeignKey("entities.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+
     # Relationships
+    entity: Mapped["Entity | None"] = relationship(  # type: ignore[name-defined]
+        "Entity", back_populates="institution", lazy="joined"
+    )
     country: Mapped["Country"] = relationship(  # type: ignore[name-defined]
         "Country", back_populates="institutions", lazy="joined"
     )

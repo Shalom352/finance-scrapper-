@@ -23,7 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--source",
-        choices=["all", "bceao", "cb-umoa"],
+        choices=["all", "bceao", "cb-umoa", "brvm", "umoa-titres"],
         default="all",
         help="Official data source to ingest from",
     )

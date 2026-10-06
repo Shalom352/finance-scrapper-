@@ -110,10 +110,9 @@ def test_document_foreign_keys() -> None:
 
 
 def test_financial_data_required_columns_not_nullable() -> None:
-    """Core provenance columns are NOT NULL."""
+    """Core provenance columns are NOT NULL (institution_id decoupled in Phase 14)."""
     cols = _table(FinancialData).columns
     for name in (
-        "institution_id",
         "source_id",
         "document_id",
         "metric_code",
@@ -124,6 +123,8 @@ def test_financial_data_required_columns_not_nullable() -> None:
         "status",
     ):
         assert cols[name].nullable is False, f"{name} must be NOT NULL"
+    # In Phase 14, institution_id is nullable and guarded by ck_financial_data_target
+    assert cols["institution_id"].nullable is True
 
 
 def test_document_source_id_not_nullable() -> None:

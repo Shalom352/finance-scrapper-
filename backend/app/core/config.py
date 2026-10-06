@@ -5,6 +5,7 @@ All configuration is loaded from environment variables.
 Never hardcode secrets or environment-specific values here.
 """
 
+import os
 from functools import lru_cache
 from typing import Literal
 
@@ -46,6 +47,9 @@ class Settings(BaseSettings):
 
     # Optional: override the full DSN directly
     database_url: str | None = None
+
+    # application_name of every connection of this process (pg_stat_activity). Runners set their own.
+    db_application_name: str = "umoa_backend"
 
     @computed_field  # type: ignore[misc]
     @property
@@ -99,6 +103,15 @@ class Settings(BaseSettings):
     ingestion_concurrency_limit: int = 1
 
     # ------------------------------------------------------------------
+    # Entity & Source Discovery Engine (Phase 15) — disabled by default
+    # ------------------------------------------------------------------
+    discovery_enabled: bool = False
+    discovery_schedule: str = "0 3 * * *"
+    discovery_universe: str = "UMOA.BANKING"
+    discovery_historical_years: int = 5
+    discovery_fascicle_editions: int = 1
+
+    # ------------------------------------------------------------------
     # Computed helpers
     # ------------------------------------------------------------------
     @property
@@ -118,6 +131,39 @@ class Settings(BaseSettings):
             if self.backend_debug:
                 raise ValueError("BACKEND_DEBUG must be false in production")
         return self
+
+
+def _dotenv_defines(key: str) -> bool:
+    """True when one of the configured env files sets ``key`` to a non-empty value."""
+    from dotenv import dotenv_values
+
+    env_files = Settings.model_config.get("env_file") or ()
+    if isinstance(env_files, str | bytes):
+        env_files = (env_files,)
+    for env_file in env_files:
+        values = {k.upper(): v for k, v in dotenv_values(env_file, encoding="utf-8").items()}
+        if values.get(key.upper()):
+            return True
+    return False
+
+
+def _origin(key: str) -> str:
+    if os.environ.get(key):
+        return "environment"
+    if key not in os.environ and _dotenv_defines(key):
+        return ".env"
+    return "default"
+
+
+def database_url_source(settings: Settings) -> str:
+    """Where the effective database URL comes from (environment, .env, or POSTGRES_* values).
+
+    A process variable has priority over the env files; an empty process variable
+    (docker-compose sets DATABASE_URL="") disables DATABASE_URL in favour of POSTGRES_*.
+    """
+    if settings.database_url:
+        return "environment:DATABASE_URL" if os.environ.get("DATABASE_URL") else ".env:DATABASE_URL"
+    return f"POSTGRES_* (POSTGRES_DB from {_origin('POSTGRES_DB')})"
 
 
 @lru_cache(maxsize=1)

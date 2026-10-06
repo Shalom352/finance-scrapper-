@@ -30,6 +30,7 @@ from app.models.deal import (
     DealSource,
 )
 from app.models.document import Document
+from app.models.entity import Entity
 from app.models.institution import Institution
 from app.models.review_event import FinancialDataReviewEvent
 from app.models.source import Source
@@ -182,6 +183,8 @@ async def _check_references(db: AsyncSession, records: list[DealImportRecord]) -
     doc_ids = {s.document_id for r in records for s in r.sources}
     src_ids = {s.source_id for r in records for s in r.sources}
     inst_ids = {p.institution_id for r in records for p in r.participants if p.institution_id}
+    entity_ids = {p.entity_id for r in records for p in r.participants if p.entity_id}
+    keys = [r.ingestion_key for r in records if r.ingestion_key]
     codes = {r.country_code for r in records if r.country_code}
 
     docs = {
@@ -202,6 +205,18 @@ async def _check_references(db: AsyncSession, records: list[DealImportRecord]) -
             )
         ).scalars()
     ) if inst_ids else set()
+    entities = set(
+        (
+            await db.execute(select(Entity.id).where(Entity.id.in_(entity_ids), Entity.deleted_at.is_(None)))
+        ).scalars()
+    ) if entity_ids else set()
+    existing_keys = set(
+        (
+            await db.execute(
+                select(Deal.ingestion_key).where(Deal.ingestion_key.in_(keys), Deal.deleted_at.is_(None))
+            )
+        ).scalars()
+    ) if keys else set()
     countries = dict(
         (await db.execute(select(Country.code, Country.id).where(Country.code.in_(codes)))).all()
     ) if codes else {}
@@ -226,6 +241,15 @@ async def _check_references(db: AsyncSession, records: list[DealImportRecord]) -
             if p.institution_id and p.institution_id not in insts:
                 issues.append(ImportIssue(n, f"participants.{i}.institution_id", "institution_not_found",
                                           f"institution '{p.institution_id}' does not exist"))
+            if p.entity_id and p.entity_id not in entities:
+                issues.append(ImportIssue(n, f"participants.{i}.entity_id", "entity_not_found",
+                                          f"entity '{p.entity_id}' does not exist"))
+        if r.ingestion_key and r.ingestion_key in existing_keys:
+            issues.append(ImportIssue(n, "ingestion_key", "already_imported",
+                                      f"a deal with ingestion key '{r.ingestion_key}' already exists"))
+        if r.ingestion_key and keys.count(r.ingestion_key) > 1:
+            issues.append(ImportIssue(n, "ingestion_key", "duplicate_in_file",
+                                      f"ingestion key '{r.ingestion_key}' appears several times in the file"))
         if r.country_code and r.country_code not in countries:
             issues.append(ImportIssue(n, "country_code", "country_not_found",
                                       f"country '{r.country_code}' does not exist"))
@@ -242,11 +266,13 @@ def _facts(deal_id: str, r: DealImportRecord) -> DealFacts:
         id=deal_id, deal_type=r.deal_type, project_name=r.project_name, amount=r.amount, currency=r.currency,
         signing_date=r.signing_date, announcement_date=r.announcement_date,
         participants=[(p.role, p.institution_id, p.name) for p in r.participants],
+        isin=r.isin, value_date=r.value_date,
+        issuer_entities=frozenset(p.entity_id for p in r.participants if p.role == "issuer" and p.entity_id),
     )
 
 
 async def _existing_facts(db: AsyncSession) -> list[DealFacts]:
-    """Existing, non-rejected, non-merged deals that carry an anchor (a borrower or a project).
+    """Existing, non-rejected, non-merged deals that carry an anchor (borrower, project or instrument).
 
     Names are compared on a normalized key computed in Python (accents / punctuation), so the
     lookup is not pre-filtered by name in SQL: a candidate is never missed because of spelling.
@@ -260,7 +286,7 @@ async def _existing_facts(db: AsyncSession) -> list[DealFacts]:
                 Deal.deleted_at.is_(None),
                 Deal.status != "rejected",
                 Deal.merged_into_deal_id.is_(None),
-                or_(Deal.id.in_(has_borrower), Deal.project_name.is_not(None)),
+                or_(Deal.id.in_(has_borrower), Deal.project_name.is_not(None), Deal.isin.is_not(None)),
             )
         )
     ).scalars().all()
@@ -269,6 +295,8 @@ async def _existing_facts(db: AsyncSession) -> list[DealFacts]:
             id=d.id, deal_type=d.deal_type, project_name=d.project_name, amount=d.amount, currency=d.currency,
             signing_date=d.signing_date, announcement_date=d.announcement_date,
             participants=[(p.role, p.institution_id, p.participant_name) for p in d.participants],
+            isin=d.isin, value_date=d.value_date,
+            issuer_entities=frozenset(p.entity_id for p in d.participants if p.role == "issuer" and p.entity_id),
         )
         for d in rows
     ]
@@ -304,6 +332,10 @@ async def import_deals(
                 maturity_months=r.maturity_months, grace_period_months=r.grace_period_months, fees=r.fees,
                 guarantees=r.guarantees, announcement_date=r.announcement_date, signing_date=r.signing_date,
                 financial_close_date=r.financial_close_date, closing_date=r.closing_date,
+                instrument_type=r.instrument_type, isin=r.isin, auction_reference=r.auction_reference,
+                auction_date=r.auction_date, value_date=r.value_date, maturity_date=r.maturity_date,
+                yield_rate=r.yield_rate, ingestion_key=r.ingestion_key,
+                validation_flags=[f.model_dump() for f in r.validation_flags] or None,
                 status=IMPORT_STATUS,
             )
             db.add(deal)
@@ -320,7 +352,8 @@ async def import_deals(
                     db.add(DealFieldSource(deal_id=deal.id, field_name=f, deal_source_id=by_ref[s.ref].id))
             for p in r.participants:
                 db.add(DealParticipant(
-                    deal_id=deal.id, participant_name=p.name, institution_id=p.institution_id, role=p.role,
+                    deal_id=deal.id, participant_name=p.name, institution_id=p.institution_id,
+                    entity_id=p.entity_id, role=p.role,
                     commitment_amount=p.commitment_amount, commitment_currency=p.commitment_currency,
                     deal_source_id=by_ref[p.source_ref].id,
                 ))

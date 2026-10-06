@@ -21,6 +21,8 @@ from pydantic import (
 from app.constants.deals import (
     AMOUNT_UNITS,
     DEAL_TYPES,
+    DEAL_VALIDATION_FLAGS,
+    INSTRUMENT_TYPES,
     INTEREST_RATE_TYPES,
     ISO_4217_CURRENCIES,
     PARTICIPANT_ROLES,
@@ -35,6 +37,8 @@ Role = Literal[PARTICIPANT_ROLES]  # type: ignore[valid-type]
 RateType = Literal[INTEREST_RATE_TYPES]  # type: ignore[valid-type]
 Unit = Literal[AMOUNT_UNITS]  # type: ignore[valid-type]
 ProvenanceField = Literal[PROVENANCE_FIELDS]  # type: ignore[valid-type]
+InstrumentType = Literal[INSTRUMENT_TYPES]  # type: ignore[valid-type]
+Isin = Annotated[str, StringConstraints(pattern=r"^[A-Z]{2}[A-Z0-9]{9}[0-9]$")]
 
 
 def _currency(value: str | None) -> str | None:
@@ -59,6 +63,13 @@ class SourceRef(BaseModel):
     fields: list[ProvenanceField] = Field(default_factory=list)
 
 
+class ValidationFlag(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    code: Literal[DEAL_VALIDATION_FLAGS]  # type: ignore[valid-type]
+    detail: Text
+
+
 class ParticipantImport(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -66,6 +77,8 @@ class ParticipantImport(BaseModel):
     name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)]
     # Must exist in `institutions` when given; a name alone keeps institution_id NULL.
     institution_id: str | None = None
+    # Must exist in `entities` when given (e.g. a sovereign_state issuer).
+    entity_id: str | None = None
     commitment_amount: Decimal | None = Field(default=None, gt=0)
     commitment_currency: str | None = None
     source_ref: Ref
@@ -106,6 +119,17 @@ class DealImportRecord(BaseModel):
     signing_date: date | None = None
     financial_close_date: date | None = None
     closing_date: date | None = None
+    # Public-debt instrument (all optional, NULL when not published).
+    instrument_type: InstrumentType | None = None
+    isin: Isin | None = None
+    auction_reference: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)] | None = None
+    auction_date: date | None = None
+    value_date: date | None = None
+    maturity_date: date | None = None
+    yield_rate: Decimal | None = None
+    # Deterministic idempotence key of an automated ingestion (not a published field).
+    ingestion_key: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)] | None = None
+    validation_flags: list[ValidationFlag] = Field(default_factory=list)
     participants: list[ParticipantImport] = Field(default_factory=list)
     sources: list[SourceRef] = Field(min_length=1)
 
@@ -129,6 +153,8 @@ class DealImportRecord(BaseModel):
             raise ValueError("source refs must be unique within a deal")
         if self.amount is not None and self.currency is None:
             raise ValueError("currency is required when amount is given (no implicit currency)")
+        if self.maturity_date and self.value_date and self.maturity_date <= self.value_date:
+            raise ValueError("maturity_date must be after value_date")
         attested = {f for s in self.sources for f in s.fields}
         missing = [f for f in PROVENANCE_FIELDS if getattr(self, f) is not None and f not in attested]
         if missing:

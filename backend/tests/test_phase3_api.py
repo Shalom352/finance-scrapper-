@@ -210,11 +210,15 @@ class TestRankingsLogic:
     def _patch_service(monkeypatch, universe, years, candidates):
         from app.api.v1 import rankings as rankings_api
         from scraping.rankings.models import Candidate
+        from scraping.rankings.universe import UniverseResolution
 
         svc = rankings_api.ranking_service
 
         async def fake_universe(db, country_code):
             return universe
+
+        async def fake_resolution(db, country_code):
+            return UniverseResolution(members=universe, source="institutions_table")
 
         async def fake_years(db, indicator, period_type, data_scope, ids):
             return years
@@ -224,6 +228,7 @@ class TestRankingsLogic:
                                                       reason="missing") for i in ids}
 
         monkeypatch.setattr(svc, "universe", fake_universe)
+        monkeypatch.setattr(svc, "universe_resolution", fake_resolution)
         monkeypatch.setattr(svc, "available_years", fake_years)
         monkeypatch.setattr(svc, "candidates", fake_candidates)
 

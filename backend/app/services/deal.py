@@ -62,8 +62,8 @@ def _escape_like(value: str) -> str:
 
 
 def _deal_year():
-    """Year of a deal: signing date, otherwise announcement date (documented rule)."""
-    return extract("year", func.coalesce(Deal.signing_date, Deal.announcement_date))
+    """Year of a deal: signing date, otherwise announcement date, otherwise value date (documented rule)."""
+    return extract("year", func.coalesce(Deal.signing_date, Deal.announcement_date, Deal.value_date))
 
 
 def _participant_filter(*, institution_id: str | None = None, name: str | None = None,
@@ -156,7 +156,8 @@ def _list_item(deal: Deal, open_candidates: dict[str, int]) -> DealListItem:
         country_code=deal.country.code if deal.country else None, sector=deal.sector,
         project_name=deal.project_name, amount=deal.amount, currency=deal.currency, unit=deal.unit,
         announcement_date=deal.announcement_date, signing_date=deal.signing_date,
-        borrowers=_names(deal, "borrower"), arrangers=_names(deal, "arranger"),
+        borrowers=_names(deal, "borrower"), arrangers=_names(deal, "arranger"), issuers=_names(deal, "issuer"),
+        instrument_type=deal.instrument_type, isin=deal.isin, value_date=deal.value_date,
         duplicate_candidates=open_candidates.get(deal.id, 0), merged_into_deal_id=deal.merged_into_deal_id,
         updated_at=deal.updated_at,
     )
@@ -171,7 +172,7 @@ async def list_deals(db: AsyncSession, *, page: int, page_size: int, **filters: 
             select(Deal)
             .options(selectinload(Deal.participants), selectinload(Deal.country))
             .where(*conds)
-            .order_by(func.coalesce(Deal.signing_date, Deal.announcement_date).desc().nulls_last(),
+            .order_by(func.coalesce(Deal.signing_date, Deal.announcement_date, Deal.value_date).desc().nulls_last(),
                       Deal.title, Deal.id)
             .offset((page - 1) * page_size)
             .limit(page_size)
@@ -197,7 +198,8 @@ def _source_read(s: DealSource, fields: list[str]) -> DealSourceRead:
 def _participant_read(p: DealParticipant) -> DealParticipantRead:
     return DealParticipantRead(
         id=p.id, participant_name=p.participant_name, institution_id=p.institution_id,
-        institution_name=p.institution.name_official if p.institution else None, role=p.role,
+        institution_name=p.institution.name_official if p.institution else None,
+        entity_id=p.entity_id, entity_name=p.entity.canonical_name if p.entity else None, role=p.role,
         commitment_amount=p.commitment_amount, commitment_currency=p.commitment_currency,
         deal_source_id=p.deal_source_id,
     )
@@ -206,6 +208,7 @@ def _participant_read(p: DealParticipant) -> DealParticipantRead:
 def _deal_options():
     return (
         selectinload(Deal.participants).selectinload(DealParticipant.institution),
+        selectinload(Deal.participants).selectinload(DealParticipant.entity),
         selectinload(Deal.sources).selectinload(DealSource.document),
         selectinload(Deal.sources).selectinload(DealSource.source),
         selectinload(Deal.field_sources),
@@ -290,7 +293,9 @@ async def get_deal(db: AsyncSession, deal_id: str) -> DealDetail | None:
         interest_rate_type=deal.interest_rate_type, benchmark=deal.benchmark, spread_bps=deal.spread_bps,
         maturity_months=deal.maturity_months, grace_period_months=deal.grace_period_months, fees=deal.fees,
         guarantees=deal.guarantees, financial_close_date=deal.financial_close_date,
-        closing_date=deal.closing_date, notes=deal.notes, verified_at=deal.verified_at,
+        closing_date=deal.closing_date, auction_reference=deal.auction_reference, auction_date=deal.auction_date,
+        maturity_date=deal.maturity_date, yield_rate=deal.yield_rate,
+        validation_flags=list(deal.validation_flags or []), notes=deal.notes, verified_at=deal.verified_at,
         verified_by=deal.verified_by, created_at=deal.created_at,
         participants=[_participant_read(p) for p in deal.participants],
         sources=[_source_read(s, sorted(by_source[s.id])) for s in deal.sources],
@@ -545,7 +550,7 @@ async def deal_analytics(db: AsyncSession, dimension: str) -> DealAnalytics:
         if dimension == "country":
             key = d.country.code if d.country else None
         elif dimension == "year":
-            day = d.signing_date or d.announcement_date
+            day = d.signing_date or d.announcement_date or d.value_date
             key = str(day.year) if day else None
         elif dimension == "type":
             key = d.deal_type

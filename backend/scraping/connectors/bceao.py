@@ -26,24 +26,54 @@ class BCEAOConnector(BaseSourceConnector):
     # Targeted publication sections on the BCEAO portal
     TARGET_SECTIONS: ClassVar[list[dict[str, str]]] = [
         {
-            "path": "/fr/publications/rapports-annuels",
+            "path": "/fr/publications/rapport-annuel-de-la-commission-bancaire-de-lumoa-2025",
             "document_type": "annual_report",
-            "description": "Rapports annuels de la BCEAO",
+            "description": "Rapport annuel 2025 de la Commission Bancaire",
         },
         {
-            "path": "/fr/publications/la-situation-bancaire-dans-lumoa",
-            "document_type": "regulatory_report",
-            "description": "Situation bancaire dans l'UMOA",
+            "path": "/fr/publications/rapport-annuel-de-la-bceao-2025",
+            "document_type": "annual_report",
+            "description": "Rapport annuel 2025 de la BCEAO",
         },
         {
-            "path": "/fr/publications/bilans-des-banques-et-etablissements-financiers-de-lumoa",
+            "path": "/fr/publications/etats-financiers-de-la-bceao-au-titre-de-lexercice-2025",
             "document_type": "financial_statement",
-            "description": "Bilans des banques et établissements financiers",
+            "description": "États financiers 2025 de la BCEAO",
         },
         {
-            "path": "/fr/publications/bulletins-statistiques",
+            "path": "/fr/publications/bilans-et-comptes-de-resultats-des-etablissements-de-credit-de-lumoa",
+            "document_type": "financial_statement",
+            "description": "Bilans et comptes de résultats des banques et établissements financiers de l'UMOA",
+        },
+        {
+            "path": "/fr/publications/rapports",
+            "document_type": "annual_report",
+            "description": "Rapports annuels et de politique monétaire de la BCEAO",
+        },
+        {
+            "path": "/fr/documents/conditions-de-banque",
+            "document_type": "financial_statement",
+            "description": "Conditions de banque et bilans semestriels",
+        },
+        {
+            "path": "/fr/publications/annuaires",
+            "document_type": "financial_statement",
+            "description": "Annuaires des banques et statistiques de l'UMOA",
+        },
+        {
+            "path": "/fr/publications/bulletins",
             "document_type": "regulatory_report",
-            "description": "Bulletins statistiques monétaires",
+            "description": "Bulletins statistiques monétaires et financiers",
+        },
+        {
+            "path": "/fr/publications/perspectives-economiques",
+            "document_type": "regulatory_report",
+            "description": "Perspectives économiques des États de l'UEMOA",
+        },
+        {
+            "path": "/fr/publications/notes",
+            "document_type": "regulatory_report",
+            "description": "Notes d'information et de conjoncture",
         },
     ]
 

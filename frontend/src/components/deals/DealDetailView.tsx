@@ -65,6 +65,7 @@ export function DealDetailView({ deal, history, reviewHref }: { deal: DealDetail
   const t = useTranslations("deals.detail");
   const tf = useTranslations("deals.detail.fields");
   const tDup = useTranslations("deals.duplicates");
+  const tFlag = useTranslations("deals.detail.validation_flags");
   const tCountries = useTranslations("country_names");
   const locale = useLocale();
   const fmt = useFormatters();
@@ -90,6 +91,8 @@ export function DealDetailView({ deal, history, reviewHref }: { deal: DealDetail
   const borrowers = byRole.get("borrower") ?? [];
   const sponsors = byRole.get("sponsor") ?? [];
   const dates = ["announcement_date", "signing_date", "financial_close_date", "closing_date"] as const;
+  const instrumentDates = ["auction_date", "value_date", "maturity_date"] as const;
+  const isInstrument = Boolean(deal.instrument_type || deal.isin);
 
   return (
     <div className="space-y-4">
@@ -135,6 +138,30 @@ export function DealDetailView({ deal, history, reviewHref }: { deal: DealDetail
         </dl>
       </Section>
 
+      {isInstrument && (
+        <Section title={t("instrument")} testId="deal-instrument">
+          <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3 text-xs">
+            {row("instrument_type", deal.instrument_type, Boolean(deal.instrument_type))}
+            {row("isin", deal.isin, Boolean(deal.isin))}
+            {row("auction_reference", deal.auction_reference, Boolean(deal.auction_reference))}
+            {row("yield_rate", fmt.percent(deal.yield_rate ?? null, 2), deal.yield_rate != null)}
+            {instrumentDates.map((f) =>
+              row(f, deal[f] ? formatDay(deal[f] ?? null, locale) : null, Boolean(deal[f])),
+            )}
+          </dl>
+          {deal.validation_flags && deal.validation_flags.length > 0 && (
+            <ul className="space-y-1 text-xs" data-testid="deal-validation-flags">
+              {deal.validation_flags.map((f) => (
+                <li key={f.code} className="p-2 rounded-lg border border-amber-800/60 bg-amber-950/30 text-amber-200">
+                  <span className="font-semibold">{tFlag.has(f.code) ? tFlag(f.code) : f.code}</span>
+                  <span className="block text-amber-300/80">{f.detail}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
+      )}
+
       <Section title={t("participants")} testId="deal-participants">
         {deal.participants.length === 0 ? (
           <p className="text-xs text-gray-500">{t("no_participants")}</p>
@@ -153,7 +180,11 @@ export function DealDetailView({ deal, history, reviewHref }: { deal: DealDetail
                     <span className="font-semibold text-gray-100">{p.participant_name}</span>
                   )}
                   <span className="block text-gray-500 mt-1">
-                    {p.institution_id ? t("institution") : t("not_in_directory")}
+                    {p.institution_id
+                      ? t("institution")
+                      : p.entity_id
+                        ? t("entity", { name: p.entity_name ?? p.participant_name })
+                        : t("not_in_directory")}
                     {p.commitment_amount !== null && <> · {t("commitment")} {amount(p.commitment_amount, p.commitment_currency, null)}</>}
                     {s && <> · <a href={`#deal-source-${s.id}`} className="hover:text-emerald-300">{t("page", { page: s.page_number })}</a></>}
                   </span>

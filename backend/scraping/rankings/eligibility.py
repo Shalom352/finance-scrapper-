@@ -19,6 +19,8 @@ from scraping.consolidation.models import ObservationSummary
 from scraping.rankings.models import Candidate, ProvenanceRef
 
 ELIGIBLE_DERIVED_STATUSES = {"calculated", "calculated_from_verified"}
+# Published metrics: the only statuses a ranked value may carry (priority verified > reviewed > extracted).
+ADMISSIBLE_STATUSES = ("verified", "reviewed", "extracted")
 
 
 def provenance_from_observation(obs: ObservationSummary) -> ProvenanceRef:
@@ -85,6 +87,16 @@ def qualify_metric(
             eligible=False,
             status="needs_review",
             reason="needs_review",
+            currency=best.currency_normalized,
+        )
+    if best.status not in ADMISSIBLE_STATUSES:
+        # Locked: only verified > reviewed > extracted are ever ranked.
+        return Candidate(
+            institution_id=institution_id,
+            eligible=False,
+            status="unavailable",
+            reason="status_not_admissible",
+            detail=best.status,
             currency=best.currency_normalized,
         )
     return Candidate(

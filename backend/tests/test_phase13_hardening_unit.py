@@ -9,6 +9,7 @@ from collections.abc import AsyncGenerator
 from decimal import Decimal
 
 import pytest
+import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from scraping.analytics.aggregation import SectorAggregator
@@ -33,7 +34,7 @@ def obs(i, value, *, scope="individual", status="extracted", year=2024, period_t
 # ------------------------------------------------------------------ health / envelope / headers
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def broken_db_client() -> AsyncGenerator[AsyncClient, None]:
     """Application whose database is unreachable (closed port)."""
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine

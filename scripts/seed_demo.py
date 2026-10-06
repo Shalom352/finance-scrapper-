@@ -14,8 +14,11 @@ institutions, sources, documents, financial data (including one with
 import asyncio
 import os
 import sys
+from pathlib import Path
 
-# Make sure app modules are importable
+backend_dir = str(Path(__file__).resolve().parents[1] / "backend")
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
 sys.path.insert(0, "/app")
 
 
@@ -25,6 +28,7 @@ async def seed():
     from sqlalchemy import select, func
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+    from app.core.config import get_settings
     from app.models.country import Country
     from app.models.document import Document
     from app.models.financial_data import FinancialData
@@ -34,12 +38,15 @@ async def seed():
 
     dsn = os.environ.get("DATABASE_URL", "")
     if not dsn:
-        host = os.environ.get("POSTGRES_HOST", "postgres")
-        port = os.environ.get("POSTGRES_PORT", "5432")
-        db = os.environ.get("POSTGRES_DB", "umoa_banking")
-        user = os.environ.get("POSTGRES_USER", "umoa_user")
-        pwd = os.environ.get("POSTGRES_PASSWORD", "")
-        dsn = f"postgresql+asyncpg://{user}:{pwd}@{host}:{port}/{db}"
+        try:
+            dsn = get_settings().database_url
+        except Exception:
+            host = os.environ.get("POSTGRES_HOST", "localhost")
+            port = os.environ.get("POSTGRES_PORT", "5432")
+            db = os.environ.get("POSTGRES_DB", "umoa_banking")
+            user = os.environ.get("POSTGRES_USER", "umoa_user")
+            pwd = os.environ.get("POSTGRES_PASSWORD", "")
+            dsn = f"postgresql+asyncpg://{user}:{pwd}@{host}:{port}/{db}"
 
     engine = create_async_engine(dsn)
     maker = async_sessionmaker(engine, expire_on_commit=False)

@@ -67,6 +67,15 @@ class Document(Base):
             name="ck_documents_period_type",
         ),
         CheckConstraint(
+            "document_scope IN ('regulatory_aggregate', 'institution_specific', 'reference_listing', "
+            "'market', 'unknown')",
+            name="ck_documents_document_scope",
+        ),
+        CheckConstraint(
+            "text_layer_status IN ('machine_readable', 'partially_corrupted', 'not_machine_readable', 'unknown')",
+            name="ck_documents_text_layer_status",
+        ),
+        CheckConstraint(
             "page_count IS NULL OR page_count > 0",
             name="ck_documents_page_count_positive",
         ),
@@ -86,6 +95,22 @@ class Document(Base):
     institution_id: Mapped[str | None] = mapped_column(
         ForeignKey("institutions.id", ondelete="SET NULL"), nullable=True, index=True
     )
+
+    # Entity Hub target (Phase 15; nullable: sector-wide documents link entities via document_entities)
+    entity_id: Mapped[str | None] = mapped_column(
+        ForeignKey("entities.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+
+    # What the document covers (Phase 16): a regulatory publication for many institutions is
+    # never counted as an institution's own document.
+    document_scope: Mapped[str] = mapped_column(String(30), nullable=False, default="unknown", index=True, server_default="unknown")
+
+    # Text layer of the file (Phase 17): only machine_readable pages are ever extracted; a scanned or
+    # font-corrupted PDF stays a discovered document with full provenance but yields no observation.
+    text_layer_status: Mapped[str] = mapped_column(String(30), nullable=False, default="unknown", server_default="unknown")
+    file_format: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # Financial year the document reports on (as stated by the document / its official listing)
+    reporting_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Source of the document (required — provenance)
     source_id: Mapped[str] = mapped_column(

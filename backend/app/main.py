@@ -44,8 +44,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     scheduler = get_ingestion_scheduler()
     scheduler.start()
 
+    # Start the recurring discovery engine if enabled (DISCOVERY_ENABLED, off by default)
+    from app.services.discovery_scheduler import get_discovery_scheduler
+    discovery_scheduler = get_discovery_scheduler()
+    discovery_scheduler.start()
+
     yield
 
+    discovery_scheduler.stop()
     scheduler.stop()
     logger.info("application_shutdown")
 

@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 
 import pytest
+import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 # Ensure a deterministic test environment before importing app modules.
@@ -43,7 +44,7 @@ def app():
     return create_app()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def client(app):
     """Async HTTP test client."""
     async with AsyncClient(

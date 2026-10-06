@@ -41,14 +41,28 @@ class LinkExtractor(HTMLParser):
 
 
 _YEAR_PATTERN = re.compile(r"\b(19\d{2}|20\d{2})\b")
+_DATE_COMPACT_PATTERN = re.compile(r"(?:^|[^0-9])(19\d{2}|20\d{2})(?:0[1-9]|1[0-2])(?:[0-2][0-9]|3[01])(?:[^0-9]|$)")
+_DATE_DOTTED_PATTERN = re.compile(r"(?:[0-2][0-9]|3[01])[\.\-_/](?:0[1-9]|1[0-2])[\.\-_/](19\d{2}|20\d{2})")
 _PDF_PATTERN = re.compile(r"\.pdf($|\?|#)", re.IGNORECASE)
 
 
 def extract_year_from_text(text: str) -> int | None:
-    """Extract a 4-digit calendar year (1900-2099) from text."""
+    """Extract a 4-digit calendar year (1900-2099) from text, filename or date string."""
+    # 1. Standalone 4-digit year
     matches = _YEAR_PATTERN.findall(text)
     if matches:
         return int(matches[-1])
+
+    # 2. Compact date YYYYMMDD (e.g. boc_20260929_2.pdf)
+    m_compact = _DATE_COMPACT_PATTERN.findall(text)
+    if m_compact:
+        return int(m_compact[-1])
+
+    # 3. Dotted/dashed date DD.MM.YYYY or DD-MM-YYYY
+    m_dotted = _DATE_DOTTED_PATTERN.findall(text)
+    if m_dotted:
+        return int(m_dotted[-1])
+
     return None
 
 
@@ -99,8 +113,13 @@ def parse_html_documents(
             # Determine title: fallback to filename if anchor text is missing or generic
             from urllib.parse import unquote
             filename = unquote(parsed.path.split("/")[-1])
-            generic_anchors = {"télécharger", "telecharger", "download", "pdf", "lire", "consulter", "ici", "lien", "link"}
-            if text and len(text) > 3 and text.lower().strip() not in generic_anchors:
+            generic_anchors = {
+                "télécharger", "telecharger", "download", "pdf", "lire", "consulter", "ici", "lien", "link",
+                "télécharger pdf", "telecharger pdf", "télécharger le rapport", "telecharger le rapport",
+                "télécharger le document", "telecharger le document",
+            }
+            clean_anchor = re.sub(r"[,\.:;\-_]+", " ", text.lower()).strip()
+            if text and len(text) > 3 and clean_anchor not in generic_anchors and not clean_anchor.startswith("télécharger pdf"):
                 title = text
             else:
                 clean_name = filename.rsplit(".", 1)[0].replace("_", " ").replace("-", " ")

@@ -71,7 +71,11 @@ export function formatDay(value: string | null | undefined, locale: string): str
   }).format(date);
 }
 
-/** Signing date, otherwise announcement date (same rule as the backend year filter). */
-export function dealDate(d: { signing_date: string | null; announcement_date: string | null }): string | null {
-  return d.signing_date ?? d.announcement_date ?? null;
+/** Signing date, otherwise announcement date, otherwise value date (same rule as the backend year filter). */
+export function dealDate(d: {
+  signing_date: string | null;
+  announcement_date: string | null;
+  value_date?: string | null;
+}): string | null {
+  return d.signing_date ?? d.announcement_date ?? d.value_date ?? null;
 }

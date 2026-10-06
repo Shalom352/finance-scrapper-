@@ -89,9 +89,11 @@ le champ et un code. Rien n'est jamais créé implicitement (un participant sans
 | `currency_amount` | même devise et montants à ±5 % |
 | `dates` | signatures ou annonces à ≤ 90 jours |
 | `deal_type` | même type |
-| `participants` | au moins un participant commun (hors emprunteur) |
+| `participants` | au moins un participant commun (hors emprunteur et hors émetteur) |
+| `issuer` | même émetteur (entité de l'Entity Hub, sinon nom normalisé) — l'émetteur n'est compté que par ce critère |
+| `instrument` | même ISIN **et** même date de valeur (ancrage) |
 
-Un **doublon potentiel** est créé si un ancrage (emprunteur ou projet) concorde **et** au moins
+Un **doublon potentiel** est créé si un ancrage (emprunteur, projet ou instrument) concorde **et** au moins
 trois critères au total. Les critères sont stockés et affichés tels quels. Aucune fusion,
 aucune suppression automatique. Libellés : « Doublon potentiel — à revoir » ; jamais
 « doublon confirmé » avant décision.
@@ -116,8 +118,8 @@ pas décidé. Chaque décision est tracée (acteur, motif, date) sur les deux tr
 | GET | `/api/v1/data-quality/deal-duplicates` | doublons potentiels ouverts |
 | POST | `/api/v1/data-quality/deal-duplicates/{id}/decide` | décision sur un doublon |
 
-Année d'une transaction : date de signature, sinon date d'annonce (règle documentée, identique
-côté API et interface).
+Année d'une transaction : date de signature, sinon date d'annonce, sinon date de valeur (titres
+publics) — règle documentée, identique côté API et interface.
 
 ## 6. Interface
 
@@ -128,7 +130,62 @@ côté API et interface).
 - Liens : établissement → « Transactions impliquant cet établissement » (`/deals?bank=<id>`) ;
   participant → fiche établissement.
 
-## 7. Limites
+## 7. Titres publics UMOA-Titres (migration `0014_public_debt_instruments`)
 
-- Pas d'extracteur automatique : l'alimentation dépend d'imports structurés.
+Première source réelle : les **résultats d'adjudication** publiés par l'Agence UMOA-Titres
+(`python -m app.deals.umoa_titres_run --since 2025-01-01`). Périmètre initial : **OAT** des
+8 États depuis le 01/01/2025. Les annonces (avis d'appel d'offres, termes et conditions) ne
+créent jamais de transaction.
+
+- Source de vérité : le PDF « Compte rendu d'adjudication » de chaque émission, contrôlé avec
+  les résultats imprimés sur la page d'émission (montant retenu, rendement, dates, échéance).
+  Une contradiction entre les deux → l'adjudication entière est écartée et signalée.
+- Une transaction `sovereign_bond` par **tranche OAT dont le montant retenu est > 0**. Tranche à
+  `0`, `--` ou sans résultat → aucune transaction (jamais un montant 0). Plusieurs tranches →
+  plusieurs transactions, jamais fusionnées.
+- Valeurs telles que publiées : montant en millions de F CFA (`unit = millions`, `currency =
+  XOF`), coupon (`interest_rate`, fixe), rendement moyen pondéré (`yield_rate`), ISIN, référence
+  d'adjudication, dates d'adjudication / de valeur / d'échéance. Seule transformation : la durée
+  « N ans » exprimée en mois (N × 12) ; une durée en jours laisse `maturity_months` NULL.
+  Une valeur ambiguë (ex. coupon imprimé « 0,057 » sans %) reste NULL.
+- Émetteur : participant `issuer` rattaché (`deal_participants.entity_id`) à l'une des 8 entités
+  `sovereign_state`, uniquement si l'émetteur imprimé (« ETAT DU MALI ») et le préfixe pays de
+  l'ISIN désignent le même pays. Aucune entité n'est créée.
+- Provenance : PDF (page) + page d'émission, champ par champ ; extrait indiquant la méthode
+  (`pdf_text` / `web_html`), la référence d'adjudication et l'ISIN. Import par l'importeur
+  Phase 13 : statut `needs_review`, événement d'audit `import`.
+- Idempotence : `ingestion_key` déterministe (pays, référence d'adjudication, ISIN, date de
+  valeur), unique parmi les transactions non supprimées. Relancer ne recrée rien.
+- Doublons potentiels : ancrage supplémentaire `instrument` (même ISIN **et** même date de
+  valeur) + critère `issuer`. Deux tranches d'une adjudication (ISIN différents) ou deux
+  réouvertures d'un ISIN (dates de valeur différentes) ne sont jamais signalées.
+- Le downgrade de la migration 0014 est refusé tant qu'une transaction utilise ces champs.
+- Formats lus : comptes rendus à plusieurs titres et à titre unique ; documents « EC »
+  (émission + rachat) : la page de rachat (références `RA-…` ou titre « COMPTE RENDU DE RACHAT »
+  sans référence `ADJ-…`) n'est jamais une émission. Références d'adjudication conservées telles
+  qu'imprimées (année tronquée, espace parasite). Deux montants de tranche fusionnés sur une même
+  ligne restent refusés (séparateurs de milliers ambigus).
+- **Drapeaux de validation** (`deals.validation_flags`, migration `0015_deal_validation_flags`),
+  liste fermée, jamais de modification de valeur ni de statut :
+  - `global_total_rounded` : le total global imprimé est un entier (aucune décimale imprimée) égal
+    à l'arrondi de la somme des tranches ; les montants de tranche du PDF sont conservés. Tout autre
+    écart refuse le document (pas d'élargissement général de la tolérance) ;
+  - `issuer_label_truncated` : émetteur imprimé tronqué (« ETAT DE GUINÉE-BISSA »), accepté
+    uniquement si le préfixe ISIN de chaque titre est `GW` ; la règle est écrite dans l'extrait de
+    provenance (`règle truncated_label_confirmed_by_isin_prefix_GW`) ;
+  - `page_lists_buyback_securities` : la page d'émission d'une adjudication « émission + rachat »
+    liste aussi les titres rachetés. Appariement par **sous-ensemble vérifié** uniquement : chaque
+    tranche du PDF a sa ligne (clé type + échéance unique des deux côtés) et concorde (montant,
+    rendement, échéance) ; chaque ligne en trop est sans montant retenu **et** figure sur la page de
+    rachat du même PDF. Le détail du drapeau cite la page de rachat et ses références `RA-…`. Une
+    ligne de rachat ne crée jamais de transaction.
+- Rapport d'exécution : chaque URL de l'index reçoit une seule issue (hors périmètre, BAT seules,
+  résultats non publiés, compte rendu absent, mise en page non reconnue, rachat seul, écartée par
+  motif, aucune OAT émise, déjà importée, produite…) ; l'entonnoir se réconcilie exactement. Les
+  adjudications écartées gardent le champ en conflit et les valeurs page / PDF.
+
+## 8. Limites
+
+- Extraction automatique limitée aux résultats d'adjudication UMOA-Titres (OAT) ; les autres
+  transactions dépendent d'imports structurés.
 - Détection de doublons en Python sur les transactions portant un ancrage (volume V1).

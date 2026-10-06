@@ -25,7 +25,7 @@ class CBUMOAConnector(BaseSourceConnector):
 
     TARGET_SECTIONS: ClassVar[list[dict[str, str]]] = [
         {
-            "path": "/rapports-annuels",
+            "path": "/fr/rapport-annuels",
             "document_type": "annual_report",
             "description": "Rapports annuels d'activité de la Commission Bancaire",
         },
@@ -35,7 +35,7 @@ class CBUMOAConnector(BaseSourceConnector):
             "description": "Publications et études prudentielles",
         },
         {
-            "path": "/etablissements-assujettis",
+            "path": "/fr/etablissements-assujettis-au-controle-de-la-commission-bancaire-de-lumoa",
             "document_type": "regulatory_report",
             "description": "Situation et registre des établissements de crédit agréés",
         },

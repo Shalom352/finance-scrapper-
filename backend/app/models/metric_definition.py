@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import Boolean, CheckConstraint, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.constants.metrics import METRIC_FAMILIES, SECTORS, sql_in
 from app.db.base import Base
 
 if TYPE_CHECKING:  # relationship targets, resolved by SQLAlchemy at runtime
@@ -43,6 +44,14 @@ class MetricDefinition(Base):
     __tablename__ = "metric_definitions"
     __table_args__ = (
         UniqueConstraint("code", name="uq_metric_definitions_code"),
+        CheckConstraint(
+            f"sector IN ({sql_in(SECTORS)})",
+            name="ck_metric_definitions_sector",
+        ),
+        CheckConstraint(
+            f"metric_family IN ({sql_in(METRIC_FAMILIES)})",
+            name="ck_metric_definitions_metric_family",
+        ),
         CheckConstraint(
             "statement_type IN ('balance_sheet', 'income_statement', "
             "'cash_flow_statement', 'off_balance_sheet', 'not_applicable')",
@@ -65,6 +74,10 @@ class MetricDefinition(Base):
 
     # Technical identifier (e.g. "resultat_net") — referenced by financial_data
     code: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+    # Sector and Family taxonomies (Phase 14)
+    sector: Mapped[str] = mapped_column(String(50), nullable=False, default="banking", index=True, server_default="banking")
+    metric_family: Mapped[str] = mapped_column(String(50), nullable=False, default="balance_sheet", index=True, server_default="balance_sheet")
 
     # User-facing labels
     label_fr: Mapped[str] = mapped_column(String(150), nullable=False)

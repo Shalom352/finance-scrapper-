@@ -821,7 +821,8 @@
       "trade_finance": "Financement du commerce",
       "bond": "Emprunt obligataire",
       "guarantee": "Garantie",
-      "other": "Autre"
+      "other": "Autre",
+      "sovereign_bond": "Obligation souveraine"
     },
     "roles": {
       "borrower": "Emprunteur",
@@ -832,7 +833,8 @@
       "guarantor": "Garant",
       "sponsor": "Sponsor",
       "advisor": "Conseil",
-      "investor": "Investisseur"
+      "investor": "Investisseur",
+      "issuer": "Émetteur"
     },
     "rate_types": {
       "fixed": "Fixe",
@@ -915,7 +917,21 @@
         "signing_date": "Signature",
         "financial_close_date": "Bouclage financier",
         "closing_date": "Clôture",
-        "status": "Statut"
+        "status": "Statut",
+        "instrument_type": "Instrument",
+        "isin": "Code ISIN",
+        "auction_reference": "Référence d'adjudication",
+        "auction_date": "Date d'adjudication",
+        "value_date": "Date de valeur",
+        "maturity_date": "Date d'échéance",
+        "yield_rate": "Rendement moyen pondéré"
+      },
+      "instrument": "Titre public (adjudication)",
+      "entity": "Entité : {name}",
+      "validation_flags": {
+        "global_total_rounded": "Total global imprimé arrondi (montants de tranche conservés)",
+        "issuer_label_truncated": "Libellé d'émetteur tronqué — pays confirmé par l'ISIN",
+        "page_lists_buyback_securities": "Lignes de rachat de la page ignorées (justifiées par la page de rachat du PDF)"
       }
     },
     "duplicates": {
@@ -929,7 +945,9 @@
         "currency_amount": "Même devise, montant proche (±5 %)",
         "dates": "Dates proches (≤ 90 jours)",
         "deal_type": "Même type de transaction",
-        "participants": "Participant commun"
+        "participants": "Participant commun",
+        "instrument": "Même titre (ISIN et date de valeur)",
+        "issuer": "Même émetteur"
       },
       "state": {
         "duplicate_candidate": "Doublon potentiel — à revoir",

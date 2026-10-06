@@ -35,6 +35,34 @@ VALUE_TYPES = ("amount", "percentage", "ratio", "rate")
 
 CURRENCY_TYPES = ("monetary", "non_monetary")
 
+SECTORS = (
+    "banking",
+    "insurance",
+    "markets",
+    "sovereign",
+    "microfinance",
+    "corporate",
+    "macro",
+    "cross_sector",
+)
+
+METRIC_FAMILIES = (
+    "balance_sheet",
+    "income_statement",
+    "prudential",
+    "market_data",
+    "debt_service",
+    "claims_underwriting",
+    "operational",
+    "solvency",
+    "other",
+)
+
+
+def sql_in(values: tuple[str, ...]) -> str:
+    """SQL literal list for CHECK constraints."""
+    return ", ".join(f"'{v}'" for v in values)
+
 
 # The 26 V1 metrics. Keys map 1:1 to ``MetricDefinition`` columns.
 V1_METRICS: list[dict[str, Any]] = [

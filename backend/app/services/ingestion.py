@@ -121,7 +121,7 @@ class IngestionService:
             active_res = await db.execute(
                 select(IngestionRun).where(IngestionRun.status == "running")
             )
-            active_existing = active_res.scalars().first()
+            active_existing = active_res.scalar_one_or_none()
             if active_existing and not force and (run_id is None or active_existing.id != run_id):
                 logger.warning("ingestion_skipped_database_running_state", active_id=active_existing.id)
                 run = IngestionRun(
@@ -156,7 +156,7 @@ class IngestionService:
             logger.info("ingestion_run_started", run_id=run.id, trigger_type=trigger_type, years=years)
 
             # 3. Determine official sources to query
-            sources_to_check = sources or ["bceao", "cb-umoa"]
+            sources_to_check = sources or ["bceao", "cb-umoa", "brvm", "umoa-titres"]
             run.sources_checked = len(sources_to_check)
 
             errors: list[dict[str, Any]] = []

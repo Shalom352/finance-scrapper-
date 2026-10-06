@@ -1,7 +1,9 @@
 """Duplicate CANDIDATE detection for deals (Phase 13) — explicit criteria, no score.
 
-Two deals become a *duplicate candidate* when they share an anchor (same borrower or same
-project) AND at least three criteria match in total. The matched criteria are stored and
+Two deals become a *duplicate candidate* when they share an anchor (same borrower, same
+project, or the same public-debt instrument = same ISIN AND same value date) AND at least three
+criteria match in total. Two tranches of one auction (different ISINs) or two re-openings of one
+ISIN (different value dates) never share the instrument anchor. The matched criteria are stored and
 shown as they are. A candidate is never a merge: only a human decision in the Review Center
 says "same deal", "distinct deals" or "same deal reported by several sources".
 """
@@ -13,7 +15,7 @@ from decimal import Decimal
 
 AMOUNT_TOLERANCE = Decimal("0.05")  # ±5 % of the larger amount, same currency only
 DATE_WINDOW_DAYS = 90
-ANCHORS = ("borrower", "project")
+ANCHORS = ("borrower", "project", "instrument")
 MIN_CRITERIA = 3
 
 
@@ -44,13 +46,24 @@ class DealFacts:
     announcement_date: date | None = None
     # (role, institution_id, name)
     participants: list[tuple[str, str | None, str | None]] = field(default_factory=list)
+    isin: str | None = None
+    value_date: date | None = None
+    # Entity Hub ids of the issuers (role "issuer" linked to an entity).
+    issuer_entities: frozenset[str] = frozenset()
 
     def keys(self, *, borrower: bool) -> set[str]:
+        """Borrower keys, or the keys of the OTHER participants. The issuer is excluded from the
+        latter: it is compared by the dedicated "issuer" criterion only (never counted twice)."""
         return {
             k
             for role, inst, name in self.participants
-            if (role == "borrower") == borrower and (k := party_key(inst, name))
+            if (role == "borrower") == borrower and role != "issuer" and (k := party_key(inst, name))
         }
+
+    def issuer_keys(self) -> set[str]:
+        """Issuer identity: its Entity Hub id when linked, else its directory / normalized name."""
+        named = {k for role, inst, name in self.participants if role == "issuer" and (k := party_key(inst, name))}
+        return {f"e:{e}" for e in self.issuer_entities} or named
 
 
 def _close_dates(a: date | None, b: date | None) -> bool:
@@ -78,6 +91,10 @@ def matched_criteria(a: DealFacts, b: DealFacts) -> list[str]:
         criteria.append("deal_type")
     if a.keys(borrower=False) & b.keys(borrower=False):
         criteria.append("participants")
+    if a.isin is not None and a.isin == b.isin and a.value_date is not None and a.value_date == b.value_date:
+        criteria.append("instrument")
+    if a.issuer_keys() & b.issuer_keys():
+        criteria.append("issuer")
     return criteria
 
 

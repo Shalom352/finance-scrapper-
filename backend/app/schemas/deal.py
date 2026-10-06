@@ -18,6 +18,8 @@ class DealParticipantRead(BaseModel):
     participant_name: str
     institution_id: str | None = None
     institution_name: str | None = None
+    entity_id: str | None = None
+    entity_name: str | None = None
     role: str
     commitment_amount: Decimal | None = None
     commitment_currency: str | None = None
@@ -65,6 +67,10 @@ class DealListItem(BaseModel):
     signing_date: date | None = None
     borrowers: list[str] = Field(default_factory=list)
     arrangers: list[str] = Field(default_factory=list)
+    issuers: list[str] = Field(default_factory=list)
+    instrument_type: str | None = None
+    isin: str | None = None
+    value_date: date | None = None
     duplicate_candidates: int = 0
     merged_into_deal_id: str | None = None
     updated_at: datetime
@@ -90,6 +96,13 @@ class DealDetail(DealListItem):
     guarantees: str | None = None
     financial_close_date: date | None = None
     closing_date: date | None = None
+    auction_reference: str | None = None
+    auction_date: date | None = None
+    maturity_date: date | None = None
+    # Weighted average yield as published (percent), never computed.
+    yield_rate: Decimal | None = None
+    # Validation rules applied by an automated ingestion ([{code, detail}]); never a value change.
+    validation_flags: list[dict] = Field(default_factory=list)
     notes: str | None = None
     verified_at: datetime | None = None
     verified_by: str | None = None

@@ -74,6 +74,8 @@ class InstitutionMatcher:
         "BRIDGE BANK": ("BRIDGE BANK GROUP", "CI"),
         "BRIDGE BANK GROUP": ("BRIDGE BANK GROUP", "CI"),
         "BBG CI": ("BRIDGE BANK GROUP", "CI"),
+        # BCEAO / Central Bank
+        "BCEAO": ("BANQUE CENTRALE DES ETATS DE L AFRIQUE DE L OUEST", "SN"),
     }
 
     def __init__(
@@ -216,7 +218,29 @@ class InstitutionMatcher:
                         )
                         seen_ids.add(inst.id)
 
-        # Strategy 5: Token overlap fallback
+        # Strategy 5: Commercial name or alias word inside document/context string
+        if not candidates:
+            tokens_in_input = set(norm_input.split())
+            for inst in self.institutions:
+                if inst.id in seen_ids:
+                    continue
+                if inst.name_commercial:
+                    norm_comm = self.normalizer.normalize(inst.name_commercial)
+                    if norm_comm and norm_comm in tokens_in_input:
+                        candidates.append(
+                            MatchCandidate(
+                                institution_id=inst.id,
+                                name_official=inst.name_official,
+                                name_commercial=inst.name_commercial,
+                                country_code=inst.country_code,
+                                score=0.92,
+                                match_type="commercial_name_token",
+                                evidence=f"Matched commercial name token '{norm_comm}' in context",
+                            )
+                        )
+                        seen_ids.add(inst.id)
+
+        # Strategy 6: Token overlap fallback
         if not candidates:
             input_tokens = set(norm_input.split()) - STOP_AND_COUNTRY_TOKENS
             if input_tokens:

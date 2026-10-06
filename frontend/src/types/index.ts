@@ -775,6 +775,7 @@ export const DEAL_TYPES = [
   "project_finance",
   "trade_finance",
   "bond",
+  "sovereign_bond",
   "guarantee",
   "other",
 ] as const;
@@ -788,6 +789,7 @@ export const PARTICIPANT_ROLES = [
   "sponsor",
   "advisor",
   "investor",
+  "issuer",
 ] as const;
 export const DEAL_STATUSES: DealStatus[] = ["extracted", "needs_review", "reviewed", "verified", "rejected"];
 
@@ -796,6 +798,8 @@ export interface DealParticipant {
   participant_name: string;
   institution_id: string | null;
   institution_name: string | null;
+  entity_id?: string | null;
+  entity_name?: string | null;
   role: string;
   commitment_amount: number | null;
   commitment_currency: string | null;
@@ -843,6 +847,10 @@ export interface DealListItem {
   signing_date: string | null;
   borrowers: string[];
   arrangers: string[];
+  issuers?: string[];
+  instrument_type?: string | null;
+  isin?: string | null;
+  value_date?: string | null;
   duplicate_candidates: number;
   merged_into_deal_id: string | null;
   updated_at: string;
@@ -868,6 +876,11 @@ export interface DealDetail extends DealListItem {
   guarantees: string | null;
   financial_close_date: string | null;
   closing_date: string | null;
+  auction_reference?: string | null;
+  auction_date?: string | null;
+  maturity_date?: string | null;
+  yield_rate?: number | null;
+  validation_flags?: { code: string; detail: string }[];
   notes: string | null;
   verified_at: string | null;
   verified_by: string | null;

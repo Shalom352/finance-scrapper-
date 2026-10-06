@@ -1,4 +1,5 @@
 """Pydantic models for descriptive rankings and comparisons."""
+from datetime import date
 from decimal import Decimal
 from typing import Literal
 
@@ -82,6 +83,29 @@ class UnavailableEntry(BaseModel):
     currency: str | None = None
 
 
+class ExclusionSummary(BaseModel):
+    """Why the universe is (not) ranked, counted per institution.
+
+    Invariant: eligible_count + every excluded_* except excluded_population == universe_total.
+    excluded_population counts institutions OUTSIDE the universe (kept in the database,
+    never ranked, never part of universe_total).
+    """
+
+    universe_source: Literal["reference_universe", "institutions_table"]
+    universe_reference_date: date | None = None
+    universe_total: int
+    eligible_count: int
+    excluded_needs_review: int = 0
+    excluded_missing: int = 0
+    excluded_conflict: int = 0
+    excluded_rejected: int = 0
+    excluded_scope: int = 0
+    excluded_observation_level: int = 0
+    excluded_currency: int = 0
+    excluded_other: int = 0
+    excluded_population: int = 0
+
+
 class RankingResult(BaseModel):
     metric_code: str
     kind: str
@@ -103,6 +127,9 @@ class RankingResult(BaseModel):
     has_prev: bool
     unavailable: list[UnavailableEntry]
     available_years: list[int]
+    exclusions: ExclusionSummary | None = None
+    # Institutions of the requested scope that are outside the ranking universe.
+    excluded_population: list[UnavailableEntry] = Field(default_factory=list)
 
 
 class RankHistoryPoint(BaseModel):

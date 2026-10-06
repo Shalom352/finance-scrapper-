@@ -23,6 +23,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
+import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from tests.test_migration_postgres_phase2 import (
@@ -91,7 +92,9 @@ async def _seed(url: str) -> dict[str, str]:
             extra = {"verified_at": datetime.now(UTC), "verified_by": "analyst"} if status == "verified" else {}
             db.add(FinancialData(
                 institution_id=banks[key].id, source_id=source.id, document_id=doc.id, metric_code=metric,
-                scope=scope, period_type=period_type, period_year=year, value_original=str(value),
+                # consolidation_scope must agree with scope: rankings refuse incoherent rows.
+                scope=scope, consolidation_scope=scope, period_type=period_type, period_year=year,
+                value_original=str(value),
                 value_normalized=Decimal(str(value)), currency_normalized=currency,
                 extraction_method="pdf_table", status=status, page_number=7, **extra,
             ))
@@ -116,7 +119,7 @@ async def _seed(url: str) -> dict[str, str]:
     return ids
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def api(pg_db: dict) -> AsyncGenerator[AsyncClient, None]:
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 

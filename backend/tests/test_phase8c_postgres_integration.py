@@ -28,6 +28,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
+import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from tests.test_migration_postgres_phase2 import (
@@ -147,7 +148,7 @@ async def _seed(url: str) -> dict[str, str]:
     return ids
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def api(pg_db: dict) -> AsyncGenerator[AsyncClient, None]:
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 

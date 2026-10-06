@@ -821,7 +821,8 @@
       "trade_finance": "Trade finance",
       "bond": "Bond",
       "guarantee": "Guarantee",
-      "other": "Other"
+      "other": "Other",
+      "sovereign_bond": "Sovereign bond"
     },
     "roles": {
       "borrower": "Borrower",
@@ -832,7 +833,8 @@
       "guarantor": "Guarantor",
       "sponsor": "Sponsor",
       "advisor": "Advisor",
-      "investor": "Investor"
+      "investor": "Investor",
+      "issuer": "Issuer"
     },
     "rate_types": {
       "fixed": "Fixed",
@@ -915,7 +917,21 @@
         "signing_date": "Signing",
         "financial_close_date": "Financial close",
         "closing_date": "Closing",
-        "status": "Status"
+        "status": "Status",
+        "instrument_type": "Instrument",
+        "isin": "ISIN",
+        "auction_reference": "Auction reference",
+        "auction_date": "Auction date",
+        "value_date": "Value date",
+        "maturity_date": "Maturity date",
+        "yield_rate": "Weighted average yield"
+      },
+      "instrument": "Public security (auction)",
+      "entity": "Entity: {name}",
+      "validation_flags": {
+        "global_total_rounded": "Printed global total rounded (tranche amounts kept)",
+        "issuer_label_truncated": "Truncated issuer label — country confirmed by the ISIN",
+        "page_lists_buyback_securities": "Buyback lines of the page ignored (justified by the buyback page of the PDF)"
       }
     },
     "duplicates": {
@@ -929,7 +945,9 @@
         "currency_amount": "Same currency, close amount (±5 %)",
         "dates": "Close dates (≤ 90 days)",
         "deal_type": "Same deal type",
-        "participants": "Shared participant"
+        "participants": "Shared participant",
+        "instrument": "Same security (ISIN and value date)",
+        "issuer": "Same issuer"
       },
       "state": {
         "duplicate_candidate": "Duplicate candidate — needs review",

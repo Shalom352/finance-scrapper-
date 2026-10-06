@@ -21,6 +21,7 @@ from scraping.rankings.definitions import RANKABLE_INDICATORS, get_indicator
 from scraping.rankings.eligibility import qualify_derived, qualify_metric
 from scraping.rankings.models import Candidate
 from scraping.rankings.service import RankingService
+from scraping.rankings.universe import UniverseResolution
 
 ENGINE = EligibilityEngine()
 
@@ -166,6 +167,9 @@ def service(universe, years, cands):
     async def fake_universe(db, country_code):
         return universe
 
+    async def fake_resolution(db, country_code):
+        return UniverseResolution(members=universe, source="institutions_table")
+
     async def fake_years(db, indicator, period_type, data_scope, ids):
         return years
 
@@ -174,6 +178,7 @@ def service(universe, years, cands):
                 for i in ids}
 
     svc.universe, svc.available_years, svc.candidates = fake_universe, fake_years, fake_candidates
+    svc.universe_resolution = fake_resolution
     return svc
 
 

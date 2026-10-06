@@ -30,13 +30,16 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.constants.deals import (
     DEAL_STATUSES,
     DEAL_TYPES,
     DUPLICATE_STATES,
+    INSTRUMENT_TYPES,
     INTEREST_RATE_TYPES,
     PARTICIPANT_ROLES,
     PROVENANCE_FIELDS,
@@ -47,6 +50,7 @@ from app.db.base import Base
 if TYPE_CHECKING:  # relationship targets, resolved by SQLAlchemy at runtime
     from app.models.country import Country
     from app.models.document import Document
+    from app.models.entity import Entity
     from app.models.institution import Institution
     from app.models.source import Source
 
@@ -78,6 +82,24 @@ class Deal(Base):
         Index("ix_deals_deal_type", "deal_type"),
         Index("ix_deals_currency", "currency"),
         Index("ix_deals_merged_into", "merged_into_deal_id"),
+        CheckConstraint(
+            f"instrument_type IS NULL OR instrument_type IN ({sql_in(INSTRUMENT_TYPES)})",
+            name="ck_deals_instrument_type",
+        ),
+        CheckConstraint("isin IS NULL OR isin ~ '^[A-Z]{2}[A-Z0-9]{9}[0-9]$'", name="ck_deals_isin_format"),
+        CheckConstraint(
+            "maturity_date IS NULL OR value_date IS NULL OR maturity_date > value_date",
+            name="ck_deals_maturity_after_value_date",
+        ),
+        Index("ix_deals_isin", "isin"),
+        Index("ix_deals_auction_reference", "auction_reference"),
+        Index("ix_deals_value_date", "value_date"),
+        Index(
+            "uq_deals_ingestion_key",
+            "ingestion_key",
+            unique=True,
+            postgresql_where=text("ingestion_key IS NOT NULL AND deleted_at IS NULL"),
+        ),
     )
 
     title: Mapped[str] = mapped_column(Text, nullable=False)
@@ -104,6 +126,20 @@ class Deal(Base):
     signing_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     financial_close_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     closing_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+    # Public-debt instrument (migration 0014) — NULL for every other deal.
+    instrument_type: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    isin: Mapped[str | None] = mapped_column(String(12), nullable=True)
+    auction_reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    auction_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    value_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    maturity_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Weighted average yield published by the auction result (percent), never computed.
+    yield_rate: Mapped[Decimal | None] = mapped_column(Numeric(9, 4), nullable=True)
+    # Deterministic idempotence key of an automated ingestion (unique among non-deleted deals).
+    ingestion_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Validation rules applied by an automated ingestion: [{code, detail}] (migration 0015).
+    validation_flags: Mapped[list[dict] | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
 
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="needs_review")
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -182,6 +218,7 @@ class DealParticipant(Base):
         ),
         Index("ix_deal_participants_deal", "deal_id"),
         Index("ix_deal_participants_institution_role", "institution_id", "role"),
+        Index("ix_deal_participants_entity_role", "entity_id", "role"),
     )
 
     deal_id: Mapped[str] = mapped_column(ForeignKey("deals.id", ondelete="RESTRICT"), nullable=False)
@@ -189,6 +226,8 @@ class DealParticipant(Base):
     institution_id: Mapped[str | None] = mapped_column(
         ForeignKey("institutions.id", ondelete="RESTRICT"), nullable=True
     )
+    # Entity Hub link (e.g. a sovereign_state issuer); set only from an explicit published name.
+    entity_id: Mapped[str | None] = mapped_column(ForeignKey("entities.id", ondelete="RESTRICT"), nullable=True)
     role: Mapped[str] = mapped_column(String(20), nullable=False)
     commitment_amount: Mapped[Decimal | None] = mapped_column(Numeric(24, 6), nullable=True)
     commitment_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
@@ -196,6 +235,7 @@ class DealParticipant(Base):
 
     deal: Mapped[Deal] = relationship("Deal", back_populates="participants", lazy="noload")
     institution: Mapped["Institution | None"] = relationship("Institution", lazy="noload")
+    entity: Mapped["Entity | None"] = relationship("Entity", lazy="noload")
 
 
 class DealDuplicateCandidate(Base):

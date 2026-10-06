@@ -19,6 +19,7 @@ from decimal import Decimal
 
 import pymupdf
 import pytest
+import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from tests.test_migration_postgres_phase2 import (
@@ -142,7 +143,7 @@ async def _seed(url: str, storage_dir: str) -> dict[str, str]:
     return ids
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def maker(pg_db: dict):
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
@@ -151,7 +152,7 @@ async def maker(pg_db: dict):
     await engine.dispose()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def api(maker) -> AsyncGenerator[AsyncClient, None]:
     from app.db.session import get_db_session
     from app.main import create_app

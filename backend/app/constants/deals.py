@@ -1,4 +1,4 @@
-"""UMOA Banking Intelligence — Deal Intelligence reference values (Phase 13).
+"""UMOA Banking Intelligence — Deal Intelligence reference values (Phase 13 & 14).
 
 Closed vocabularies guarded by CHECK constraints. Nothing here is inferred at runtime:
 a value outside these lists is refused at import, never mapped to a "closest" value.
@@ -11,6 +11,13 @@ DEAL_TYPES = (
     "trade_finance",
     "bond",
     "guarantee",
+    "equity",
+    "ipo",
+    "sovereign_bond",
+    "corporate_bond",
+    "sukuk",
+    "blended_finance",
+    "m_and_a",
     "other",
 )
 
@@ -24,6 +31,13 @@ PARTICIPANT_ROLES = (
     "sponsor",
     "advisor",
     "investor",
+    "insurer",
+    "reinsurer",
+    "issuer",
+    "underwriter",
+    "trustee",
+    "facility_agent",
+    "security_agent",
 )
 
 INTEREST_RATE_TYPES = ("fixed", "floating")
@@ -58,6 +72,31 @@ PROVENANCE_FIELDS = (
     "signing_date",
     "financial_close_date",
     "closing_date",
+)
+# Phase 13 provenance vocabulary, kept for the migration 0014 downgrade.
+LEGACY_PROVENANCE_FIELDS = PROVENANCE_FIELDS
+
+# Structured public-debt instrument fields (migration 0014), tracked field by field as well.
+INSTRUMENT_PROVENANCE_FIELDS = (
+    "instrument_type",
+    "isin",
+    "auction_reference",
+    "auction_date",
+    "value_date",
+    "maturity_date",
+    "yield_rate",
+)
+PROVENANCE_FIELDS = PROVENANCE_FIELDS + INSTRUMENT_PROVENANCE_FIELDS
+
+# Public securities as named by the issuing Treasury / UMOA-Titres. Closed list: never guessed.
+#   OAT = Obligation Assimilable du Trésor · BAT = Bon Assimilable du Trésor
+INSTRUMENT_TYPES = ("OAT", "BAT")
+
+# Validation rules applied by an automated ingestion, recorded on the deal (closed list).
+DEAL_VALIDATION_FLAGS = (
+    "global_total_rounded",  # printed global total = integer rounding of the tranche sum
+    "issuer_label_truncated",  # issuer printed truncated, country confirmed by the ISIN prefix
+    "page_lists_buyback_securities",  # emission page also lists bought-back securities (ignored, verified)
 )
 
 # ISO 4217 codes accepted at import. Explicit list: an unknown code is refused,

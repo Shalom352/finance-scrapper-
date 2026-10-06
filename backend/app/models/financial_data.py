@@ -30,12 +30,20 @@ from sqlalchemy import (
     String,
     Text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.constants.entities import (
+    CONSOLIDATION_SCOPES,
+    OBSERVATION_LEVELS,
+    sql_in,
+)
+from app.constants.quality import SCOPE_EVIDENCE_CLASSES, SCOPE_REASON_CODES
 from app.db.base import Base
 
 if TYPE_CHECKING:  # relationship targets, resolved by SQLAlchemy at runtime
     from app.models.document import Document
+    from app.models.entity import Entity
     from app.models.institution import Institution
     from app.models.metric_definition import MetricDefinition
     from app.models.source import Source
@@ -55,6 +63,14 @@ class FinancialData(Base):
         CheckConstraint(
             "scope IN ('individual', 'consolidated')",
             name="ck_financial_data_scope",
+        ),
+        CheckConstraint(
+            f"observation_level IN ({sql_in(OBSERVATION_LEVELS)})",
+            name="ck_financial_data_observation_level",
+        ),
+        CheckConstraint(
+            f"consolidation_scope IN ({sql_in(CONSOLIDATION_SCOPES)})",
+            name="ck_financial_data_consolidation_scope",
         ),
         CheckConstraint(
             "period_type IN ('annual', 'semi_annual', 'quarterly')",
@@ -90,15 +106,38 @@ class FinancialData(Base):
             "status != 'verified' OR (verified_at IS NOT NULL AND verified_by IS NOT NULL)",
             name="ck_financial_data_verified_requires_validator",
         ),
+        CheckConstraint(
+            "institution_id IS NOT NULL OR entity_id IS NOT NULL",
+            name="ck_financial_data_target",
+        ),
+        # --- Scope evidence (Phase 16, migration 0012) ---
+        CheckConstraint(
+            f"scope_evidence_class IS NULL OR scope_evidence_class IN ({sql_in(SCOPE_EVIDENCE_CLASSES)})",
+            name="ck_financial_data_scope_evidence_class",
+        ),
+        CheckConstraint(
+            f"scope_reason_code IS NULL OR scope_reason_code IN ({sql_in(SCOPE_REASON_CODES)})",
+            name="ck_financial_data_scope_reason_code",
+        ),
+        # Automatic qualification may only reach 'extracted' with explicit (A/B) evidence:
+        # C/D evidence can never sit on an automatically 'extracted' row.
+        CheckConstraint(
+            "scope_evidence_class IS NULL OR scope_evidence_class IN ('A', 'B') OR status != 'extracted'",
+            name="ck_financial_data_extracted_requires_explicit_scope",
+        ),
         # --- Data explorer access paths (Phase 11, migration 0005) ---
         Index("ix_financial_data_period_scope_year", "period_type", "scope", "period_year"),
         Index("ix_financial_data_logical_key", "institution_id", "metric_code", "period_year", "period_type", "scope"),
         Index("ix_financial_data_currency_value", "currency_normalized", "value_normalized"),
+        # --- Unified Entity Hub indexes (Phase 14) ---
+        Index("ix_financial_data_entity_id", "entity_id"),
+        Index("ix_financial_data_observation_level", "observation_level"),
+        Index("ix_financial_data_consolidation_scope", "consolidation_scope"),
     )
 
-    # --- Provenance (all mandatory) ---
-    institution_id: Mapped[str] = mapped_column(
-        ForeignKey("institutions.id", ondelete="RESTRICT"), nullable=False, index=True
+    # --- Provenance & Targeting ---
+    institution_id: Mapped[str | None] = mapped_column(
+        ForeignKey("institutions.id", ondelete="RESTRICT"), nullable=True, index=True
     )
     source_id: Mapped[str] = mapped_column(
         ForeignKey("sources.id", ondelete="RESTRICT"), nullable=False, index=True
@@ -114,7 +153,18 @@ class FinancialData(Base):
         index=True,
     )
 
-    # Scope — only institution-attachable scopes in V1
+    # Unified Entity Hub link and decoupled observation dimensions (Phase 14)
+    entity_id: Mapped[str | None] = mapped_column(
+        ForeignKey("entities.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    observation_level: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="entity", index=True, server_default="entity"
+    )
+    consolidation_scope: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="individual", index=True, server_default="individual"
+    )
+
+    # Scope — backward-compatible V1 field (mirrors consolidation_scope for individual/consolidated)
     scope: Mapped[str] = mapped_column(String(20), nullable=False, default="individual", index=True)
 
     # --- Period ---
@@ -148,8 +198,22 @@ class FinancialData(Base):
     # No User table in V1 (replaced by an FK once auth exists).
     verified_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
+    # --- Scope evidence & quality (Phase 16, migration 0012) ---
+    # A/B = explicit documentary evidence; C = inferred; D = none / contradiction / unreadable.
+    scope_evidence_class: Mapped[str | None] = mapped_column(String(1), nullable=True, index=True)
+    scope_reason_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    # Quoted evidence (snippet + page) — never a guess
+    scope_evidence: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Informational flags: they never change a value; blocking flags prevent automatic promotion
+    quality_flags: Mapped[list[dict] | None] = mapped_column(JSONB, nullable=True)
+    # Where the value was read, e.g. "p.23 · TOTAL DE L'ACTIF · col. 2023"
+    source_location: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
     # Relationships
-    institution: Mapped["Institution"] = relationship(  # type: ignore[name-defined]
+    entity: Mapped["Entity | None"] = relationship(  # type: ignore[name-defined]
+        "Entity", back_populates="financial_data", lazy="joined"
+    )
+    institution: Mapped["Institution | None"] = relationship(  # type: ignore[name-defined]
         "Institution", back_populates="financial_data", lazy="joined"
     )
     source: Mapped["Source"] = relationship(  # type: ignore[name-defined]
@@ -168,3 +232,4 @@ class FinancialData(Base):
             f"institution={self.institution_id!r} year={self.period_year} "
             f"status={self.status!r}>"
         )
+

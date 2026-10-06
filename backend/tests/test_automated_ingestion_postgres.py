@@ -20,6 +20,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
@@ -56,7 +57,7 @@ def pg_db() -> Generator[dict, None, None]:
     asyncio.run(_exec_admin(params, f'DROP DATABASE IF EXISTS "{test_db}" WITH (FORCE)'))
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def db_session(pg_db: dict):
     engine = create_async_engine(pg_db["url"])
     maker = async_sessionmaker(engine, expire_on_commit=False)
@@ -65,7 +66,7 @@ async def db_session(pg_db: dict):
     await engine.dispose()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def api(pg_db: dict) -> AsyncGenerator[AsyncClient, None]:
     from app.db.session import get_db_session
     from app.main import create_app

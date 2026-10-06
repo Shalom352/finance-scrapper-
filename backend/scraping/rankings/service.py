@@ -14,7 +14,6 @@ from sqlalchemy import distinct, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.country import Country
 from app.models.financial_data import FinancialData
 from app.models.institution import Institution
 from scraping.analytics.aggregation import SECTOR_PERIOD_TYPE, SECTOR_SCOPE
@@ -32,6 +31,7 @@ from scraping.rankings.models import (
     Candidate,
     ComparisonRow,
     CountryComparison,
+    ExclusionSummary,
     InstitutionsComparison,
     RankHistory,
     RankHistoryPoint,
@@ -40,8 +40,31 @@ from scraping.rankings.models import (
     SectorComparison,
     UnavailableEntry,
 )
+from scraping.rankings.universe import UniverseResolution, resolve_banking_universe
 
 UMOA = "UMOA"
+# Rankings compare institutions only: country / regional / market rows are another population.
+RANKED_OBSERVATION_LEVEL = "entity"
+
+# Candidate reason -> ExclusionSummary counter.
+_REASON_TO_FIELD = {
+    "needs_review": "excluded_needs_review",
+    "missing": "excluded_missing",
+    "conflict": "excluded_conflict",
+    "rejected_only": "excluded_rejected",
+    "scope_incompatible": "excluded_scope",
+    "observation_level_incompatible": "excluded_observation_level",
+}
+_EXCLUSION_FIELDS = (
+    "excluded_needs_review",
+    "excluded_missing",
+    "excluded_conflict",
+    "excluded_rejected",
+    "excluded_scope",
+    "excluded_observation_level",
+    "excluded_currency",
+    "excluded_other",
+)
 _ALL = 10**6  # no pagination when delegating to AnalyticsService
 
 
@@ -59,17 +82,13 @@ class RankingService:
     # Universe & periods
     # ------------------------------------------------------------------
 
+    async def universe_resolution(self, db: AsyncSession, country_code: str | None) -> UniverseResolution:
+        """Ranking universe (current official snapshot) and the explicit population exclusions."""
+        return await resolve_banking_universe(db, country_code)
+
     async def universe(self, db: AsyncSession, country_code: str | None) -> list[tuple[Institution, str | None]]:
-        """Institutions expected in the ranking: one country, or the 8 UMOA countries."""
-        query = (
-            select(Institution, Country.code)
-            .join(Country, Institution.country_id == Country.id)
-            .where(Institution.deleted_at.is_(None))
-        )
-        if country_code and country_code.upper() != UMOA:
-            query = query.where(Country.code == country_code.upper())
-        rows = (await db.execute(query)).all()
-        return [(inst, code) for inst, code in rows]
+        """Banks expected in the ranking (current official snapshot): one country, or the 8 UMOA countries."""
+        return (await self.universe_resolution(db, country_code)).members
 
     async def available_years(
         self,
@@ -86,6 +105,8 @@ class RankingService:
             FinancialData.metric_code == indicator.base_metric,
             FinancialData.period_type == period_type,
             FinancialData.scope == data_scope,
+            FinancialData.consolidation_scope == data_scope,
+            FinancialData.observation_level == RANKED_OBSERVATION_LEVEL,
             FinancialData.status != "rejected",
             FinancialData.value_normalized.isnot(None),
             FinancialData.deleted_at.is_(None),
@@ -120,16 +141,31 @@ class RankingService:
                     FinancialData.metric_code == indicator.base_metric,
                     FinancialData.period_year == year,
                     FinancialData.period_type == period_type,
-                    FinancialData.scope == data_scope,
                     FinancialData.deleted_at.is_(None),
                     FinancialData.institution_id.in_(institution_ids),
                 )
             )
             rows = (await db.execute(query)).scalars().all()
             by_inst = defaultdict(list)
+            incompatible: dict[str, str] = {}
             for r in rows:
+                if r.scope != data_scope:
+                    continue  # another accounting scope is another ranking, not an exclusion
+                if r.observation_level != RANKED_OBSERVATION_LEVEL:
+                    incompatible.setdefault(r.institution_id, "observation_level_incompatible")
+                    continue
+                if r.consolidation_scope != data_scope:
+                    # scope and consolidation_scope disagree: the row is never ranked
+                    incompatible[r.institution_id] = "scope_incompatible"
+                    continue
                 by_inst[r.institution_id].append(self.detector.observation_from_orm(r))
-            return {i: qualify_metric(i, by_inst.get(i, []), self.engine) for i in institution_ids}
+            out: dict[str, Candidate] = {}
+            for i in institution_ids:
+                if not by_inst.get(i) and i in incompatible:
+                    out[i] = Candidate(institution_id=i, eligible=False, status="unavailable", reason=incompatible[i])
+                else:
+                    out[i] = qualify_metric(i, by_inst.get(i, []), self.engine)
+            return out
 
         wanted = set(institution_ids)
         out: dict[str, Candidate] = {}
@@ -169,8 +205,49 @@ class RankingService:
         page_size: int = 20,
     ) -> RankingResult:
         scope_label = (country_code or UMOA).upper()
-        universe = await self.universe(db, country_code)
+        resolution = await self.universe_resolution(db, country_code)
+        universe = resolution.members
         ids = [inst.id for inst, _ in universe]
+        population_entries = sorted(
+            (
+                UnavailableEntry(
+                    institution_id=x.institution.id,
+                    institution_name=x.institution.name_official,
+                    country_code=x.country_code,
+                    status="excluded",
+                    reason=x.reason,
+                )
+                for x in resolution.excluded
+            ),
+            key=lambda e: (e.institution_name.casefold(), e.institution_id),
+        )
+
+        def summary(
+            cands: dict[str, Candidate] | None = None,
+            currency_blocked: bool = False,
+            unevaluated: str = "excluded_other",
+        ) -> ExclusionSummary:
+            counts = dict.fromkeys(_EXCLUSION_FIELDS, 0)
+            eligible_count = 0
+            for c in (cands or {}).values():
+                if c.eligible:
+                    if currency_blocked:
+                        counts["excluded_currency"] += 1
+                    else:
+                        eligible_count += 1
+                else:
+                    counts[_REASON_TO_FIELD.get(c.reason or "missing", "excluded_other")] += 1
+            if cands is None:
+                # Ranking not evaluated: no period holds data (missing) or unsupported period type (other).
+                counts[unevaluated] = len(universe)
+            return ExclusionSummary(
+                universe_source=resolution.source,
+                universe_reference_date=resolution.reference_date,
+                universe_total=len(universe),
+                eligible_count=eligible_count,
+                excluded_population=len(resolution.excluded),
+                **counts,
+            )
 
         def result(**kw) -> RankingResult:
             base = dict(
@@ -193,6 +270,8 @@ class RankingService:
                 has_prev=page > 1,
                 unavailable=[],
                 available_years=[],
+                exclusions=summary(),
+                excluded_population=population_entries,
             )
             base.update(kw)
             return RankingResult(**base)
@@ -208,7 +287,12 @@ class RankingService:
         years = await self.available_years(db, indicator, period_type, data_scope, ids)
         year = period_year if period_year is not None else (years[0] if years else None)
         if year is None:
-            return result(status="unavailable", reason="no_period", available_years=years)
+            return result(
+                status="unavailable",
+                reason="no_period",
+                available_years=years,
+                exclusions=summary(unevaluated="excluded_missing"),
+            )
 
         cands = await self.candidates(db, indicator, year, period_type, data_scope, ids)
         meta = {inst.id: (inst.name_official, code) for inst, code in universe}
@@ -242,6 +326,7 @@ class RankingService:
                     status="needs_review",
                     reason="heterogeneous_currency",
                     period_year=year,
+                    exclusions=summary(cands, currency_blocked=True),
                     # Values exist but cannot be ranked: real eligible count, nothing ranked,
                     # coverage unavailable — never 0/N.
                     coverage=compute_coverage(len(eligible), len(universe), available=False),
@@ -256,6 +341,7 @@ class RankingService:
                 status="unavailable",
                 reason="no_eligible_data",
                 period_year=year,
+                exclusions=summary(cands),
                 coverage=coverage,
                 unavailable=unavailable_entries,
                 available_years=years,
@@ -292,6 +378,7 @@ class RankingService:
         return result(
             status="partial" if (coverage.coverage_ratio or 0) < 1 else "calculated",
             period_year=year,
+            exclusions=summary(cands),
             currency=currency,
             coverage=coverage,
             items=page_items,

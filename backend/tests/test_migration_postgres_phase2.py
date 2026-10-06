@@ -192,16 +192,16 @@ def test_migration_upgrade_creates_catalogue_and_constraints(scratch_db: str) ->
     # 1. Run the full migration chain from an empty database.
     _run_alembic("upgrade")
 
-    # 2. Catalogue integrity: exactly the 26 canonical metrics.
+    # 2. Catalogue integrity: exactly the 26 canonical banking metrics.
     count = asyncio.run(
-        _fetchval(dsn, "SELECT COUNT(*) FROM metric_definitions")
+        _fetchval(dsn, "SELECT COUNT(*) FROM metric_definitions WHERE sector = 'banking'")
     )
-    assert count == 26, f"expected 26 metrics, found {count}"
+    assert count == 26, f"expected 26 banking metrics, found {count}"
 
     codes = asyncio.run(
         _fetchval(
             dsn,
-            "SELECT array_agg(code ORDER BY code) FROM metric_definitions",
+            "SELECT array_agg(code ORDER BY code) FROM metric_definitions WHERE sector = 'banking'",
         )
     )
     assert set(codes) == set(V1_METRIC_CODES)
@@ -217,7 +217,7 @@ def test_migration_upgrade_creates_catalogue_and_constraints(scratch_db: str) ->
     # 3. Seed idempotency: re-running upgrade must not duplicate rows.
     _run_alembic("upgrade")
     count_again = asyncio.run(
-        _fetchval(dsn, "SELECT COUNT(*) FROM metric_definitions")
+        _fetchval(dsn, "SELECT COUNT(*) FROM metric_definitions WHERE sector = 'banking'")
     )
     assert count_again == 26
 
