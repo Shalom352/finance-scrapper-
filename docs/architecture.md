@@ -222,6 +222,7 @@ frontend/src/
 /[locale]/data-quality/deals/[dealId]
 /[locale]/deals                    (Deal Explorer — Phase 13)
 /[locale]/deals/[dealId]
+/[locale]/targeting                (Ciblage des financeurs — Phase 20)
 /[locale]/documents
 /[locale]/search
 ```
@@ -310,6 +311,9 @@ Aucune reconstruction architecturale majeure ne sera nécessaire.
 > - Lot 0 : garde de base cible (base historique `umoa_banking` refusée, révision Alembic ≥ 0015) et
 >   verrou d'exécution unique (`app/deals/db_guard.py`, `app/deals/run_lock.py`).
 >
-> Prochaine étape validée : modèle de rôles bancaires et pilote sur 28 transactions réelles
-> (`audits/ape_amf/07_proposition.md`, `audits/ape_amf/08_pilote.md`). Les éléments V2/V3 ci-dessus
-> non livrés restent des pistes, pas des engagements.
+> - Phase 19 : rôles nommés, utilisation des fonds, classes de source, liens SGI → banque (migration 0016),
+>   chargeur du pilote (`deal-intelligence.md` §9-10) ;
+> - Phase 20 : annuaire des institutions de financement, mandats internes, ciblage des financeurs
+>   (migration 0017, `targeting.md`).
+>
+> Les éléments V2/V3 ci-dessus non livrés restent des pistes, pas des engagements.

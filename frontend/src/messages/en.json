@@ -15,7 +15,8 @@
     "comparisons": "Comparisons",
     "financial_data": "Financial data",
     "data_quality": "Data quality",
-    "deals": "Deals"
+    "deals": "Deals",
+    "targeting": "Targeting"
   },
   "sidebar": {
     "notice_title": "Official sources",
@@ -1032,6 +1033,90 @@
         "submit": "Record the decision",
         "done": "Decision recorded."
       }
+    }
+  },
+  "targeting": {
+    "title": "Funding counterparties",
+    "subtitle": "For a deal profile, the banks and financing institutions with explicit criteria and their evidence. No score: each criterion is met, not met or unknown.",
+    "method": "Display order: number of criteria met, then number of comparable deals, then name. A deal \"to confirm\" has not been reviewed yet. No currency conversion.",
+    "count": "{total} institutions",
+    "start_title": "Describe the deal",
+    "start_hint": "Choose at least a country, a sector or a deal type.",
+    "empty_title": "No institution",
+    "empty_hint": "No bank or institution matches this profile in the database.",
+    "criteria_met": "{met} criteria met out of {known} known",
+    "to_confirm": "to confirm",
+    "official_site": "Official website",
+    "form": {
+      "country": "Country",
+      "sector": "Sector",
+      "deal_type": "Deal type",
+      "amount": "Amount (units)",
+      "currency": "Currency",
+      "kind": "Institutions",
+      "any": "All"
+    },
+    "kinds": {
+      "banks": "Banks",
+      "institutions": "Financing institutions"
+    },
+    "kinds_one": {
+      "bank": "Bank",
+      "institution": "Financing institution"
+    },
+    "criteria": {
+      "presence": "Presence",
+      "experience": "Experience",
+      "capacity": "Indicative capacity",
+      "relationship": "TOMASTEED relationship",
+      "via_sgi": "Through its SGI"
+    },
+    "status": {
+      "met": "yes",
+      "not_met": "no",
+      "unknown": "unknown"
+    },
+    "matches": {
+      "sector": "same sector",
+      "deal_type": "same type",
+      "country": "same country"
+    },
+    "experience_detail": "{comparable} comparable deal(s) out of {total} with a named financing role",
+    "via_sgi_detail": "Through its documented SGI subsidiary: {sgi}",
+    "capacity_detail": "Indicative ceiling: {ceiling} {currency} ({ratio}% of the published equity {year})",
+    "capacity_caveat": "Indication only: the UMOA large-exposure rule is based on regulatory capital, which is not published.",
+    "presence_met": "Institution present in the deal's country.",
+    "presence_not_met": "Institution licensed in another country.",
+    "reasons": {
+      "amount_not_given": "Amount or currency not given.",
+      "equity_not_available": "Published equity not available.",
+      "currency_mismatch": "Equity published in another currency (no conversion).",
+      "no_contact_recorded": "No contact recorded in the mandates.",
+      "no_documented_sgi_deal": "No deal documented through an SGI subsidiary.",
+      "not_applicable_institution": "Not applicable to financing institutions.",
+      "country_not_given": "Country not given.",
+      "no_deal_recorded_in_country": "No deal recorded in this country.",
+      "unknown": "Information not available."
+    },
+    "stages": {
+      "approached": "approached",
+      "interested": "interested",
+      "declined": "declined",
+      "term_sheet": "term sheet issued",
+      "committed": "committed",
+      "disbursed": "disbursed",
+      "withdrawn": "withdrawn"
+    },
+    "sectors": {
+      "infrastructure_public": "Infrastructure and public sector",
+      "energy": "Energy",
+      "agriculture": "Agriculture",
+      "industry": "Industry",
+      "telecom_media_tech": "Telecoms, media and technology",
+      "real_estate": "Real estate",
+      "financial_services": "Financial services",
+      "public_finance": "Public finance",
+      "other": "Other"
     }
   }
 }

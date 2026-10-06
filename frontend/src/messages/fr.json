@@ -15,7 +15,8 @@
     "comparisons": "Comparaisons",
     "financial_data": "Données financières",
     "data_quality": "Qualité des données",
-    "deals": "Transactions"
+    "deals": "Transactions",
+    "targeting": "Ciblage"
   },
   "sidebar": {
     "notice_title": "Sources officielles",
@@ -1032,6 +1033,90 @@
         "submit": "Enregistrer la décision",
         "done": "Décision enregistrée."
       }
+    }
+  },
+  "targeting": {
+    "title": "Ciblage des financeurs",
+    "subtitle": "Pour un profil de transaction, les banques et institutions de financement avec des critères explicites et leurs preuves. Aucun score : chaque critère est satisfait, non satisfait ou inconnu.",
+    "method": "Ordre d'affichage : nombre de critères satisfaits, puis nombre de transactions comparables, puis nom. Une transaction « à confirmer » n'a pas encore été revue. Aucune conversion de devise.",
+    "count": "{total} établissements",
+    "start_title": "Décrivez la transaction",
+    "start_hint": "Choisissez au moins un pays, un secteur ou un type de transaction.",
+    "empty_title": "Aucun établissement",
+    "empty_hint": "Aucune banque ni institution ne correspond à ce profil dans la base.",
+    "criteria_met": "{met} critère(s) satisfait(s) sur {known} connu(s)",
+    "to_confirm": "à confirmer",
+    "official_site": "Site officiel",
+    "form": {
+      "country": "Pays",
+      "sector": "Secteur",
+      "deal_type": "Type de transaction",
+      "amount": "Montant (unités)",
+      "currency": "Devise",
+      "kind": "Établissements",
+      "any": "Tous"
+    },
+    "kinds": {
+      "banks": "Banques",
+      "institutions": "Institutions de financement"
+    },
+    "kinds_one": {
+      "bank": "Banque",
+      "institution": "Institution de financement"
+    },
+    "criteria": {
+      "presence": "Présence",
+      "experience": "Expérience",
+      "capacity": "Capacité indicative",
+      "relationship": "Relation TOMASTEED",
+      "via_sgi": "Via sa SGI"
+    },
+    "status": {
+      "met": "oui",
+      "not_met": "non",
+      "unknown": "inconnu"
+    },
+    "matches": {
+      "sector": "même secteur",
+      "deal_type": "même type",
+      "country": "même pays"
+    },
+    "experience_detail": "{comparable} transaction(s) comparable(s) sur {total} avec un rôle de financement nommé",
+    "via_sgi_detail": "Par sa filiale SGI documentée : {sgi}",
+    "capacity_detail": "Plafond indicatif : {ceiling} {currency} ({ratio} % des capitaux propres publiés {year})",
+    "capacity_caveat": "Indication seulement : la norme de division des risques UMOA porte sur les fonds propres effectifs, non publiés.",
+    "presence_met": "Établissement présent dans le pays de la transaction.",
+    "presence_not_met": "Établissement agréé dans un autre pays.",
+    "reasons": {
+      "amount_not_given": "Montant ou devise non renseigné.",
+      "equity_not_available": "Capitaux propres publiés non disponibles.",
+      "currency_mismatch": "Capitaux propres publiés dans une autre devise (aucune conversion).",
+      "no_contact_recorded": "Aucun contact enregistré dans les mandats.",
+      "no_documented_sgi_deal": "Aucune transaction documentée via une SGI filiale.",
+      "not_applicable_institution": "Non applicable aux institutions de financement.",
+      "country_not_given": "Pays non renseigné.",
+      "no_deal_recorded_in_country": "Aucune transaction enregistrée dans ce pays.",
+      "unknown": "Information non disponible."
+    },
+    "stages": {
+      "approached": "approchée",
+      "interested": "intéressée",
+      "declined": "a décliné",
+      "term_sheet": "term sheet émis",
+      "committed": "engagée",
+      "disbursed": "a décaissé",
+      "withdrawn": "retirée"
+    },
+    "sectors": {
+      "infrastructure_public": "Infrastructures et secteur public",
+      "energy": "Énergie",
+      "agriculture": "Agriculture",
+      "industry": "Industrie",
+      "telecom_media_tech": "Télécoms, médias et technologie",
+      "real_estate": "Immobilier",
+      "financial_services": "Services financiers",
+      "public_finance": "Finances publiques",
+      "other": "Autre"
     }
   }
 }

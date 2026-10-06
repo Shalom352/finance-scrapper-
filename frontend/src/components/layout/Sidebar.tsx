@@ -23,6 +23,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     { href: "/comparisons", label: t("comparisons"), icon: "⚖️" },
     { href: "/financial-data", label: t("financial_data"), icon: "🗂️" },
     { href: "/deals", label: t("deals"), icon: "🤝" },
+    { href: "/targeting", label: t("targeting"), icon: "🎯" },
     { href: "/data-quality", label: t("data_quality"), icon: "🧾" },
     { href: "/documents", label: t("documents"), icon: "📑" },
     { href: "/search", label: t("search"), icon: "🔍" },

@@ -9,6 +9,8 @@
  */
 
 import type {
+  TargetingQuery,
+  TargetingResponse,
   ComponentProvenance,
   ComparisonRow,
   CountryComparison,
@@ -715,3 +717,9 @@ export async function getLatestIngestionRun(): Promise<IngestionRun | null> {
   }
 }
 
+
+// Phase 20 — targeting (explicit criteria, no score).
+export async function getTargeting(query: TargetingQuery): Promise<TargetingResponse> {
+  const res = await apiFetch<TargetingResponse>(`/api/v1/targeting${buildQuery({ ...query })}`);
+  return { ...res, items: res.items ?? [] };
+}

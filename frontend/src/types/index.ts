@@ -991,3 +991,68 @@ export interface IngestionRun {
   created_at: string;
 }
 
+
+// ============================================================
+// Phase 20 — Targeting (explicit criteria, no score) and internal mandates
+// ============================================================
+
+export const SECTORS = [
+  "infrastructure_public",
+  "energy",
+  "agriculture",
+  "industry",
+  "telecom_media_tech",
+  "real_estate",
+  "financial_services",
+  "public_finance",
+  "other",
+] as const;
+export type Sector = (typeof SECTORS)[number];
+export type CriterionStatus = "met" | "not_met" | "unknown";
+export type CriterionKey = "presence" | "experience" | "capacity" | "relationship" | "via_sgi";
+
+export interface TargetingDeal {
+  deal_id: string;
+  title: string;
+  roles: string[];
+  matches: string[];
+  year: number | null;
+  amount: number | null;
+  unit: string | null;
+  currency: string | null;
+  status: string;
+}
+
+export interface Criterion {
+  status: CriterionStatus;
+  reason?: string;
+  [key: string]: unknown;
+}
+
+export interface TargetingCandidate {
+  kind: "bank" | "institution";
+  id: string;
+  name: string;
+  country_code: string | null;
+  entity_type: string | null;
+  website: string | null;
+  criteria_met: number;
+  criteria_known: number;
+  criteria: Partial<Record<CriterionKey, Criterion>>;
+}
+
+export interface TargetingResponse {
+  request: Record<string, unknown>;
+  method: string;
+  total: number;
+  items: TargetingCandidate[];
+}
+
+export interface TargetingQuery {
+  country?: string;
+  sector?: Sector;
+  deal_type?: string;
+  amount?: number;
+  currency?: string;
+  kind?: "all" | "banks" | "institutions";
+}

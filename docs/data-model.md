@@ -71,7 +71,9 @@ de doublon ⇒ `decided_by` + `decided_at`, une transaction n'est jamais rattach
 | `0013_institutional_discovery` | taxonomie des manques Phase 17 ; `documents.text_layer_status`, `file_format`, `reporting_year` | oui |
 | `0014_public_debt_instruments` | titres publics dans `deals` (`instrument_type`, `isin`, dates d'adjudication / valeur / échéance, `yield_rate`, `ingestion_key`) ; `deal_participants.entity_id` | refusé tant qu'une transaction utilise ces colonnes |
 | `0015_deal_validation_flags` | `deals.validation_flags` (JSONB) | refusé tant qu'une transaction porte un drapeau |
+| `0016_deal_sourcing_roles` | types et rôles étendus, page / citation / méthode des participations, utilisation des fonds, `filing_agent_raw`, classes de source, `institution_links` | refusé tant que le nouveau vocabulaire est utilisé |
+| `0017_directory_and_mandates` | type `guarantee_fund`, `entities.website`, `mandates`, `mandate_counterparties` | refusé tant qu'un mandat ou une entrée d'annuaire existe |
 
 Aucune migration n'est destructive à la montée. `alembic check` : aucun écart entre les
-modèles et le schéma migré (vérifié jusqu'à `0015`, le 06/10/2026). Tables de découverte et Entity Hub :
+modèles et le schéma migré (vérifié jusqu'à `0017`, le 06/10/2026). Tables de découverte et Entity Hub :
 voir `discovery-engine.md`.
