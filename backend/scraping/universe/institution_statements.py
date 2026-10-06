@@ -33,7 +33,13 @@ INSTITUTION_LINE_TO_METRIC: dict[str, str] = {
 }
 
 _YEAR_HEADER = re.compile(r"^(?:(\d{2})/(\d{2})/)?((?:19|20)\d{2})$")
-_UNIT_MILLIONS = re.compile(r"en\s+millions\s+de\s+(?:F\s*CFA|francs\s+CFA)", re.IGNORECASE)
+_UNIT_MILLIONS = re.compile(
+    r"en\s+millions\s+(?:de\s+)?(?:\(\s*)?(?:F\s*CFA|francs\s+CFA|M\s*XOF|XOF|M\s*F\s*CFA)\b"
+    r"|\((?:\s*en)?\s*(?:M\s*XOF|M\s*F\s*CFA|millions\s+de\s+F\s*CFA)\s*\)",
+    re.IGNORECASE,
+)
+# A per-share label ("Dividende brut par action (en F CFA)") states the unit of that line only.
+_PER_SHARE = re.compile(r"par\s+action|per\s+share", re.IGNORECASE)
 _UNIT_UNITS = re.compile(r"\(\s*en\s+(?:F\s*CFA|francs\s+CFA)\s*\)|\ben\s+francs\s+CFA\b", re.IGNORECASE)
 _INTERIM = re.compile(r"\b(SEMESTRE|SEMESTRIEL|TRIMESTRE|TRIMESTRIEL|30 06|30 09|31 03)\b")
 ROW_TOLERANCE = 1.8  # synoptic rows are ~4 pt apart
@@ -65,8 +71,10 @@ class StatementParseResult:
 def page_unit(text: str) -> tuple[str | None, str | None, Decimal | None]:
     if _UNIT_MILLIONS.search(text):
         return "millions", "XOF", Decimal(1_000_000)
-    if _UNIT_UNITS.search(text):
-        return "unit", "XOF", Decimal(1)
+    for m in _UNIT_UNITS.finditer(text):
+        line_start = text.rfind("\n", 0, m.start()) + 1
+        if not _PER_SHARE.search(text[line_start : m.start()]):
+            return "unit", "XOF", Decimal(1)
     return None, None, None
 
 

@@ -43,6 +43,7 @@ QUALITY_FLAGS = (
     "cross_edition_mismatch",  # same entity / metric / year differs between two editions
     "unit_or_currency_not_stated",  # the statement does not state its unit / currency: not normalized
     "cross_document_mismatch",  # same entity / metric / year differs between two institution documents
+    "unit_reread",  # informational: unit corrected by a later re-read of the document (before -> after in notes)
 )
 
 # Flags that make a qualification uncertain: they block any automatic promotion.

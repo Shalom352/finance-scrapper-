@@ -309,3 +309,50 @@ def test_interrupted_run_is_marked_failed_never_left_running(pg) -> None:
     status, reason, finished = asyncio.run(go())
     assert status == "failed" and finished and "interrupted" in reason
     assert asyncio.run(_fetchval(pg["dsn"], "SELECT count(*) FROM discovery_runs WHERE status='running'")) == 0
+
+
+# =========================================================================== unit re-read (repair)
+MXOF = build_synoptic_pdf(LEFT, RIGHT, title="FIXTURE BANK ALPHA BURKINA MXOF",
+                          unit_line="Données financières en millions (MXOF)")
+
+
+def test_reread_units_corrects_rows_stored_with_a_wrong_unit(pg) -> None:
+    from scraping.universe.unit_repair import reread_units
+
+    doc_id = asyncio.run(_register(pg["url"], pg["storage"], MXOF, "FIXTURE etats financiers MXOF",
+                                   "https://fixture.invalid/mxof.pdf"))
+    asyncio.run(_extract(pg["url"], pg["storage"]))
+
+    async def corrupt_then_repair(apply: bool) -> tuple[dict, list[tuple]]:
+        engine, maker = await _session(pg["url"])
+        async with maker() as db:
+            rows = (await db.execute(select(FinancialData).where(FinancialData.document_id == doc_id)
+                                     .order_by(FinancialData.metric_code, FinancialData.period_year))).scalars().all()
+            assert rows and {r.unit_original for r in rows} == {"millions"}  # the fixed parser reads MXOF
+            if apply:  # simulate rows stored by the former parser (unit read from a per-share label)
+                for r in rows:
+                    r.unit_original = "unit"
+                    r.value_normalized = r.value_normalized / 1_000_000
+                rows[0].status = "reviewed"  # human-protected: never touched
+                await db.commit()
+            registrar = DocumentRegistrar(StorageManager(pg["storage"]))
+            dry = await reread_units(db, registrar, dry_run=True)
+            assert len(dry.corrected) == len(rows) - 1 and dry.protected_skipped == 1
+            still = (await db.execute(select(FinancialData.unit_original).where(
+                FinancialData.document_id == doc_id))).scalars().all()
+            assert set(still) == {"unit"}  # dry run writes nothing
+            report = await reread_units(db, registrar, dry_run=False)
+            after = (await db.execute(select(FinancialData).where(FinancialData.document_id == doc_id)
+                                      .order_by(FinancialData.metric_code, FinancialData.period_year))).scalars().all()
+            out = [(r.unit_original, r.value_normalized, r.status, r.quality_flags, r.notes) for r in after]
+        await engine.dispose()
+        return report.summary(), out
+
+    summary, rows = asyncio.run(corrupt_then_repair(apply=True))
+    assert summary["corrected"] == len(rows) - 1 and summary["protected_skipped"] == 1
+    protected, *fixed = rows
+    assert protected[0] == "unit" and protected[2] == "reviewed"
+    for unit, value, _status, flags, notes in fixed:
+        assert unit == "millions" and value >= 1_000_000
+        assert any(f["code"] == "unit_reread" for f in flags) and "unit re-read" in notes
+        assert not any(f["code"] == "unit_or_currency_not_stated" for f in flags)

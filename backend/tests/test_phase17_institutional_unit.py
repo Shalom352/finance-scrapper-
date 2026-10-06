@@ -73,6 +73,15 @@ class TestInstitutionStatements:
         ("(en F CFA)", ("unit", "XOF", Decimal(1))),
         ("Montants en millions de F CFA", ("millions", "XOF", Decimal(1_000_000))),
         ("Au 31/12/2021, 1 euro = 655,957 F CFA", (None, None, None)),  # exchange note ≠ unit statement
+        # BRVM certified statements (Société Générale CI 2021): heading in MXOF.
+        ("Données financières en millions (MXOF)", ("millions", "XOF", Decimal(1_000_000))),
+        ("(en millions de FCFA)", ("millions", "XOF", Decimal(1_000_000))),
+        ("Montants (MXOF)", ("millions", "XOF", Decimal(1_000_000))),
+        # A per-share label states the unit of that line only, never of the page.
+        ("Dividende brut par action (en F CFA)", (None, None, None)),
+        ("Données financières en millions (MXOF)\nDividende brut par action (en F CFA)",
+         ("millions", "XOF", Decimal(1_000_000))),
+        ("Dividende brut par action (en F CFA)\nTotal bilan (en F CFA)", ("unit", "XOF", Decimal(1))),
     ])
     def test_unit_only_from_explicit_statement(self, line, expected):
         assert page_unit(line) == expected
