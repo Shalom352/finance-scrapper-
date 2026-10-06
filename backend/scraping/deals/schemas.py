@@ -162,6 +162,8 @@ class DealImportRecord(BaseModel):
     use_of_proceeds: str | None = None
     use_of_proceeds_categories: list[ProceedsCategory] | None = None
     filing_agent_raw: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)] | None = None
+    # Analyst remark (not a published field, never a value): e.g. why a role was read on a logo.
+    notes: str | None = None
     participants: list[ParticipantImport] = Field(default_factory=list)
     sources: list[SourceRef] = Field(min_length=1)
 

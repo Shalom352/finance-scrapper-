@@ -338,6 +338,7 @@ async def import_deals(
                 validation_flags=[f.model_dump() for f in r.validation_flags] or None,
                 use_of_proceeds=r.use_of_proceeds, use_of_proceeds_categories=r.use_of_proceeds_categories,
                 filing_agent_raw=r.filing_agent_raw,
+                notes=r.notes,
                 status=IMPORT_STATUS,
             )
             db.add(deal)

@@ -1,0 +1,1304 @@
+{
+ "sources": [
+  {
+   "key": "tresor_ci",
+   "name": "Direction Générale du Trésor et de la Comptabilité Publique (Côte d'Ivoire)",
+   "url": "https://tresor.gouv.ci",
+   "source_type": "government",
+   "country_code": "CI",
+   "priority": 1
+  },
+  {
+   "key": "fgi",
+   "name": "FGI Bourse — Finance Gestion et Intermédiation (SGI)",
+   "url": "https://www.fgi-bourse.com",
+   "source_type": "financial_market",
+   "country_code": "SN"
+  },
+  {
+   "key": "africabourse",
+   "name": "Africabourse (SGI)",
+   "url": "https://www.africabourse.com",
+   "source_type": "financial_market",
+   "country_code": "BJ"
+  },
+  {
+   "key": "sgibenin",
+   "name": "SGI Bénin",
+   "url": "https://sgibenin.com",
+   "source_type": "financial_market",
+   "country_code": "BJ"
+  },
+  {
+   "key": "brvm",
+   "name": "BRVM",
+   "url": "https://www.brvm.org",
+   "source_type": "financial_market",
+   "priority": 1
+  },
+  {
+   "key": "afinhab",
+   "name": "AFINHAB (ex-CRRH-UEMOA)",
+   "url": "https://afinhab.org",
+   "source_type": "regional_body"
+  },
+  {
+   "key": "diaspora_bf",
+   "name": "Diaspora Bonds Burkina Faso (site de l'opération)",
+   "url": "https://www.diaspora-bond-burkina.com",
+   "source_type": "government",
+   "country_code": "BF"
+  },
+  {
+   "key": "umoatitres",
+   "name": "Agence UMOA-Titres",
+   "url": "https://www.umoatitres.org",
+   "source_type": "financial_market",
+   "priority": 1
+  },
+  {
+   "key": "amf",
+   "name": "AMF-UMOA — API des opérations (index)",
+   "url": "https://www.amf-umoa.org",
+   "source_type": "market_authority",
+   "priority": 1
+  },
+  {
+   "key": "ecofin",
+   "name": "Agence Ecofin",
+   "url": "https://www.agenceecofin.com",
+   "source_type": "secondary",
+   "priority": 3
+  },
+  {
+   "key": "sika",
+   "name": "Sika Finance",
+   "url": "https://www.sikafinance.com",
+   "source_type": "secondary",
+   "priority": 3
+  },
+  {
+   "key": "fa",
+   "name": "Financial Afrik",
+   "url": "https://www.financialafrik.com",
+   "source_type": "secondary",
+   "priority": 3
+  }
+ ],
+ "documents": [
+  {
+   "key": "n01",
+   "source": "tresor_ci",
+   "title": "Note d'information — TPCI 5,80 % 2021-2028 & 5,90 % 2021-2031",
+   "url": "https://tresor.gouv.ci/tres/wp-content/uploads/2021/06/NOTE-DINFO-TRESOR-16-06.pdf",
+   "document_type": "other",
+   "local_file": "notes/tresor.gouv.ci_tres_wp-content_uploads_2021_06_NOTE-DINFO-TRESOR-16-06.pdf"
+  },
+  {
+   "key": "n02",
+   "source": "fgi",
+   "title": "Note d'information — État du Sénégal, APE juin 2025",
+   "url": "https://www.fgi-bourse.com/wp-content/uploads/2025/06/Note-dinformation_Ape-Tresor-Public-SN.pdf",
+   "document_type": "other",
+   "local_file": "notes/www.fgi-bourse.com_wp-content_uploads_2025_06_Note-dinformation_Ape-Tresor-Public-SN.pdf"
+  },
+  {
+   "key": "n03",
+   "source": "africabourse",
+   "title": "Note d'information — TPTG 6,45 % 2025-2030 & 6,60 % 2025-2032",
+   "url": "https://www.africabourse.com/uploads/opportunite/34e14a00c02791123e74ed452c80a9f9.pdf",
+   "document_type": "other",
+   "local_file": "notes/www.africabourse.com_uploads_opportunite_34e14a00c02791123e74ed452c80a9f9.pdf"
+  },
+  {
+   "key": "n04",
+   "source": "africabourse",
+   "title": "Note d'information — OPV BIIC (cession par l'État du Bénin)",
+   "url": "https://www.africabourse.com/uploads/opportunite/8330f0533e80a60db70e6d274099be60.pdf",
+   "document_type": "other",
+   "local_file": "notes/www.africabourse.com_uploads_opportunite_8330f0533e80a60db70e6d274099be60.pdf"
+  },
+  {
+   "key": "n06",
+   "source": "sgibenin",
+   "title": "Note d'information — PAD 6,60 % 2020-2027",
+   "url": "https://sgibenin.com/opportunites/2020/sn/APE_PAD2020/Note_Information__APE_PAD_6.60_2020_2027.pdf",
+   "document_type": "other",
+   "local_file": "notes/sgibenin.com_opportunites_2020_sn_APE_PAD2020_Note_Information__APE_PAD_6.60_2020_2027.pdf"
+  },
+  {
+   "key": "n07",
+   "source": "fgi",
+   "title": "Note d'information — PETRO IVOIRE 6,80 % 2022-2029",
+   "url": "https://www.fgi-bourse.com/wp-content/uploads/2024/08/Emprunt-Obligataire-PETRO-IVOIRE-680-2022-2029.pdf",
+   "document_type": "other",
+   "local_file": "notes/www.fgi-bourse.com_wp-content_uploads_2024_08_Emprunt-Obligataire-PETRO-IVOIRE-680-2022-2029.pdf"
+  },
+  {
+   "key": "n08",
+   "source": "brvm",
+   "title": "Note d'information — augmentation de capital SAFCA CI (Alios Finance CI)",
+   "url": "https://www.brvm.org/sites/default/files/20260413_-_note_dinformation_-_augmentation_de_capital_-_safca_ci.pdf",
+   "document_type": "other",
+   "local_file": "notes/www.brvm.org_sites_default_files_20260413_-_note_dinformation_-_augmentation_de_capital_-_safca_ci.pdf"
+  },
+  {
+   "key": "n09",
+   "source": "afinhab",
+   "title": "Note d'information — CRRH-UEMOA 6,10 % 2022-2037 (9e emprunt)",
+   "url": "https://afinhab.org/sites/default/files/documents/note%20d'info%209e%20emprunt-avec%20compression.pdf",
+   "document_type": "other",
+   "local_file": "notes/afinhab.org_sites_default_files_documents_note_d_info_9e_emprunt-avec_compression.pdf"
+  },
+  {
+   "key": "n11",
+   "source": "diaspora_bf",
+   "title": "Note d'information — TPBF Diaspora Bonds 2026",
+   "url": "https://www.diaspora-bond-burkina.com/docs/note-information.pdf",
+   "document_type": "other",
+   "local_file": "notes/www.diaspora-bond-burkina.com_docs_note-information.pdf"
+  },
+  {
+   "key": "cr_ci_ec_20250109",
+   "source": "umoatitres",
+   "title": "Compte rendu — rachat et émission simultanée CI du 09/01/2025",
+   "url": "https://www.umoatitres.org/wp-content/uploads/2025/01/Compte-rendu-CI-EC-09.01.2025-1.pdf",
+   "document_type": "other",
+   "local_file": "umoatitres/CR-CI-EC-09.01.2025.pdf",
+   "published_at": "2025-01-09"
+  },
+  {
+   "key": "amf_api",
+   "source": "amf",
+   "title": "API AMF-UMOA — liste des opérations (métadonnées)",
+   "url": "https://www.amf-umoa.org/service/api/elastic/operation",
+   "document_type": "web_page",
+   "page_count": 1
+  },
+  {
+   "key": "eco_baobab",
+   "source": "ecofin",
+   "title": "Baobab Côte d'Ivoire lance le premier Sustainability-Linked Bond d'une IMF dans l'UMOA",
+   "url": "https://www.agenceecofin.com/actualites-finance/1409-141527-baobab-cote-d-ivoire-lance-le-premier-sustainability-linked-bond-d-une-imf-dans-l-umoa",
+   "document_type": "web_page",
+   "local_file": "press/eco_baobab.html",
+   "page_count": 1,
+   "published_at": "2026-09-14"
+  },
+  {
+   "key": "eco_afinhab",
+   "source": "ecofin",
+   "title": "AFINHAB clôture son émission de Social Bond de 40 milliards FCFA",
+   "url": "https://www.agenceecofin.com/actualites-finance/2807-140577-afinhab-cloture-son-emission-de-social-bond-de-40-milliards-fcfa-et-franchit-le-cap-des-100-milliards-fcfa-d-obligations-sociales",
+   "document_type": "web_page",
+   "local_file": "press/eco_afinhab.html",
+   "page_count": 1,
+   "published_at": "2026-07-28"
+  },
+  {
+   "key": "sika_emergence",
+   "source": "sika",
+   "title": "Côte d'Ivoire : Emergence Plaza prépare un Green Bond de 10 milliards FCFA",
+   "url": "https://www.sikafinance.com/marches/cote-divoire-emergence-plaza-prepare-un-green-bond-de-10-milliards-fcfa_29107",
+   "document_type": "web_page",
+   "local_file": "press/sika_emergence.html",
+   "page_count": 1,
+   "published_at": "2021-07-06"
+  },
+  {
+   "key": "fa_pad",
+   "source": "fa",
+   "title": "Le Port Autonome de Dakar lance une émission de 60 milliards de FCFA",
+   "url": "https://www.financialafrik.com/2020/10/01/le-port-autonome-de-dakar-lance-une-emission-de-60-milliards-de-fcfa-pour-decongestionner-son-trafic/",
+   "document_type": "web_page",
+   "page_count": 1,
+   "published_at": "2020-10-01"
+  }
+ ],
+ "deals": [
+  {
+   "key": "D01_TPCI_2021_06",
+   "case": "A1",
+   "title": "TPCI 5,80 % 2021-2028 & 5,90 % 2021-2031 (EE/21-07, EE/21-08)",
+   "deal_type": "sovereign_bond_ape",
+   "country_code": "CI",
+   "sector": "public_finance",
+   "amount_original": "130 milliards FCFA et 20 milliards FCFA (deux tranches)",
+   "use_of_proceeds": "financement des investissements prévus au budget de l'Etat au titre de l'année 2021",
+   "use_of_proceeds_categories": [
+    "budget_financing"
+   ],
+   "guarantees": "garantie souveraine de l'État de Côte d'Ivoire",
+   "sources": [
+    {
+     "ref": "p10",
+     "document": "n01",
+     "page": 10,
+     "source_class": "primary_regulatory",
+     "fields": [
+      "title",
+      "deal_type",
+      "country_code",
+      "sector",
+      "amount_original",
+      "use_of_proceeds",
+      "use_of_proceeds_categories"
+     ],
+     "excerpt": "de montant respectif 130 milliards FCFA et 20 milliards FCFA"
+    },
+    {
+     "ref": "p12",
+     "document": "n01",
+     "page": 12,
+     "source_class": "primary_regulatory",
+     "fields": [
+      "guarantees"
+     ],
+     "excerpt": "Cette émission bénéficie de la garantie souveraine de l'État de Côte d'Ivoire"
+    },
+    {
+     "ref": "p13",
+     "document": "n01",
+     "page": 13,
+     "source_class": "primary_regulatory",
+     "fields": []
+    }
+   ],
+   "participants": [
+    {
+     "role": "lead_manager",
+     "name": "EDC INVESTMENT CORPORATION",
+     "source_ref": "p13",
+     "extraction_method": "text",
+     "page": 13,
+     "excerpt": "EDC INVESTMENT CORPORATION a été mandaté par l'Emetteur en qualité de Chef de file"
+    },
+    {
+     "role": "co_lead_manager",
+     "name": "BNI FINANCES",
+     "source_ref": "p13",
+     "extraction_method": "text",
+     "page": 13,
+     "excerpt": "BNI FINANCES - MAC AFRICAN - BIIC FINANCIAL SERVICES - FINANCE GESTION ET INTERMEDIATION ont été mandatés par l'Etat en qualité de co-chefs de file"
+    },
+    {
+     "role": "co_lead_manager",
+     "name": "MAC AFRICAN",
+     "source_ref": "p13",
+     "extraction_method": "text",
+     "page": 13,
+     "excerpt": "BNI FINANCES - MAC AFRICAN - BIIC FINANCIAL SERVICES - FINANCE GESTION ET INTERMEDIATION ont été mandatés par l'Etat en qualité de co-chefs de file"
+    },
+    {
+     "role": "co_lead_manager",
+     "name": "BIIC FINANCIAL SERVICES",
+     "source_ref": "p13",
+     "extraction_method": "text",
+     "page": 13,
+     "excerpt": "BNI FINANCES - MAC AFRICAN - BIIC FINANCIAL SERVICES - FINANCE GESTION ET INTERMEDIATION ont été mandatés par l'Etat en qualité de co-chefs de file"
+    },
+    {
+     "role": "co_lead_manager",
+     "name": "FINANCE GESTION ET INTERMEDIATION",
+     "source_ref": "p13",
+     "extraction_method": "text",
+     "page": 13,
+     "excerpt": "BNI FINANCES - MAC AFRICAN - BIIC FINANCIAL SERVICES - FINANCE GESTION ET INTERMEDIATION ont été mandatés par l'Etat en qualité de co-chefs de file"
+    },
+    {
+     "role": "guarantor",
+     "name": "État de Côte d'Ivoire",
+     "source_ref": "p12",
+     "extraction_method": "text",
+     "page": 12,
+     "excerpt": "garantie souveraine de l'État de Côte d'Ivoire"
+    }
+   ]
+  },
+  {
+   "key": "D06_SN_APE_2025_06",
+   "case": "A6",
+   "title": "État du Sénégal — APE juin 2025, 4 tranches (EE/25-13 à 16)",
+   "deal_type": "sovereign_bond_ape",
+   "country_code": "SN",
+   "sector": "public_finance",
+   "amount": "300000000000",
+   "currency": "XOF",
+   "unit": "units",
+   "amount_original": "trois cent (300) milliards FCFA",
+   "use_of_proceeds": "financer les besoins de trésorerie prévus dans la Loi de Finances 2025 et soutenir les projets stratégiques de l'Agenda national de transformation",
+   "use_of_proceeds_categories": [
+    "budget_financing"
+   ],
+   "sources": [
+    {
+     "ref": "p11",
+     "document": "n02",
+     "page": 11,
+     "source_class": "primary_regulatory",
+     "fields": [
+      "title",
+      "deal_type",
+      "country_code",
+      "sector",
+      "amount",
+      "currency",
+      "unit",
+      "amount_original",
+      "use_of_proceeds",
+      "use_of_proceeds_categories"
+     ],
+     "excerpt": "un montant global de trois cent (300) milliards FCFA"
+    },
+    {
+     "ref": "p15",
+     "document": "n02",
+     "page": 15,
+     "source_class": "primary_regulatory",
+     "fields": []
+    },
+    {
+     "ref": "p52",
+     "document": "n02",
+     "page": 52,
+     "source_class": "primary_regulatory",
+     "fields": []
+    }
+   ],
+   "participants": [
+    {
+     "role": "arranger",
+     "name": "CGF Bourse",
+     "source_ref": "p15",
+     "extraction_method": "text",
+     "page": 15,
+     "excerpt": "CGF Bourse est arrangeur et chef de file du placement de l'opération"
+    },
+    {
+     "role": "lead_manager",
+     "name": "CGF Bourse",
+     "source_ref": "p15",
+     "extraction_method": "text",
+     "page": 15,
+     "excerpt": "CGF Bourse est arrangeur et chef de file du placement de l'opération"
+    },
+    {
+     "role": "co_arranger",
+     "name": "Société Générale Sénégal",
+     "source_ref": "p52",
+     "extraction_method": "text",
+     "page": 52,
+     "excerpt": "PRÉSENTATION DU CO-ARRANGEUR Banque de référence au Sénégal, Société Générale Sénégal",
+     "institution_name": "SOCIETE GENERALE SENEGAL"
+    },
+    {
+     "role": "co_lead_manager",
+     "name": "Société Générale Capital Securities West Africa",
+     "source_ref": "p52",
+     "extraction_method": "text",
+     "page": 52,
+     "excerpt": "PRÉSENTATION DU CO-CHEF DE FILE Société Générale Capital Securities West Africa"
+    }
+   ]
+  },
+  {
+   "key": "D07_TPTG_2025",
+   "case": "A7",
+   "title": "TPTG 6,45 % 2025-2030 & 6,60 % 2025-2032 (EE/25-05, EE/25-06)",
+   "deal_type": "sovereign_bond_ape",
+   "country_code": "TG",
+   "sector": "public_finance",
+   "use_of_proceeds": "le financement de certains investissements prévus au budget de l'Etat au titre de l'année 2025",
+   "use_of_proceeds_categories": [
+    "budget_financing"
+   ],
+   "notes": "Corps du texte en police non décodable : rôles lus sur les logos de couverture (p.1) et sur l'image des pages 12, 15 et 20 (audits/ape_amf/roles_raw/N03_*.png). Revue humaine requise.",
+   "sources": [
+    {
+     "ref": "p1",
+     "document": "n03",
+     "page": 1,
+     "source_class": "primary_regulatory",
+     "fields": [
+      "title",
+      "deal_type",
+      "country_code",
+      "sector"
+     ]
+    },
+    {
+     "ref": "p12",
+     "document": "n03",
+     "page": 12,
+     "source_class": "primary_regulatory",
+     "fields": [
+      "use_of_proceeds",
+      "use_of_proceeds_categories"
+     ]
+    },
+    {
+     "ref": "p15",
+     "document": "n03",
+     "page": 15,
+     "source_class": "primary_regulatory",
+     "fields": []
+    }
+   ],
+   "participants": [
+    {
+     "role": "arranger",
+     "name": "SGI Togo",
+     "source_ref": "p1",
+     "extraction_method": "visual_logo",
+     "page": 1
+    },
+    {
+     "role": "lead_manager",
+     "name": "SGI Togo",
+     "source_ref": "p1",
+     "extraction_method": "visual_logo",
+     "page": 1
+    },
+    {
+     "role": "co_lead_manager",
+     "name": "AGI",
+     "source_ref": "p1",
+     "extraction_method": "visual_logo",
+     "page": 1
+    },
+    {
+     "role": "co_lead_manager",
+     "name": "SGI Bénin",
+     "source_ref": "p1",
+     "extraction_method": "visual_logo",
+     "page": 1
+    },
+    {
+     "role": "co_lead_manager",
+     "name": "SGI Niger",
+     "source_ref": "p1",
+     "extraction_method": "visual_logo",
+     "page": 1
+    },
+    {
+     "role": "co_lead_manager",
+     "name": "SA2IF",
+     "source_ref": "p1",
+     "extraction_method": "visual_logo",
+     "page": 1
+    },
+    {
+     "role": "co_lead_manager",
+     "name": "Coris Bourse",
+     "source_ref": "p1",
+     "extraction_method": "visual_logo",
+     "page": 1
+    },
+    {
+     "role": "co_lead_manager",
+     "name": "Oragroup Securities",
+     "source_ref": "p1",
+     "extraction_method": "visual_logo",
+     "page": 1
+    },
+    {
+     "role": "co_lead_manager",
+     "name": "BIIC Financial Services",
+     "source_ref": "p1",
+     "extraction_method": "visual_logo",
+     "page": 1
+    },
+    {
+     "role": "co_lead_manager",
+     "name": "United Capital for Africa",
+     "source_ref": "p1",
+     "extraction_method": "visual_logo",
+     "page": 1
+    },
+    {
+     "role": "guarantor",
+     "name": "État du Togo",
+     "source_ref": "p15",
+     "extraction_method": "visual_scan",
+     "page": 15,
+     "excerpt": "garantie souveraine de l'Etat du Togo"
+    }
+   ]
+  },
+  {
+   "key": "D09_TPBF_DIASPORA_2026",
+   "case": "A9",
+   "title": "TPBF Diaspora Bonds 6,75 % 2026-2031 & 6,85 % 2026-2033 (EE/26-09, EE/26-10)",
+   "deal_type": "sovereign_bond_ape",
+   "country_code": "BF",
+   "sector": "public_finance",
+   "project_name": "Centrale hydroélectrique de Bagré-Aval",
+   "use_of_proceeds_categories": [
+    "infrastructure_project"
+   ],
+   "guarantees": "garantie souveraine de l'État du Burkina Faso",
+   "sources": [
+    {
+     "ref": "p14",
+     "document": "n11",
+     "page": 14,
+     "source_class": "primary_regulatory",
+     "fields": [
+      "title",
+      "deal_type",
+      "country_code",
+      "sector",
+      "project_name",
+      "use_of_proceeds_categories"
+     ],
+     "excerpt": "projet de construction de la centrale hydroélectrique de Bagré-Aval"
+    },
+    {
+     "ref": "p8",
+     "document": "n11",
+     "page": 8,
+     "source_class": "primary_regulatory",
+     "fields": []
+    },
+    {
+     "ref": "p19",
+     "document": "n11",
+     "page": 19,
+     "source_class": "primary_regulatory",
+     "fields": [
+      "guarantees"
+     ],
+     "excerpt": "bénéficient de la garantie souveraine de l'État du Burkina Faso"
+    }
+   ],
+   "participants": [
+    {
+     "role": "co_arranger",
+     "name": "Vista Bank",
+     "source_ref": "p14",
+     "extraction_method": "text",
+     "page": 14,
+     "excerpt": "aux co-arrangeurs Vista Bank, la Société Burkinabè d'Intermédiation Financière (SBIF)"
+    },
+    {
+     "role": "co_arranger",
+     "name": "SBIF",
+     "source_ref": "p14",
+     "extraction_method": "text",
+     "page": 14,
+     "excerpt": "aux co-arrangeurs Vista Bank, la Société Burkinabè d'Intermédiation Financière (SBIF)"
+    },
+    {
+     "role": "co_arranger",
+     "name": "SGI Oragroup Securities",
+     "source_ref": "p14",
+     "extraction_method": "text",
+     "page": 14,
+     "excerpt": "(SBIF) et la SGI Oragroup Securities"
+    },
+    {
+     "role": "lead_manager",
+     "name": "SBIF",
+     "source_ref": "p8",
+     "extraction_method": "text",
+     "page": 8,
+     "excerpt": "rédigée par la SBIF, Chef de file"
+    },
+    {
+     "role": "guarantor",
+     "name": "État du Burkina Faso",
+     "source_ref": "p19",
+     "extraction_method": "text",
+     "page": 19,
+     "excerpt": "garantie souveraine de l'État du Burkina Faso"
+    }
+   ]
+  },
+  {
+   "key": "D13_PAD_2020",
+   "case": "B13 / P2",
+   "title": "PAD 6,60 % 2020-2027 (EOP/20-02)",
+   "deal_type": "corporate_bond_ape",
+   "country_code": "SN",
+   "sector": "infrastructure_public",
+   "project_name": "Infrastructures terrestres du Port de Ndayane",
+   "amount": "60000000000",
+   "currency": "XOF",
+   "unit": "units",
+   "amount_original": "60 milliards de FCFA",
+   "use_of_proceeds": "serviront au financement des infrastructures terrestres du port de Ndayane",
+   "use_of_proceeds_categories": [
+    "infrastructure_project"
+   ],
+   "filing_agent_raw": "INVICTUS CAPITAL FINANCE",
+   "sources": [
+    {
+     "ref": "p49",
+     "document": "n06",
+     "page": 49,
+     "source_class": "primary_regulatory",
+     "fields": [
+      "title",
+      "deal_type",
+      "country_code",
+      "sector",
+      "amount",
+      "currency",
+      "unit",
+      "amount_original"
+     ],
+     "excerpt": "par appel public à l'Epargne de 60 milliards de FCFA"
+    },
+    {
+     "ref": "p52",
+     "document": "n06",
+     "page": 52,
+     "source_class": "primary_regulatory",
+     "fields": [
+      "project_name",
+      "use_of_proceeds",
+      "use_of_proceeds_categories"
+     ],
+     "excerpt": "serviront au financement des infrastructures terrestres du port de Ndayane"
+    },
+    {
+     "ref": "p55",
+     "document": "n06",
+     "page": 55,
+     "source_class": "primary_regulatory",
+     "fields": []
+    },
+    {
+     "ref": "amf",
+     "document": "amf_api",
+     "page": 1,
+     "source_class": "regulator_index",
+     "fields": [
+      "filing_agent_raw"
+     ],
+     "excerpt": "opération 359 (EOP/20-02) — acteurLib : INVICTUS CAPITAL FINANCE"
+    },
+    {
+     "ref": "fa",
+     "document": "fa_pad",
+     "page": 1,
+     "source_class": "press_reported",
+     "fields": [],
+     "excerpt": "la SGI Invictus Capital & Finance, en tant qu'arrangeur et chef de file du syndicat de placement",
+     "publisher": "Financial Afrik",
+     "url": "https://www.financialafrik.com/2020/10/01/le-port-autonome-de-dakar-lance-une-emission-de-60-milliards-de-fcfa-pour-decongestionner-son-trafic/",
+     "published_at": "2020-10-01"
+    }
+   ],
+   "participants": [
+    {
+     "role": "arranger",
+     "name": "Invictus Capital & Finance",
+     "source_ref": "p55",
+     "extraction_method": "text",
+     "page": 55,
+     "excerpt": "la SGI Invictus Capital & Finance est arrangeur et chef de file du placement"
+    },
+    {
+     "role": "lead_manager",
+     "name": "Invictus Capital & Finance",
+     "source_ref": "p55",
+     "extraction_method": "text",
+     "page": 55,
+     "excerpt": "la SGI Invictus Capital & Finance est arrangeur et chef de file du placement"
+    }
+   ]
+  },
+  {
+   "key": "D14_PETRO_IVOIRE_2022",
+   "case": "B14",
+   "title": "PETRO IVOIRE 6,80 % 2022-2029 (EP/22-03)",
+   "deal_type": "corporate_bond_ape",
+   "country_code": "CI",
+   "sector": "energy",
+   "amount": "30000000000",
+   "currency": "XOF",
+   "unit": "units",
+   "amount_original": "30 milliards de F CFA",
+   "use_of_proceeds": "Financement des projets d'investissement de PISA et Refinancement d'une partie de la dette existante",
+   "use_of_proceeds_categories": [
+    "infrastructure_project",
+    "refinancing"
+   ],
+   "sources": [
+    {
+     "ref": "p2",
+     "document": "n07",
+     "page": 2,
+     "source_class": "primary_regulatory",
+     "fields": [
+      "title",
+      "deal_type",
+      "country_code",
+      "sector",
+      "amount",
+      "currency",
+      "unit",
+      "amount_original"
+     ],
+     "excerpt": "Montant de l'émission : 30 milliards de F CFA"
+    },
+    {
+     "ref": "p3",
+     "document": "n07",
+     "page": 3,
+     "source_class": "primary_regulatory",
+     "fields": []
+    },
+    {
+     "ref": "p14",
+     "document": "n07",
+     "page": 14,
+     "source_class": "primary_regulatory",
+     "fields": [
+      "use_of_proceeds",
+      "use_of_proceeds_categories"
+     ],
+     "excerpt": "Financement des projets d'investissement de PISA et Refinancement d'une partie de la dette existante"
+    },
+    {
+     "ref": "p16",
+     "document": "n07",
+     "page": 16,
+     "source_class": "primary_regulatory",
+     "fields": []
+    }
+   ],
+   "participants": [
+    {
+     "role": "arranger",
+     "name": "Société Générale Capital Securities West Africa",
+     "source_ref": "p3",
+     "extraction_method": "text",
+     "page": 3,
+     "excerpt": "arrangeur principal et chef de file du syndicat de placement"
+    },
+    {
+     "role": "lead_manager",
+     "name": "Société Générale Capital Securities West Africa",
+     "source_ref": "p3",
+     "extraction_method": "text",
+     "page": 3,
+     "excerpt": "arrangeur principal et chef de file du syndicat de placement"
+    },
+    {
+     "role": "co_lead_manager",
+     "name": "CGF Bourse",
+     "source_ref": "p16",
+     "extraction_method": "text",
+     "page": 16,
+     "excerpt": "co-chefs de file CGF Bourse et UCA"
+    },
+    {
+     "role": "co_lead_manager",
+     "name": "United Capital for Africa (UCA)",
+     "source_ref": "p16",
+     "extraction_method": "text",
+     "page": 16,
+     "excerpt": "co-chefs de file CGF Bourse et UCA"
+    }
+   ]
+  },
+  {
+   "key": "D16_SAFCA_AK_2026",
+   "case": "B16",
+   "title": "Augmentation de capital Alios Finance CI / SAFCA (OA/26-02)",
+   "deal_type": "capital_increase",
+   "country_code": "CI",
+   "sector": "financial_services",
+   "use_of_proceeds": "renforcer la structure financière d'Alios Finance CI",
+   "use_of_proceeds_categories": [
+    "capital_adequacy"
+   ],
+   "sources": [
+    {
+     "ref": "p13",
+     "document": "n08",
+     "page": 13,
+     "source_class": "primary_regulatory",
+     "fields": [
+      "title",
+      "deal_type",
+      "country_code",
+      "sector"
+     ],
+     "excerpt": "Arrangeur et chef de file GEK CAPITAL"
+    },
+    {
+     "ref": "p54",
+     "document": "n08",
+     "page": 54,
+     "source_class": "primary_regulatory",
+     "fields": [
+      "use_of_proceeds",
+      "use_of_proceeds_categories"
+     ],
+     "excerpt": "vise à renforcer la structure financière d'Alios Finance CI"
+    }
+   ],
+   "participants": [
+    {
+     "role": "arranger",
+     "name": "GEK CAPITAL",
+     "source_ref": "p13",
+     "extraction_method": "text",
+     "page": 13,
+     "excerpt": "Arrangeur et chef de file GEK CAPITAL"
+    },
+    {
+     "role": "lead_manager",
+     "name": "GEK CAPITAL",
+     "source_ref": "p13",
+     "extraction_method": "text",
+     "page": 13,
+     "excerpt": "Arrangeur et chef de file GEK CAPITAL"
+    }
+   ]
+  },
+  {
+   "key": "D17_BIIC_OPV_2024",
+   "case": "B17",
+   "title": "OPV BIIC — cession par l'État du Bénin (OA/24-02)",
+   "deal_type": "share_sale_public",
+   "country_code": "BJ",
+   "sector": "financial_services",
+   "use_of_proceeds": "Mobiliser de la ressource sans endettement pour l'État",
+   "use_of_proceeds_categories": [
+    "privatisation"
+   ],
+   "sources": [
+    {
+     "ref": "p9",
+     "document": "n04",
+     "page": 9,
+     "source_class": "primary_regulatory",
+     "fields": [
+      "title",
+      "deal_type",
+      "country_code",
+      "sector"
+     ],
+     "excerpt": "ACTIONS DETENUES PAR L'ETAT DU BENIN DANS LE CAPITAL DE LA BIIC"
+    },
+    {
+     "ref": "p14",
+     "document": "n04",
+     "page": 14,
+     "source_class": "primary_regulatory",
+     "fields": []
+    },
+    {
+     "ref": "p47",
+     "document": "n04",
+     "page": 47,
+     "source_class": "primary_regulatory",
+     "fields": [
+      "use_of_proceeds",
+      "use_of_proceeds_categories"
+     ],
+     "excerpt": "Mobiliser de la ressource sans endettement pour l'État"
+    }
+   ],
+   "participants": [
+    {
+     "role": "arranger",
+     "name": "EDC Investment Corporation (EIC)",
+     "source_ref": "p14",
+     "extraction_method": "text",
+     "page": 14,
+     "excerpt": "Arrangeur et chef de file EDC Investment Corporation (EIC)"
+    },
+    {
+     "role": "lead_manager",
+     "name": "EDC Investment Corporation (EIC)",
+     "source_ref": "p14",
+     "extraction_method": "text",
+     "page": 14,
+     "excerpt": "Arrangeur et chef de file EDC Investment Corporation (EIC)"
+    },
+    {
+     "role": "selling_shareholder",
+     "name": "État du Bénin",
+     "source_ref": "p9",
+     "extraction_method": "text",
+     "page": 9,
+     "excerpt": "ACTIONS DETENUES PAR L'ETAT DU BENIN DANS LE CAPITAL DE LA BIIC"
+    }
+   ]
+  },
+  {
+   "key": "D18_CRRH_2022",
+   "case": "B18",
+   "title": "CRRH-UEMOA 6,10 % 2022-2037 — 9e emprunt (EOP/22-02)",
+   "deal_type": "corporate_bond_ape",
+   "sector": "financial_services",
+   "use_of_proceeds": "refinancement de prêts au logement en faveur des banques de l'UEMOA qui en sont actionnaires",
+   "use_of_proceeds_categories": [
+    "housing_refinancing"
+   ],
+   "notes": "« Dix (10) banques actionnaires » bénéficiaires, non nommées : aucune participation créée.",
+   "sources": [
+    {
+     "ref": "p7",
+     "document": "n09",
+     "page": 7,
+     "source_class": "primary_regulatory",
+     "fields": [
+      "title",
+      "deal_type",
+      "sector"
+     ]
+    },
+    {
+     "ref": "p14",
+     "document": "n09",
+     "page": 14,
+     "source_class": "primary_regulatory",
+     "fields": [
+      "use_of_proceeds",
+      "use_of_proceeds_categories"
+     ],
+     "excerpt": "Dix (10) banques actionnaires"
+    },
+    {
+     "ref": "p19",
+     "document": "n09",
+     "page": 19,
+     "source_class": "primary_regulatory",
+     "fields": []
+    }
+   ],
+   "participants": [
+    {
+     "role": "arranger",
+     "name": "Société Générale Capital Securities West Africa",
+     "source_ref": "p7",
+     "extraction_method": "text",
+     "page": 7,
+     "excerpt": "l'arrangeur et chef de file du syndicat de placement"
+    },
+    {
+     "role": "lead_manager",
+     "name": "Société Générale Capital Securities West Africa",
+     "source_ref": "p7",
+     "extraction_method": "text",
+     "page": 7,
+     "excerpt": "l'arrangeur et chef de file du syndicat de placement"
+    },
+    {
+     "role": "co_lead_manager",
+     "name": "Atlantique Finance",
+     "source_ref": "p19",
+     "extraction_method": "text",
+     "page": 19,
+     "excerpt": "ATLANTIQUE FINANCE (CO-CHEF DE FILE)"
+    }
+   ]
+  },
+  {
+   "key": "D20_BAOBAB_SLB_2026",
+   "case": "C20 (presse seule)",
+   "title": "Baobab CI Sustainability-Linked Bond 6,80 % 2026-2031 (EOP/26-06)",
+   "deal_type": "corporate_bond_ape",
+   "country_code": "CI",
+   "sector": "financial_services",
+   "amount": "20000000000",
+   "currency": "XOF",
+   "unit": "units",
+   "amount_original": "20 milliards FCFA",
+   "use_of_proceeds": "Les ressources levées financeront les micro, petites et moyennes entreprises dirigées par des femmes",
+   "use_of_proceeds_categories": [
+    "sme_financing",
+    "social"
+   ],
+   "sources": [
+    {
+     "ref": "eco",
+     "document": "eco_baobab",
+     "page": 1,
+     "source_class": "press_reported",
+     "fields": [
+      "title",
+      "deal_type",
+      "country_code",
+      "sector",
+      "amount",
+      "currency",
+      "unit",
+      "amount_original",
+      "use_of_proceeds",
+      "use_of_proceeds_categories"
+     ],
+     "excerpt": "Montant : 20 milliards FCFA",
+     "publisher": "Agence Ecofin",
+     "published_at": "2026-09-14",
+     "url": "https://www.agenceecofin.com/actualites-finance/1409-141527-baobab-cote-d-ivoire-lance-le-premier-sustainability-linked-bond-d-une-imf-dans-l-umoa"
+    }
+   ],
+   "participants": [
+    {
+     "role": "arranger",
+     "name": "CGF Bourse",
+     "source_ref": "eco",
+     "extraction_method": "text",
+     "page": 1,
+     "excerpt": "Chef de file et Arrangeur : CGF Bourse"
+    },
+    {
+     "role": "lead_manager",
+     "name": "CGF Bourse",
+     "source_ref": "eco",
+     "extraction_method": "text",
+     "page": 1,
+     "excerpt": "Chef de file et Arrangeur : CGF Bourse"
+    },
+    {
+     "role": "anchor_investor",
+     "name": "IFC",
+     "source_ref": "eco",
+     "extraction_method": "text",
+     "page": 1,
+     "excerpt": "Investisseur d'ancrage : IFC"
+    }
+   ]
+  },
+  {
+   "key": "D21_AFINHAB_SOCIAL_2026",
+   "case": "C21 (presse seule)",
+   "title": "AFINHAB Social Bond 2026 (EOP/26-01)",
+   "deal_type": "corporate_bond_ape",
+   "sector": "financial_services",
+   "amount": "40000000000",
+   "currency": "XOF",
+   "unit": "units",
+   "amount_original": "40 milliards FCFA",
+   "use_of_proceeds_categories": [
+    "housing_refinancing",
+    "social"
+   ],
+   "sources": [
+    {
+     "ref": "eco",
+     "document": "eco_afinhab",
+     "page": 1,
+     "source_class": "press_reported",
+     "fields": [
+      "title",
+      "deal_type",
+      "sector",
+      "amount",
+      "currency",
+      "unit",
+      "amount_original",
+      "use_of_proceeds_categories"
+     ],
+     "excerpt": "Social Bond de 40 milliards FCFA",
+     "publisher": "Agence Ecofin",
+     "published_at": "2026-07-28",
+     "url": "https://www.agenceecofin.com/actualites-finance/2807-140577-afinhab-cloture-son-emission-de-social-bond-de-40-milliards-fcfa-et-franchit-le-cap-des-100-milliards-fcfa-d-obligations-sociales"
+    }
+   ],
+   "participants": [
+    {
+     "role": "arranger",
+     "name": "SGCS",
+     "source_ref": "eco",
+     "extraction_method": "text",
+     "page": 1,
+     "excerpt": "Arrangeurs et Chefs de File : SGCS et FGI"
+    },
+    {
+     "role": "lead_manager",
+     "name": "SGCS",
+     "source_ref": "eco",
+     "extraction_method": "text",
+     "page": 1,
+     "excerpt": "Arrangeurs et Chefs de File : SGCS et FGI"
+    },
+    {
+     "role": "arranger",
+     "name": "FGI",
+     "source_ref": "eco",
+     "extraction_method": "text",
+     "page": 1,
+     "excerpt": "Arrangeurs et Chefs de File : SGCS et FGI"
+    },
+    {
+     "role": "lead_manager",
+     "name": "FGI",
+     "source_ref": "eco",
+     "extraction_method": "text",
+     "page": 1,
+     "excerpt": "Arrangeurs et Chefs de File : SGCS et FGI"
+    },
+    {
+     "role": "anchor_investor",
+     "name": "Société Générale Côte d'Ivoire",
+     "source_ref": "eco",
+     "extraction_method": "text",
+     "page": 1,
+     "excerpt": "Investisseur de référence : Société Générale Côte d'Ivoire",
+     "institution_name": "SOCIETE GENERALE COTE D'IVOIRE"
+    }
+   ]
+  },
+  {
+   "key": "D23_EMERGENCE_PLAZA_2021",
+   "case": "C23 (presse seule)",
+   "title": "Emergence Plaza S.A. 7,50 % 2021-2029 (Green Bond)",
+   "deal_type": "corporate_bond_private",
+   "country_code": "CI",
+   "sector": "real_estate",
+   "amount": "10000000000",
+   "currency": "XOF",
+   "unit": "units",
+   "amount_original": "10 milliards FCFA",
+   "use_of_proceeds": "l'emprunt servira à refinancer à hauteur de 8,21 milliards FCFA le prêt senior conclu avec NSIA Banque Côte d'Ivoire",
+   "use_of_proceeds_categories": [
+    "refinancing",
+    "green"
+   ],
+   "sources": [
+    {
+     "ref": "sika",
+     "document": "sika_emergence",
+     "page": 1,
+     "source_class": "press_reported",
+     "fields": [
+      "title",
+      "deal_type",
+      "country_code",
+      "sector",
+      "amount",
+      "currency",
+      "unit",
+      "amount_original",
+      "use_of_proceeds",
+      "use_of_proceeds_categories"
+     ],
+     "excerpt": "un \" Green Bond \" de 10 milliards FCFA, arrangé par la SGI HUDSON & Cie",
+     "publisher": "Sika Finance",
+     "published_at": "2021-07-06",
+     "url": "https://www.sikafinance.com/marches/cote-divoire-emergence-plaza-prepare-un-green-bond-de-10-milliards-fcfa_29107"
+    }
+   ],
+   "participants": [
+    {
+     "role": "arranger",
+     "name": "SGI HUDSON & Cie",
+     "source_ref": "sika",
+     "extraction_method": "text",
+     "page": 1,
+     "excerpt": "arrangé par la SGI HUDSON & Cie"
+    },
+    {
+     "role": "refinanced_lender",
+     "name": "NSIA Banque Côte d'Ivoire",
+     "source_ref": "sika",
+     "extraction_method": "text",
+     "page": 1,
+     "excerpt": "le prêt senior conclu avec NSIA Banque Côte d'Ivoire",
+     "institution_name": "NSIA BANQUE COTE D'IVOIRE"
+    }
+   ]
+  },
+  {
+   "key": "D25_CI_RACHAT_20250109",
+   "case": "D25 (gestion de la dette, sans banque)",
+   "title": "Rachat de titres publics — Côte d'Ivoire, 09/01/2025 (8 lignes RA-)",
+   "deal_type": "debt_buyback",
+   "country_code": "CI",
+   "sector": "public_finance",
+   "amount": "80507.1",
+   "currency": "XOF",
+   "unit": "millions",
+   "amount_original": "80 507,100 millions de FCFA",
+   "auction_date": "2025-01-09",
+   "value_date": "2025-01-10",
+   "sources": [
+    {
+     "ref": "p2",
+     "document": "cr_ci_ec_20250109",
+     "page": 2,
+     "source_class": "primary_market",
+     "fields": [
+      "title",
+      "deal_type",
+      "country_code",
+      "sector",
+      "amount",
+      "currency",
+      "unit",
+      "amount_original",
+      "auction_date",
+      "value_date"
+     ],
+     "excerpt": "Soumissions retenues : 80 507,100 millions de FCFA"
+    }
+   ],
+   "participants": [
+    {
+     "role": "issuer",
+     "name": "ETAT DE CÔTE D'IVOIRE",
+     "source_ref": "p2",
+     "extraction_method": "text",
+     "page": 2,
+     "excerpt": "Emetteur : ETAT DE CÔTE D'IVOIRE"
+    }
+   ]
+  }
+ ],
+ "institution_links": [
+  {
+   "from_name": "BNI FINANCES SA",
+   "link_level": "documented_bank",
+   "relation": "subsidiary",
+   "to_institution_name": "BANQUE NATIONALE D'INVESTISSEMENT",
+   "source_url": "https://www.bni.ci/groupe-bni/bni-finances",
+   "excerpt": "BNI FINANCES, filiale de la Banque Nationale d'Investissement de Côte d'Ivoire (BNI)",
+   "observed_at": "2026-10-05"
+  },
+  {
+   "from_name": "BICI BOURSE",
+   "link_level": "documented_bank",
+   "relation": "subsidiary",
+   "pct": 70,
+   "to_institution_name": "BANQUE INTERNATIONALE POUR LE COMMERCE ET L'INDUSTRIE DE LA COTE D'IVOIRE",
+   "source_url": "https://www.bicibourse.ci/nous-connaitre/bici-bourse/",
+   "excerpt": "Son capital se reparti entre BICI de Côte d'Ivoire (70,0%), BICI Sénégal (20%), SUNU ASSURANCE-VIE (5%), AXA ASSURANCES COTE D'IVOIRE (5%)",
+   "observed_at": "2026-10-05"
+  },
+  {
+   "from_name": "SOCIÉTÉ GÉNÉRALE CAPITAL SECURITIES WEST AFRICA",
+   "link_level": "documented_group_only",
+   "relation": "subsidiary",
+   "group_label": "Groupe Société Générale",
+   "source_url": "https://www.fgi-bourse.com/wp-content/uploads/2025/06/Note-dinformation_Ape-Tresor-Public-SN.pdf",
+   "excerpt": "Société Générale Capital Securities West Africa est la filiale du groupe Société Générale (note SN 06/2025, p.52)",
+   "observed_at": "2026-10-05"
+  },
+  {
+   "from_name": "CORIS BOURSE",
+   "link_level": "documented_group_only",
+   "relation": "subsidiary",
+   "group_label": "Groupe Coris",
+   "source_url": "https://coris-bourse.com/en/coris-bourse/presentation",
+   "excerpt": "Filiale du groupe Coris, Coris Bourse…",
+   "observed_at": "2026-10-05"
+  },
+  {
+   "from_name": "ATLANTIQUE FINANCE",
+   "link_level": "documented_group_only",
+   "relation": "subsidiary",
+   "group_label": "Groupe Banque Centrale Populaire (BCP) du Maroc",
+   "source_url": "https://www.atlantiquefinance.net/presentation/",
+   "excerpt": "filiale du Groupe Banque Centrale Populaire (BCP) du Maroc",
+   "observed_at": "2026-10-05"
+  }
+ ]
+}

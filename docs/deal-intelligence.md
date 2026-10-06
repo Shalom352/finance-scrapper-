@@ -219,3 +219,26 @@ Implémente les décisions D1 à D5 du 05/10/2026 (`audits/ape_amf/07_propositio
   n'attribue aucune transaction à une banque. Source, citation et date d'observation obligatoires ;
   statut `needs_review` par défaut.
 - Le downgrade de `0016` est refusé tant que le nouveau vocabulaire ou les nouvelles colonnes sont utilisés.
+
+## 10. Pilote (Phase 19) — saisie contrôlée de deals réels
+
+Protocole : `audits/ape_amf/08_pilote.md`. Manifeste : `backend/pilot/build_manifest.py` → `backend/pilot/pilot_manifest.json`
+(13 deals dont la référence est établie dans l'audit, 15 documents, 5 liens SGI → banque).
+
+```bash
+cd backend
+python pilot/build_manifest.py                      # régénère le manifeste
+DATABASE_URL=postgresql+asyncpg://…/umoa_pilot \
+python -m app.deals.pilot_load --manifest pilot/pilot_manifest.json --expect-db umoa_pilot \
+       --files ../audits/ape_amf --actor <identifiant> --dry-run   # puis sans --dry-run
+```
+
+- Base dédiée obligatoire (`--expect-db`), jamais `umoa_banking`, révision Alembic `0016` minimum.
+- Sources et documents enregistrés explicitement depuis le manifeste (rapprochés par URL). Avec `--files`,
+  la copie locale donne le SHA-256 et le nombre de pages, et **chaque citation lue dans le texte est
+  recherchée sur sa page** : une seule citation introuvable refuse tout le chargement (58 citations
+  vérifiées sur le manifeste livré). Les lectures `visual_logo` / `visual_scan` sont laissées à la revue humaine.
+- Banques rattachées **par nom officiel exact** uniquement ; sinon participant « hors répertoire ».
+  Un lien `documented_bank` dont la banque n'est pas trouvée exactement n'est pas créé.
+- Tout passe par l'importeur Phase 13 : `needs_review`, provenance par champ, événement d'audit.
+  Idempotent (`ingestion_key = pilot:<clé>`).
