@@ -156,6 +156,8 @@ Voir [docs/development.md](./docs/development.md).
 - [Modèle de données](./docs/data-model.md)
 - [Qualité des données & Review Center](./docs/data-quality.md)
 - [Deal Intelligence](./docs/deal-intelligence.md)
+- [Moteur de découverte (Phase 15)](./docs/discovery-engine.md)
+- [Audit AMF-UMOA, SGI, presse (05/10/2026)](./audits/ape_amf/00_RAPPORT.md)
 - [Développement](./docs/development.md)
 - [Déploiement, sauvegarde, limites connues](./docs/deployment.md)
 - [Règles de développement](./docs/dev-rules.md)

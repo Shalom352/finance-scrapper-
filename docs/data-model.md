@@ -45,7 +45,7 @@ Journal unique, append-only (aucun chemin de code ne met à jour ni ne supprime 
 
 Index : `(financial_data_id, created_at)`, `(deal_id, created_at)`.
 
-## 4. Transactions (0007) — voir `deal-intelligence.md`
+## 4. Transactions (0007, 0014, 0015) — voir `deal-intelligence.md`
 
 `deals`, `deal_sources`, `deal_field_sources`, `deal_participants`, `deal_duplicate_candidates`.
 CHECK notables : montant > 0 si présent, devise `^[A-Z]{3}$`, maturité > 0, différé ≥ 0, types /
@@ -63,6 +63,15 @@ de doublon ⇒ `decided_by` + `decided_at`, une transaction n'est jamais rattach
 | `0005_financial_data_explorer_indexes` | 3 index composites | oui |
 | `0006_financial_data_review_events` | journal d'audit | oui |
 | `0007_deal_intelligence` | transactions + journal unique + `verified_by` 255 | oui (refusé s'il existe des événements de transaction : aucune perte silencieuse) |
+| `0008_automated_ingestion` | journal `ingestion_runs` (exécutions automatiques 2×/jour et manuelles) | oui |
+| `0009_unified_financial_intelligence` | Entity Hub : `entities`, `entity_relationships` ; `institutions.entity_id` ; `financial_data.entity_id`, `observation_level`, `consolidation_scope` ; `metric_definitions.sector`, `metric_family` | oui |
+| `0010_seed_markets_and_public_debt` | sources de marché (BRVM, UMOA-Titres, AMF-UMOA, DC/BR), entités de marché et 8 Trésors, métriques marché / dette souveraine | oui |
+| `0011_entity_source_discovery` | moteur de découverte : `reference_universes`, `reference_universe_members`, `entity_identifiers`, `entity_names`, `entity_sources`, `document_entities`, `discovery_runs`, `discovery_rounds`, `discovery_gaps` ; cycle de vie des sources ; `documents.entity_id` | oui |
+| `0012_scope_evidence_and_document_scope` | preuve de périmètre (`scope_evidence_class`, `scope_reason_code`, `quality_flags`…) ; `documents.document_scope` | oui |
+| `0013_institutional_discovery` | taxonomie des manques Phase 17 ; `documents.text_layer_status`, `file_format`, `reporting_year` | oui |
+| `0014_public_debt_instruments` | titres publics dans `deals` (`instrument_type`, `isin`, dates d'adjudication / valeur / échéance, `yield_rate`, `ingestion_key`) ; `deal_participants.entity_id` | refusé tant qu'une transaction utilise ces colonnes |
+| `0015_deal_validation_flags` | `deals.validation_flags` (JSONB) | refusé tant qu'une transaction porte un drapeau |
 
 Aucune migration n'est destructive à la montée. `alembic check` : aucun écart entre les
-modèles et le schéma migré.
+modèles et le schéma migré (vérifié jusqu'à `0015`, le 06/10/2026). Tables de découverte et Entity Hub :
+voir `discovery-engine.md`.

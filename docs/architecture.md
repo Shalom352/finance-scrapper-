@@ -299,6 +299,17 @@ L'architecture est conçue pour supporter :
 
 Aucune reconstruction architecturale majeure ne sera nécessaire.
 
-> État au terme de la Phase 13 (dernière phase) : le suivi des transactions de financement est
-> livré sous forme de *Deal Intelligence* (import structuré, sans extraction automatique). Les
-> éléments V2/V3 ci-dessus non livrés restent des pistes, pas des engagements.
+> État au 06/10/2026 (phases 0 à 18 et Lot 0) :
+> - Phase 13 : *Deal Intelligence* (import structuré) ;
+> - Phase 14 : Entity Hub (`entities`, `entity_relationships`), sources de marché BRVM / UMOA-Titres ;
+> - Phase 15 : moteur de découverte des entités et sources à partir des listes officielles BCEAO /
+>   CB-UMOA (voir `discovery-engine.md`) ;
+> - Phases 16-17 : preuve de périmètre individuel / consolidé, documents propres aux établissements ;
+> - Phase 18 : résultats d'adjudication UMOA-Titres (OAT) → transactions `sovereign_bond`
+>   (`python -m app.deals.umoa_titres_run`, voir `deal-intelligence.md` §7) ;
+> - Lot 0 : garde de base cible (base historique `umoa_banking` refusée, révision Alembic ≥ 0015) et
+>   verrou d'exécution unique (`app/deals/db_guard.py`, `app/deals/run_lock.py`).
+>
+> Prochaine étape validée : modèle de rôles bancaires et pilote sur 28 transactions réelles
+> (`audits/ape_amf/07_proposition.md`, `audits/ape_amf/08_pilote.md`). Les éléments V2/V3 ci-dessus
+> non livrés restent des pistes, pas des engagements.
