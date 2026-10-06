@@ -49,7 +49,21 @@ export default async function DashboardPage({
   ]);
 
   const availableYears = years ?? [];
-  const year = resolveYear(parseYearParam(yearParam), availableYears);
+  const requestedYear = parseYearParam(yearParam);
+  let year = resolveYear(requestedYear, availableYears);
+  // No explicit year: the newest year whose UMOA total assets are actually computable
+  // (a year holding only values still to review has no admissible aggregate).
+  if (requestedYear === null || !availableYears.includes(requestedYear)) {
+    for (const y of [...availableYears].sort((a, b) => b - a)) {
+      const agg = await getAggregations({ year: y, metric_code: "total_actifs", scope: "umoa" })
+        .then((res) => res.find((r) => r.metric_code === "total_actifs" && r.year === y) ?? null)
+        .catch(() => null);
+      if (agg && agg.total_value !== null) {
+        year = y;
+        break;
+      }
+    }
+  }
 
   // One aggregation per metric; a failed or absent aggregation stays null.
   const aggregations: Record<string, SectorAggregation | null> = {};

@@ -98,7 +98,10 @@ class RankingService:
         data_scope: str,
         institution_ids: list[str],
     ) -> list[int]:
-        """Years holding at least one non-rejected value of the base metric, newest first."""
+        """Years holding at least one ADMISSIBLE value of the base metric, newest first.
+
+        needs_review values never enter a ranking: a year holding only such values is not a default.
+        """
         if not institution_ids:
             return []
         query = select(distinct(FinancialData.period_year)).where(
@@ -107,7 +110,7 @@ class RankingService:
             FinancialData.scope == data_scope,
             FinancialData.consolidation_scope == data_scope,
             FinancialData.observation_level == RANKED_OBSERVATION_LEVEL,
-            FinancialData.status != "rejected",
+            FinancialData.status.notin_(("rejected", "needs_review")),
             FinancialData.value_normalized.isnot(None),
             FinancialData.deleted_at.is_(None),
             FinancialData.institution_id.in_(institution_ids),

@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.db.text_search import fuzzy_contains
 from app.models.country import Country
 from app.models.institution import Institution
 from app.schemas.common import PaginatedResponse
@@ -26,9 +27,9 @@ async def get_institutions(
     query = select(Institution).where(Institution.deleted_at.is_(None))
 
     if search:
-        term = f"%{search.lower()}%"
         query = query.where(
-            Institution.name_official.ilike(term) | Institution.name_commercial.ilike(term)
+            fuzzy_contains(Institution.name_official, search)
+            | fuzzy_contains(Institution.name_commercial, search)
         )
 
     if country_code:

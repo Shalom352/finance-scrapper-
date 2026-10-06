@@ -6,6 +6,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db_session
+from app.db.text_search import fuzzy_contains
 from app.models.banking_group import BankingGroup
 from app.models.document import Document
 from app.models.institution import Institution
@@ -34,7 +35,6 @@ async def search(
     db: AsyncSession = Depends(get_db_session),
 ) -> SearchResults:
     search_types = types.split(",") if types else ["institutions", "banking_groups", "sources", "documents"]
-    search_term = f"%{q}%"
 
     results = SearchResults(
         query=q,
@@ -51,8 +51,8 @@ async def search(
         stmt = select(Institution).where(
             Institution.deleted_at.is_(None),
             or_(
-                Institution.name_official.ilike(search_term),
-                Institution.name_commercial.ilike(search_term)
+                fuzzy_contains(Institution.name_official, q),
+                fuzzy_contains(Institution.name_commercial, q)
             )
         ).limit(page_size).offset(offset)
         res = await db.execute(stmt)
@@ -64,8 +64,8 @@ async def search(
         stmt = select(BankingGroup).where(
             BankingGroup.deleted_at.is_(None),
             or_(
-                BankingGroup.name.ilike(search_term),
-                BankingGroup.short_name.ilike(search_term)
+                fuzzy_contains(BankingGroup.name, q),
+                fuzzy_contains(BankingGroup.short_name, q)
             )
         ).limit(page_size).offset(offset)
         res = await db.execute(stmt)
@@ -77,9 +77,9 @@ async def search(
         stmt = select(Source).where(
             Source.deleted_at.is_(None),
             or_(
-                Source.name.ilike(search_term),
-                Source.short_name.ilike(search_term),
-                Source.publisher.ilike(search_term)
+                fuzzy_contains(Source.name, q),
+                fuzzy_contains(Source.short_name, q),
+                fuzzy_contains(Source.publisher, q)
             )
         ).limit(page_size).offset(offset)
         res = await db.execute(stmt)
@@ -90,7 +90,7 @@ async def search(
     if "documents" in search_types:
         stmt = select(Document).where(
             Document.deleted_at.is_(None),
-            Document.title.ilike(search_term)
+            fuzzy_contains(Document.title, q)
         ).limit(page_size).offset(offset)
         res = await db.execute(stmt)
         docs = res.scalars().all()

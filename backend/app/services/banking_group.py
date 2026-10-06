@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.db.text_search import fuzzy_contains
 from app.models.banking_group import BankingGroup
 from app.schemas.banking_group import BankingGroupList, BankingGroupRead
 from app.schemas.common import PaginatedResponse
@@ -20,9 +21,8 @@ async def get_banking_groups(
     query = select(BankingGroup).where(BankingGroup.deleted_at.is_(None))
 
     if search:
-        term = f"%{search.lower()}%"
         query = query.where(
-            BankingGroup.name.ilike(term) | BankingGroup.short_name.ilike(term)
+            fuzzy_contains(BankingGroup.name, search) | fuzzy_contains(BankingGroup.short_name, search)
         )
 
     query = query.order_by(BankingGroup.name)

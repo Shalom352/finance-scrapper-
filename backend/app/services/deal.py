@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.constants.deals import SECONDARY_SOURCE_CLASSES
+from app.db.text_search import fuzzy_contains
 from app.models.country import Country
 from app.models.deal import Deal, DealDuplicateCandidate, DealParticipant, DealSource
 from app.models.review_event import FinancialDataReviewEvent
@@ -90,7 +91,7 @@ def _participant_filter(*, institution_id: str | None = None, name: str | None =
     if institution_id:
         q = q.where(DealParticipant.institution_id == institution_id)
     if name:
-        q = q.where(DealParticipant.participant_name.ilike(f"%{_escape_like(name)}%", escape="\\"))
+        q = q.where(fuzzy_contains(DealParticipant.participant_name, name))
     return Deal.id.in_(q)
 
 
