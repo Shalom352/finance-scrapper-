@@ -103,3 +103,17 @@ logs/
 # ----------------------------
 backups/
 *.dump
+
+# ----------------------------
+# Local run artefacts (downloaded documents, run reports)
+# ----------------------------
+backend/data/
+run*_report.json
+
+# ----------------------------
+# Audits: only the written reports (*.md) are versioned; raw data, PDFs,
+# press copies and throw-away scripts stay local
+# ----------------------------
+audits/**
+!audits/**/
+!audits/**/*.md
