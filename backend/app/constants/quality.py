@@ -27,6 +27,9 @@ SCOPE_REASON_CODES = (
     "scope_conflicting_mentions",
     "document_not_machine_readable",
     "scope_not_applicable",  # market / sovereign observations (consolidation_scope = not_applicable)
+    # Phase 22: an institution document whose value equals the BCEAO fascicle value (same entity,
+    # metric, year) carries the fascicle's per-entity scope — class C, never stronger than the fascicle.
+    "scope_corroborated_by_regulatory_fascicle",
 )
 
 # Documented knowledge (NOT documentary proof): the BCEAO fascicle publishes one balance sheet
@@ -43,6 +46,7 @@ QUALITY_FLAGS = (
     "cross_edition_mismatch",  # same entity / metric / year differs between two editions
     "unit_or_currency_not_stated",  # the statement does not state its unit / currency: not normalized
     "cross_document_mismatch",  # same entity / metric / year differs between two institution documents
+    "unit_corroborated",  # informational: unit / scope established by agreement with the BCEAO fascicle
     "unit_reread",  # informational: unit corrected by a later re-read of the document (before -> after in notes)
 )
 

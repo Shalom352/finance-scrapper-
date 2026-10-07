@@ -3,7 +3,10 @@ Re-read the stated unit of already-extracted institution statements (dry run by 
 
     python -m app.validation.reread_units --expect-db <db> --storage-root data/discovery_e2e [--apply]
 
-Corrects only rows that are not human-protected; never changes a status or a raw value.
+Step 1 re-reads the unit each institution statement states. Step 2 compares rows still lacking a
+unit or a scope proof with the BCEAO fascicle: agreement within the fascicle's rounding establishes
+the unit and the per-entity scope (class C). Corrects only rows that are not human-protected; never
+changes a status or a raw value.
 """
 from __future__ import annotations
 
@@ -32,7 +35,7 @@ async def main_async() -> int:
     from app.deals.db_guard import TargetDatabaseError, verify_target_database
     from scraping.storage.manager import StorageManager
     from scraping.universe.documents import DocumentRegistrar
-    from scraping.universe.unit_repair import reread_units
+    from scraping.universe.unit_repair import corroborate_with_fascicle, reread_units
 
     engine.sync_engine.echo = False
     registrar = DocumentRegistrar(StorageManager(args.storage_root or settings.documents_storage_path))
@@ -42,10 +45,12 @@ async def main_async() -> int:
                                                     url_source=database_url_source(settings))
             print(verified.message(), flush=True)
             report = await reread_units(db, registrar, dry_run=not args.apply)
+            corroboration = await corroborate_with_fascicle(db, dry_run=not args.apply)
     except TargetDatabaseError as err:
         print(err, flush=True)
         return 2
-    print(json.dumps({"dry_run": not args.apply, **report.summary()}, indent=2, ensure_ascii=False, default=str))
+    print(json.dumps({"dry_run": not args.apply, "reread": report.summary(),
+                      "fascicle_corroboration": corroboration.summary()}, indent=2, ensure_ascii=False, default=str))
     return 0
 
 

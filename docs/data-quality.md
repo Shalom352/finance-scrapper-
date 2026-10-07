@@ -136,3 +136,16 @@ efface le validateur, bloque toute nouvelle validation automatique de cette lign
 **Limite** : « quasi infaillible » ne veut pas dire infaillible. Une valeur correctement imprimée mais mal
 rattachée à une ligne du tableau (bonne valeur, mauvais poste) n'est détectée que si elle viole une règle
 comptable ou temporelle ; c'est pourquoi une source unique ne donne que `reviewed`.
+
+## 10. Corroboration par le fascicule BCEAO (Phase 22)
+
+`python -m app.validation.reread_units --expect-db <db> --storage-root <dossier> [--apply]` (simulation par défaut)
+
+1. **Relecture des unités** : chaque état financier d'établissement est relu ; l'unité déclarée
+   (« en millions (MXOF) », « en millions FCFA »…) remplace l'unité stockée si elle diffère. Une mention
+   « par action (en F CFA) » ne vaut que pour sa ligne.
+2. **Corroboration** : une ligne sans unité déclarée ou sans preuve de périmètre est comparée au fascicule
+   BCEAO (même établissement, indicateur, exercice). Accord à l'arrondi près (± 2,5 M ou 0,05 %) →
+   l'unité (la seule puissance de 1000 qui concorde) et le périmètre individuel (classe C, code
+   `scope_corroborated_by_regulatory_fascicle`) sont établis. Un désaccord ne change rien et est listé.
+   Ni le statut, ni la valeur brute ne sont modifiés ; une décision humaine n'est jamais touchée.
