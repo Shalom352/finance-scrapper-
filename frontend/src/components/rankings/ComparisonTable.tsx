@@ -37,10 +37,10 @@ export function ComparisonTable({
   const reference = result.rows[0]?.institution_name ?? "";
 
   return (
-    <div className="rounded-2xl border border-gray-800 bg-gray-900/30 overflow-x-auto">
+    <div className="rounded-2xl border border-gray-200 bg-white overflow-x-auto">
       <table className="w-full text-left text-xs border-collapse" data-testid="comparison-table">
         <thead>
-          <tr className="border-b border-gray-800 bg-gray-900/60 text-gray-400 font-semibold uppercase tracking-wider">
+          <tr className="border-b border-gray-200 bg-gray-50/80 text-gray-500 font-semibold uppercase tracking-wider">
             <th className="py-3 px-4">{t("institution")}</th>
             <th className="py-3 px-4">{t("country")}</th>
             <th className="py-3 px-4 text-right">{t("value")}</th>
@@ -49,20 +49,20 @@ export function ComparisonTable({
             <th className="py-3 px-4 text-center">{t("provenance")}</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-800/60">
+        <tbody className="divide-y divide-gray-100">
           {result.rows.map((row) => {
             const diff = differenceFromReference(result, row);
             return (
               <tr key={row.institution_id} data-testid="comparison-row">
-                <td className="py-3 px-4 font-semibold text-gray-200">{row.institution_name}</td>
-                <td className="py-3 px-4 text-gray-400">{row.country_code ? labels.country(null, row.country_code) : MISSING}</td>
-                <td className="py-3 px-4 text-right font-bold text-white" data-testid="comparison-value">
+                <td className="py-3 px-4 font-semibold text-gray-800">{row.institution_name}</td>
+                <td className="py-3 px-4 text-gray-500">{row.country_code ? labels.country(null, row.country_code) : MISSING}</td>
+                <td className="py-3 px-4 text-right font-bold text-gray-900" data-testid="comparison-value">
                   {formatValue(row.value, result.unit, row.currency)}
                   {row.value === null && row.reason && (
                     <span className="block text-[11px] font-normal text-gray-500">{reason(row.reason)}</span>
                   )}
                 </td>
-                <td className="py-3 px-4 text-right text-gray-300" data-testid="comparison-diff">
+                <td className="py-3 px-4 text-right text-gray-700" data-testid="comparison-diff">
                   {diff === null ? MISSING : `${diff > 0 ? "+" : ""}${formatValue(diff, result.unit, row.currency)}`}
                 </td>
                 <td className="py-3 px-4 text-center">
@@ -72,7 +72,7 @@ export function ComparisonTable({
                   {row.data_id || row.provenance.length > 0 ? (
                     <button
                       onClick={() => onProvenance(row)}
-                      className="p-1 px-2 rounded-lg bg-gray-800 hover:bg-emerald-600 text-gray-300 hover:text-white text-xs"
+                      className="p-1 px-2 rounded-lg bg-gray-100 hover:bg-emerald-600 text-gray-700 hover:text-white text-xs"
                       title={t("provenance")}
                     >
                       🔍
@@ -93,12 +93,12 @@ export function ComparisonTable({
 /** Not computable for this indicator: explicit status and reason, no numeric line at all. */
 function NotSupportedCard({ title, reason, testId }: { title: string; reason: string; testId: string }) {
   return (
-    <div className="p-4 rounded-2xl border border-gray-800 bg-gray-900/40 text-xs space-y-1.5" data-testid={testId}>
+    <div className="p-4 rounded-2xl border border-gray-200 bg-white text-xs space-y-1.5" data-testid={testId}>
       <div className="flex items-center justify-between">
-        <span className="font-bold text-gray-200">{title}</span>
+        <span className="font-bold text-gray-800">{title}</span>
         <StatusBadge status="unavailable" size="sm" />
       </div>
-      <p className="text-[11px] text-amber-400/90" data-testid="not-supported-reason">
+      <p className="text-[11px] text-amber-700" data-testid="not-supported-reason">
         {reason}
       </p>
     </div>
@@ -122,26 +122,26 @@ export function SectorComparisonCard({ result, institutionName }: { result: Sect
   }
 
   return (
-    <div className="p-4 rounded-2xl border border-gray-800 bg-gray-900/40 text-xs space-y-1.5" data-testid="sector-card">
+    <div className="p-4 rounded-2xl border border-gray-200 bg-white text-xs space-y-1.5" data-testid="sector-card">
       <div className="flex items-center justify-between">
-        <span className="font-bold text-gray-200">{inst?.institution_name ?? MISSING}</span>
+        <span className="font-bold text-gray-800">{inst?.institution_name ?? MISSING}</span>
         <StatusBadge status={result.status} size="sm" />
       </div>
-      <div className="flex justify-between text-gray-400">
+      <div className="flex justify-between text-gray-500">
         <span>{t("institution_value")}</span>
-        <span className="text-gray-200">{fmt.compact(inst?.value, inst?.currency)}</span>
+        <span className="text-gray-800">{fmt.compact(inst?.value, inst?.currency)}</span>
       </div>
-      <div className="flex justify-between text-gray-400">
+      <div className="flex justify-between text-gray-500">
         <span>{t("sector_total")}</span>
-        <span className="text-gray-200">{fmt.compact(result.sector_total, result.sector_currency)}</span>
+        <span className="text-gray-800">{fmt.compact(result.sector_total, result.sector_currency)}</span>
       </div>
-      <div className="flex justify-between text-gray-400">
+      <div className="flex justify-between text-gray-500">
         <span>{t("share")}</span>
-        <span className="font-bold text-emerald-400" data-testid="sector-share">
+        <span className="font-bold text-emerald-700" data-testid="sector-share">
           {fmt.percent(result.share_percent, 2)}
         </span>
       </div>
-      {result.reason && <p className="text-[11px] text-amber-400/90">{reason(result.reason)}</p>}
+      {result.reason && <p className="text-[11px] text-amber-700">{reason(result.reason)}</p>}
     </div>
   );
 }
@@ -156,28 +156,28 @@ export function CountryComparisonCard({ result, countryName }: { result: Country
   }
 
   return (
-    <div className="p-4 rounded-2xl border border-gray-800 bg-gray-900/40 text-xs space-y-1.5" data-testid="country-card">
+    <div className="p-4 rounded-2xl border border-gray-200 bg-white text-xs space-y-1.5" data-testid="country-card">
       <div className="flex items-center justify-between">
-        <span className="font-bold text-gray-200">
+        <span className="font-bold text-gray-800">
           {countryName} {result.period_year !== null ? `(${result.period_year})` : ""}
         </span>
         <StatusBadge status={result.status} size="sm" />
       </div>
-      <div className="flex justify-between text-gray-400">
+      <div className="flex justify-between text-gray-500">
         <span>{t("country_total")}</span>
-        <span className="text-gray-200">{fmt.compact(result.country_total, result.currency)}</span>
+        <span className="text-gray-800">{fmt.compact(result.country_total, result.currency)}</span>
       </div>
-      <div className="flex justify-between text-gray-400">
+      <div className="flex justify-between text-gray-500">
         <span>{t("umoa_total")}</span>
-        <span className="text-gray-200">{fmt.compact(result.umoa_total, result.currency)}</span>
+        <span className="text-gray-800">{fmt.compact(result.umoa_total, result.currency)}</span>
       </div>
-      <div className="flex justify-between text-gray-400">
+      <div className="flex justify-between text-gray-500">
         <span>{t("share")}</span>
-        <span className="font-bold text-emerald-400" data-testid="country-share">
+        <span className="font-bold text-emerald-700" data-testid="country-share">
           {fmt.percent(result.share_percent, 2)}
         </span>
       </div>
-      {result.reason && <p className="text-[11px] text-amber-400/90">{reason(result.reason)}</p>}
+      {result.reason && <p className="text-[11px] text-amber-700">{reason(result.reason)}</p>}
     </div>
   );
 }

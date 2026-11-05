@@ -40,6 +40,9 @@ class FinancialDataExplorerItem(FinancialDataList):
     document_id: str | None = None
     document_title: str | None = None
     page_number: int | None = None
+    scope_evidence_class: str | None = None
+    scope_reason_code: str | None = None
+    scope_evidence: str | None = None
     # authoritative | superseded | conflict | needs_review | rejected | missing_value
     qualification: str | None = None
     # For a superseded row: the authoritative observation of the same key.

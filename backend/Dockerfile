@@ -16,7 +16,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tesseract-ocr tesseract-ocr-fra tesseract-ocr-eng \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install -r requirements.txt
 
 RUN groupadd --system app && useradd --system --gid app --home-dir /app app \
     && mkdir -p /app/data/downloads && chown -R app:app /app/data

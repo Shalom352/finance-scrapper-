@@ -99,5 +99,7 @@ class DocumentRegistrar:
     def read_bytes(self, document: Document) -> bytes | None:
         if not document.file_hash:
             return None
-        path = self.storage.get_absolute_path(document.file_hash)
+        # The stored extension follows the original file (html, json...): use it when recorded.
+        ext = document.storage_path.rsplit(".", 1)[-1] if document.storage_path and "." in document.storage_path else "pdf"
+        path = self.storage.get_absolute_path(document.file_hash, ext)
         return path.read_bytes() if path.is_file() else None

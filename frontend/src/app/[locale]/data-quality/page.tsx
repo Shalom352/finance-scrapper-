@@ -90,19 +90,19 @@ function DataQualityContent() {
   return (
     <div className="space-y-6 animate-fade-in pb-12">
       <div>
-        <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">{t("title")}</h1>
-        <p className="text-xs text-gray-400 mt-1">{t("subtitle")}</p>
+        <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">{t("title")}</h1>
+        <p className="text-xs text-gray-500 mt-1">{t("subtitle")}</p>
       </div>
 
       <IngestionStatusBanner />
 
       {counts && <SummaryCounts counts={counts} />}
 
-      <div role="tablist" aria-label={t("title")} className="flex gap-2" data-testid="dq-tabs">
+      <div role="tablist" aria-label={t("title")} className="flex gap-2" data-testid="dq-tabs" data-guide="data-quality">
         {(["observations", "deals"] as const).map((k) => (
           <button key={k} type="button" role="tab" aria-selected={tab === k} data-testid={`dq-tab-${k}`}
             onClick={() => set({ tab: k === "deals" ? "deals" : null, page: null })}
-            className={`px-3 py-1.5 rounded-lg border text-xs font-semibold ${tab === k ? "border-emerald-500 text-emerald-300 bg-emerald-500/10" : "border-gray-800 text-gray-400 hover:text-gray-200"}`}>
+            className={`min-h-10 px-3 py-1.5 rounded-lg border text-xs font-semibold ${tab === k ? "border-emerald-500 text-emerald-700 bg-emerald-50" : "border-gray-200 text-gray-500 hover:text-gray-800"}`}>
             {t(`tabs.${k}`)}
           </button>
         ))}
@@ -135,7 +135,7 @@ function DataQualityContent() {
             <EmptyState title={t("empty_title")} description={t("empty_hint")} icon="✅" />
           ) : (
             <section className="space-y-2">
-              <p className="text-xs text-gray-400" data-testid="dq-queue-count">
+              <p className="text-xs text-gray-500" data-testid="dq-queue-count">
                 {t("count", { total: result.data.total })}
               </p>
               <ExplorerTable

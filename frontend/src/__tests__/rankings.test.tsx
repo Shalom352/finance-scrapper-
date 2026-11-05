@@ -145,9 +145,11 @@ describe("rank history", () => {
 
   it("shows the observed rank per year and — without an invented rank", () => {
     const { container } = renderWithIntl(<RankHistoryTable history={history} unit="XOF" />);
-    const rows = screen.getAllByTestId("history-row");
-    expect(rows[0].textContent).toContain(MISSING);
-    expect(rows[1].textContent).toContain("4");
+    const rows = screen.getAllByTestId("history-row"); // newest year first by default
+    expect(rows[0].textContent).toMatch(/^2023/);
+    expect(rows[0].textContent).toContain("4");
+    expect(rows[1].textContent).toMatch(/^2022/);
+    expect(rows[1].textContent).toContain(MISSING);
     expect(container.textContent).not.toMatch(/amélioration|dégradation|performance|improv|declin/i);
   });
 });

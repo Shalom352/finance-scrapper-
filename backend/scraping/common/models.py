@@ -45,6 +45,7 @@ class DownloadResult:
     duration_seconds: float = 0.0
     retry_count: int = 0
     error_message: str | None = None
+    is_duplicate: bool = False
 
 
 @dataclass

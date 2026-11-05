@@ -120,7 +120,7 @@ async def _seed(url: str, storage: Path) -> dict[str, str]:
         }
         db.add_all(rows.values())
         await db.commit()
-        ids = {k: v.id for k, v in rows.items()} | {"bank": bank.id, "d1": d1.id, "d2": d2.id, "s1": s1.id,
+        ids = {k: v.id for k, v in rows.items()} | {"bank": bank.id, "d1": d1.id, "d2": d2.id, "d3": d3.id, "s1": s1.id,
                                                     "s2": s2.id}
     async with maker() as db:
         base = {"deal_type": "sovereign_bond", "country_code": "CI"}
@@ -326,3 +326,47 @@ async def test_owner_can_promote_single_source_rows_to_verified(maker, pg_db, st
     assert got[i["pnb"]].status == "needs_review" and got[i["pnb"]].auto_validation_blocked
     assert got[i["equity"]].validation_method == "human"
     _ = ACTOR
+
+
+@pytest.mark.asyncio
+async def test_two_documents_of_one_source_are_not_a_corroboration(maker, pg_db):
+    """Audit 22/10/2026: UMOA-Titres gives two documents (results PDF + issue page) of ONE source; 580 deals
+    were "verified" on that basis. Corroboration needs two sources; a deal verified by the older rule
+    goes back to reviewed, with its audit event."""
+    import json
+
+    from sqlalchemy import select
+
+    from app.models.deal import Deal
+    from app.models.review_event import FinancialDataReviewEvent
+    from scraping.deals.importer import import_file
+    from scraping.validation.automatic import ACTOR, validate_deals
+
+    i = pg_db["ids"]
+    record = {"deal_type": "sovereign_bond", "country_code": "CI", "title": "OAT une source",
+              "ingestion_key": "umoa_titres:CI:ADJ-9:CI0000000009:2025-02-10",
+              "sources": [{"ref": "pdf", "document_id": i["d1"], "source_id": i["s1"], "page": 1,
+                           "fields": ["title", "deal_type", "country_code"]},
+                          {"ref": "page", "document_id": i["d3"], "source_id": i["s1"], "page": 1, "fields": []}],
+              "participants": [{"role": "issuer", "name": "ETAT", "source_ref": "pdf"}]}
+    async with maker() as db:
+        deal_id = (await import_file(db, "one.json", json.dumps([record]), actor="analyst-1")).created_ids[0]
+    async with maker() as db:
+        await validate_deals(db)
+    got = await rows(maker, Deal, [deal_id])
+    assert (got[deal_id].status, got[deal_id].verified_by) == ("reviewed", None)
+
+    async with maker() as db:  # as left by the former rule
+        deal = await db.get(Deal, deal_id)
+        deal.status, deal.validation_method, deal.verified_by = "verified", "automatic", ACTOR
+        deal.verified_at = deal.updated_at
+        await db.commit()
+    async with maker() as db:
+        await validate_deals(db)
+    got = await rows(maker, Deal, [deal_id])
+    assert (got[deal_id].status, got[deal_id].validation_method, got[deal_id].verified_by) == \
+        ("reviewed", "automatic", None)
+    async with maker() as db:
+        last = (await db.execute(select(FinancialDataReviewEvent).where(FinancialDataReviewEvent.deal_id == deal_id)
+                                 .order_by(FinancialDataReviewEvent.created_at.desc()))).scalars().first()
+    assert (last.action, last.previous_status, last.new_status) == ("auto_validate", "verified", "reviewed")

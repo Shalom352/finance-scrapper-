@@ -29,7 +29,8 @@ export async function generateMetadata({
   const t = await getTranslations({ locale, namespace: "metadata" });
 
   return {
-    title: t("title"),
+    // Each section layout gives its own name: "Transactions — UMOA Banking Intelligence".
+    title: { default: t("title"), template: `%s — ${t("title")}` },
     description: t("description"),
     keywords: t("keywords").split(", "),
     authors: [{ name: "UMOA Banking Intelligence" }],
@@ -54,8 +55,8 @@ export default async function LocaleLayout({
   const messages = await getMessages();
 
   return (
-    <html lang={locale} className="dark">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-950 text-gray-100`}>
+    <html lang={locale} className="light">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#f8fafc] text-gray-900`}>
         <NextIntlClientProvider messages={messages}>
           <Shell>{children}</Shell>
         </NextIntlClientProvider>

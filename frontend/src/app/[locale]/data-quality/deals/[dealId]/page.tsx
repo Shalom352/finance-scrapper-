@@ -48,7 +48,7 @@ function DealReviewContent({ dealId }: { dealId: string }) {
   }, [dealId, reload]);
 
   const back = (
-    <Link href="/data-quality?tab=deals" className="text-xs text-emerald-300 hover:underline" data-testid="deal-review-back">
+    <Link href="/data-quality?tab=deals" className="inline-flex items-center min-h-10 text-xs text-emerald-700 hover:underline" data-testid="deal-review-back">
       ← {t("back")}
     </Link>
   );
@@ -79,19 +79,19 @@ function DealReviewContent({ dealId }: { dealId: string }) {
     <div className="space-y-6 animate-fade-in pb-12">
       {back}
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-2xl font-black text-white tracking-tight">
+        <h1 className="text-2xl font-black text-gray-900 tracking-tight">
           {t("title")} — {deal.title}
         </h1>
-        <Link href={`/deals/${deal.id}`} className="text-xs text-emerald-300 hover:underline">{t("open_detail")} →</Link>
+        <Link href={`/deals/${deal.id}`} className="text-xs text-emerald-700 hover:underline">{t("open_detail")} →</Link>
       </div>
 
       {open.length > 0 && (
-        <section className="p-4 rounded-2xl border border-amber-800/60 bg-amber-950/20 space-y-3" data-testid="deal-open-duplicates">
-          <h2 className="text-sm font-bold text-amber-200">{tq("deals_queue.duplicates_title")}</h2>
-          <p className="text-[11px] text-amber-200/80">{tDup("note")}</p>
+        <section className="p-4 rounded-2xl border border-amber-200 bg-amber-50 space-y-3" data-testid="deal-open-duplicates">
+          <h2 className="text-sm font-bold text-amber-700">{tq("deals_queue.duplicates_title")}</h2>
+          <p className="text-[11px] text-amber-700">{tDup("note")}</p>
           {open.map((c) => (
-            <div key={c.id} className="text-xs text-gray-200">
-              <Link href={`/deals/${c.other_deal_id}`} className="font-semibold text-emerald-300 hover:underline">
+            <div key={c.id} className="text-xs text-gray-800">
+              <Link href={`/deals/${c.other_deal_id}`} className="font-semibold text-emerald-700 hover:underline">
                 {c.other_deal_title ?? c.other_deal_id}
               </Link>
               <DuplicateDecisionForm candidate={c} dealId={deal.id} dealTitle={deal.title} onDone={() => refresh("duplicate")} />
@@ -99,7 +99,7 @@ function DealReviewContent({ dealId }: { dealId: string }) {
           ))}
         </section>
       )}
-      {done === "duplicate" && <p className="text-xs text-emerald-300" data-testid="dup-done">{tDup("decide.done")}</p>}
+      {done === "duplicate" && <p className="text-xs text-emerald-700" data-testid="dup-done">{tDup("decide.done")}</p>}
 
       <AutoValidationPanel
         kind="deal"

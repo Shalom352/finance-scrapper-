@@ -1,5 +1,6 @@
 "use client";
 
+import { externalHref } from "@/lib/url";
 import React from "react";
 import { useTranslations } from "next-intl";
 import type { Criterion, CriterionKey, TargetingCandidate, TargetingDeal } from "@/types";
@@ -8,9 +9,9 @@ import { useFormatters } from "@/lib/useFormatters";
 
 const KEYS: CriterionKey[] = ["presence", "experience", "capacity", "relationship", "via_sgi"];
 const TONE: Record<string, string> = {
-  met: "bg-emerald-900/60 text-emerald-200 border-emerald-700/60",
-  not_met: "bg-gray-800 text-gray-300 border-gray-700",
-  unknown: "bg-gray-900 text-gray-500 border-gray-800 border-dashed",
+  met: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  not_met: "bg-gray-100 text-gray-700 border-gray-300",
+  unknown: "bg-white text-gray-500 border-gray-200 border-dashed",
 };
 
 function Badge({ k, c }: { k: CriterionKey; c: Criterion }) {
@@ -31,7 +32,7 @@ function DealList({ deals }: { deals: TargetingDeal[] }) {
     <ul className="space-y-1">
       {deals.map((d) => (
         <li key={d.deal_id}>
-          <Link href={`/deals/${d.deal_id}`} className="text-emerald-300 hover:underline">{d.title}</Link>
+          <Link href={`/deals/${d.deal_id}`} className="text-emerald-700 hover:underline">{d.title}</Link>
           <span className="text-gray-500">
             {" "}· {d.roles.map((r) => tRoles(r)).join(", ")}
             {d.year !== null && <> · {d.year}</>}
@@ -52,20 +53,20 @@ function Evidence({ k, c }: { k: CriterionKey; c: Criterion }) {
   if (k === "experience" || k === "via_sgi") {
     return (
       <div className="space-y-1">
-        {k === "via_sgi" && <p className="text-gray-400">{t("via_sgi_detail", { sgi: String(c.sgi) })}</p>}
-        <p className="text-gray-400">{t("experience_detail", { comparable: Number(c.comparable_deals), total: Number(c.financing_deals) })}</p>
+        {k === "via_sgi" && <p className="text-gray-500">{t("via_sgi_detail", { sgi: String(c.sgi) })}</p>}
+        <p className="text-gray-500">{t("experience_detail", { comparable: Number(c.comparable_deals), total: Number(c.financing_deals) })}</p>
         <DealList deals={(c.deals as TargetingDeal[]) ?? []} />
       </div>
     );
   }
   if (k === "capacity") {
     return (
-      <p className="text-gray-300">
+      <p className="text-gray-700">
         {t("capacity_detail", {
           ceiling: fmt.number(Number(c.indicative_ceiling)), currency: String(c.currency),
           ratio: Math.round(Number(c.ratio) * 100), year: Number(c.equity_year),
         })}
-        {Boolean(c.to_confirm) && <span className="text-amber-300"> · {t("to_confirm")}</span>}
+        {Boolean(c.to_confirm) && <span className="text-amber-700"> · {t("to_confirm")}</span>}
         <span className="block text-gray-500">{t("capacity_caveat")}</span>
       </p>
     );
@@ -75,12 +76,12 @@ function Evidence({ k, c }: { k: CriterionKey; c: Criterion }) {
     return (
       <ul className="space-y-0.5">
         {history.map((h) => (
-          <li key={h.mandate_code} className="text-gray-300">{h.mandate_title} ({h.mandate_code}) · {t(`stages.${h.stage}`)}</li>
+          <li key={h.mandate_code} className="text-gray-700">{h.mandate_title} ({h.mandate_code}) · {t(`stages.${h.stage}`)}</li>
         ))}
       </ul>
     );
   }
-  return <p className="text-gray-300">{c.status === "met" ? t("presence_met") : t("presence_not_met")}</p>;
+  return <p className="text-gray-700">{c.status === "met" ? t("presence_met") : t("presence_not_met")}</p>;
 }
 
 export function TargetingResults({ items }: { items: TargetingCandidate[] }) {
@@ -89,17 +90,17 @@ export function TargetingResults({ items }: { items: TargetingCandidate[] }) {
   return (
     <ul className="space-y-2">
       {items.map((c) => (
-        <li key={`${c.kind}-${c.id}`} className="p-3 rounded-xl border border-gray-800 bg-gray-950/40 text-xs" data-testid="targeting-candidate">
+        <li key={`${c.kind}-${c.id}`} className="p-3 rounded-xl border border-gray-200 bg-gray-50 text-xs" data-testid="targeting-candidate">
           <details>
             <summary className="cursor-pointer list-none flex flex-wrap items-center gap-2">
-              <span className="font-semibold text-gray-100">
+              <span className="font-semibold text-gray-900">
                 {c.kind === "bank" ? <Link href={`/institutions/${c.id}`} className="hover:underline">{c.name}</Link> : c.name}
               </span>
               <span className="text-gray-500">
                 {t(`kinds_one.${c.kind}`)}
                 {c.country_code && <> · {tCountries(c.country_code)}</>}
               </span>
-              <span className="text-gray-400" data-testid="criteria-met">{t("criteria_met", { met: c.criteria_met, known: c.criteria_known })}</span>
+              <span className="text-gray-500" data-testid="criteria-met">{t("criteria_met", { met: c.criteria_met, known: c.criteria_known })}</span>
               <span className="flex flex-wrap gap-1">
                 {KEYS.filter((k) => c.criteria[k]).map((k) => <Badge key={k} k={k} c={c.criteria[k] as Criterion} />)}
               </span>
@@ -113,7 +114,7 @@ export function TargetingResults({ items }: { items: TargetingCandidate[] }) {
               ))}
             </dl>
             {c.website && (
-              <a href={c.website} target="_blank" rel="noreferrer" className="inline-block mt-2 text-emerald-400 hover:underline">
+              <a href={externalHref(c.website)} target="_blank" rel="noreferrer" className="inline-block mt-2 text-emerald-700 hover:underline">
                 {t("official_site")} ↗
               </a>
             )}

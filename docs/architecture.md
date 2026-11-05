@@ -269,8 +269,33 @@ Déploiement détaillé : `docs/deployment.md`.
 
 Module intégré à la même plateforme (`app/models/deal.py`, `scraping/deals/`, `app/api/v1/deals.py`,
 `frontend/src/app/[locale]/deals`). Réutilise : `institutions`, `documents`, `sources` (provenance),
-les règles de transition du Review Center et la table d'audit unique. Alimentation par import
-structuré uniquement (pas d'extracteur). Voir `docs/deal-intelligence.md`.
+les règles de transition du Review Center et la table d'audit unique. Toute écriture passe par
+l'importeur structuré (`scraping/deals/importer.py`), y compris celle des collecteurs automatiques.
+Voir `docs/deal-intelligence.md`.
+
+**Collecte automatique de deals (migration 0020)** — séparée du pipeline des états financiers :
+
+```
+IngestionService.execute_run(scope=all|financial|deals)
+ ├─ phases 4-7 : états financiers bancaires (BCEAO, CB-UMOA, BRVM, UMOA-Titres)
+ │              discover → download → parse → extract   (inchangées)
+ └─ phase 8   : deals → app/services/deal_collection.collect(sources)
+                 └─ par source, sous verrou consultatif PostgreSQL :
+                    scraping/deals/collect/<source>.py   discover() + read() (parseurs purs)
+                    scraping/deals/collect/base.py       PoliteFetcher (robots.txt, Crawl-delay),
+                                                         points de contrôle, DocumentRegistrar,
+                                                         import_deals(validate_records(...))
+                    UMOA-Titres : scraping/deals/umoa_titres_ingest.py (adaptateur)
+```
+
+Sources de deals : UMOA-Titres, BRVM (BOC), AMF-UMOA (index), IFC, BOAD, Proparco, BIDC (classe dfi_official, migration 0029), et la presse
+financière (Sika Finance, Ecofin, Financial Afrik — `press_reported`, à la demande, migration 0021). Une source
+deal seule (IFC, etc.) n'entre jamais dans la chaîne d'extraction des bilans. Les déclenchements
+sont identiques : planifié (8 h / 20 h), `POST /api/v1/ingestion/trigger?source=&scope=`,
+`python -m app.ingestion.run` et `python -m app.deals.collect_run`. Le résumé par source est
+enregistré dans `ingestion_runs.deal_summary`. Tables : `deal_collection_checkpoints` (ce qui a déjà
+été lu, `lastmod`, issue) ; `deal_field_sources.excerpt` (citation par champ) ;
+`deals.debt_amount` / `equity_amount` / `debt_type`.
 
 **Networks** :
 - `umoa_network` : communication inter-services
@@ -315,5 +340,9 @@ Aucune reconstruction architecturale majeure ne sera nécessaire.
 >   chargeur du pilote (`deal-intelligence.md` §9-10) ;
 > - Phase 20 : annuaire des institutions de financement, mandats internes, ciblage des financeurs
 >   (migration 0017, `targeting.md`).
+> - Migration 0020 (21/10/2026) : collecte automatique de deals publics, avec sources BRVM, AMF-UMOA,
+>   IFC, BOAD et Proparco (UMOA-Titres conservé et rendu cohérent). Elle apporte la citation par champ,
+>   la classe `dfi_official`, les doublons inter-sources et la phase « deals » du run
+>   (`deal-intelligence.md` §11).
 >
 > Les éléments V2/V3 ci-dessus non livrés restent des pistes, pas des engagements.

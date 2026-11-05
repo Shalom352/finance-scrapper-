@@ -72,11 +72,10 @@ class DiscoveryStrategy(ABC):
 
 
 class SearchProvider(ABC):
-    """Pluggable web-search provider (NOT implemented in this phase by policy).
+    """Pluggable web-search provider; results are leads, never proof of official ownership.
 
-    A future provider would only return CANDIDATE URLs; every candidate must still pass the
-    content verification of the website strategy before becoming VERIFIED, and a search
-    result never replaces an official source.
+    Every candidate must still pass content verification and human confirmation before becoming
+    VERIFIED; a search result never replaces an official source.
     """
 
     name: str

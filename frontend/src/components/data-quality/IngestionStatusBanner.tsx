@@ -32,12 +32,12 @@ export function IngestionStatusBanner() {
   }
 
   const statusBadge = {
-    completed: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
-    partial_failure: "bg-amber-500/10 text-amber-400 border-amber-500/30",
-    running: "bg-blue-500/10 text-blue-400 border-blue-500/30 animate-pulse",
-    failed: "bg-rose-500/10 text-rose-400 border-rose-500/30",
-    skipped_concurrent: "bg-gray-800 text-gray-400 border-gray-700",
-  }[latestRun.status] ?? "bg-gray-800 text-gray-400 border-gray-700";
+    completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    partial_failure: "bg-amber-50 text-amber-700 border-amber-200",
+    running: "bg-blue-50 text-blue-700 border-blue-200 animate-pulse",
+    failed: "bg-rose-50 text-rose-700 border-rose-200",
+    skipped_concurrent: "bg-gray-100 text-gray-500 border-gray-300",
+  }[latestRun.status] ?? "bg-gray-100 text-gray-500 border-gray-300";
 
   const dateStr = latestRun.started_at
     ? new Date(latestRun.started_at).toLocaleString()
@@ -53,11 +53,11 @@ export function IngestionStatusBanner() {
 
   return (
     <div
-      className="p-3.5 rounded-xl border border-gray-800 bg-gray-900/60 flex flex-wrap items-center justify-between gap-3 text-xs"
+      className="p-3.5 rounded-xl border border-gray-200 bg-gray-50/80 flex flex-wrap items-center justify-between gap-3 text-xs"
       data-testid="dq-ingestion-banner"
     >
       <div className="flex items-center gap-2.5">
-        <span className="font-semibold text-gray-200">{t("title")}</span>
+        <span className="font-semibold text-gray-800">{t("title")}</span>
         <span
           className={`px-2 py-0.5 rounded text-[11px] font-medium border ${statusBadge}`}
           data-testid="dq-ingestion-status"
@@ -66,7 +66,7 @@ export function IngestionStatusBanner() {
         </span>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-gray-400 text-[11px]">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-gray-500 text-[11px]">
         <span>{t("last_run", { time: dateStr })}</span>
         {latestRun.target_years && (
           <span>{t("target_years", { years: latestRun.target_years })}</span>

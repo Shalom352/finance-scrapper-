@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import DBAPIError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.logging import get_logger
@@ -41,6 +42,22 @@ def register_exception_handlers(app: FastAPI) -> None:
                 }
             },
         )
+
+    # A text the database cannot store (a NUL character in a JSON body): the client's input, not a
+    # server failure — 422, never 500 (security tests of 22/10/2026).
+    @app.exception_handler(DBAPIError)
+    async def database_input_handler(request: Request, exc: DBAPIError) -> JSONResponse:
+        if "CharacterNotInRepertoire" in type(exc.orig).__name__ or "invalid byte sequence" in str(exc.orig):
+            return JSONResponse(status_code=422, content={"error": {
+                "code": "VALIDATION_ERROR", "message": "Text contains characters that cannot be stored", "details": {}}})
+        return await generic_exception_handler(request, exc)
+
+    @app.middleware("http")
+    async def reject_nul_characters(request: Request, call_next):
+        if "%00" in request.url.query or "\x00" in request.url.path:
+            return JSONResponse(status_code=422, content={"error": {
+                "code": "VALIDATION_ERROR", "message": "NUL characters are not accepted", "details": {}}})
+        return await call_next(request)
 
     @app.exception_handler(Exception)
     async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:

@@ -4,6 +4,7 @@ from app.models.banking_group import BankingGroup
 from app.models.country import Country
 from app.models.deal import (
     Deal,
+    DealCollectionCheckpoint,
     DealDuplicateCandidate,
     DealFieldSource,
     DealParticipant,
@@ -27,7 +28,7 @@ from app.models.entity_relationship import EntityRelationship
 from app.models.financial_data import FinancialData
 from app.models.ingestion_run import IngestionRun
 from app.models.institution import Institution
-from app.models.mandate import Mandate, MandateCounterparty
+from app.models.mandate import InstitutionContact, Mandate, MandateCounterparty, SyndicationImport
 from app.models.metric_definition import MetricDefinition
 from app.models.review_event import FinancialDataReviewEvent
 from app.models.source import Source
@@ -48,8 +49,11 @@ __all__ = [
     "InstitutionLink",
     "Mandate",
     "MandateCounterparty",
+    "InstitutionContact",
+    "SyndicationImport",
     "DealFieldSource",
     "DealParticipant",
+    "DealCollectionCheckpoint",
     "DealDuplicateCandidate",
     "IngestionRun",
     "ReferenceUniverse",

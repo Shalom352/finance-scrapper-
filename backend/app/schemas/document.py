@@ -12,6 +12,10 @@ class DocumentList(BaseModel):
     title: str
     document_type: str
     institution_id: str | None = None
+    entity_id: str | None = None
+    document_scope: str | None = None
+    text_layer_status: str | None = None
+    reporting_year: int | None = None
     source_id: str
     url: str | None = None
     period_year: int | None = None
@@ -26,6 +30,10 @@ class DocumentRead(BaseModel):
     title: str
     document_type: str
     institution_id: str | None = None
+    entity_id: str | None = None
+    document_scope: str | None = None
+    text_layer_status: str | None = None
+    reporting_year: int | None = None
     source_id: str
     url: str | None = None
     file_hash: str | None = None
@@ -35,6 +43,7 @@ class DocumentRead(BaseModel):
     page_count: int | None = None
     extraction_status: str
     extracted_at: datetime | None = None
+    ocr_text: str | None = None
     published_at: date | None = None
     period_year: int | None = None
     period_type: str | None = None

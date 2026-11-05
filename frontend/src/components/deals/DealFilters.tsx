@@ -20,7 +20,7 @@ function TextFilter({ label, value, onCommit }: { label: string; value: string; 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- keep the draft in sync with the URL
   useEffect(() => setDraft(value), [value]);
   return (
-    <label className="text-[11px] text-gray-400 font-medium">
+    <label className="text-[11px] text-gray-600 font-medium">
       {label}
       <input
         value={draft}
@@ -53,7 +53,7 @@ export function DealFilters({
     : [...DEAL_CURRENCIES];
 
   const select = (key: string, label: string, value: string | undefined, options: [string, string][]) => (
-    <label className="text-[11px] text-gray-400 font-medium">
+    <label className="text-[11px] text-gray-600 font-medium">
       {label}
       <select value={value ?? ""} onChange={(e) => onChange({ [key]: e.target.value || null })} className={selectCls}
         data-testid={`deal-filter-${key}`}>
@@ -66,7 +66,7 @@ export function DealFilters({
   );
 
   return (
-    <div className="p-4 rounded-2xl border border-gray-800 bg-gray-900/40 space-y-3" data-testid="deal-filters">
+    <div className="p-4 rounded-2xl border border-gray-200/90 bg-white shadow-xs space-y-3" data-testid="deal-filters" data-guide="deals">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         {select("country", t("country"), query.country,
           UMOA_COUNTRY_CODES.map((c) => [c, tCountries.has(c) ? tCountries(c) : c]))}
@@ -76,7 +76,7 @@ export function DealFilters({
         {select("deal_type", t("deal_type"), query.deal_type, DEAL_TYPES.map((d) => [d, labels.type(d)]))}
         {select("status", t("status"), query.status, DEAL_STATUSES.map((s) => [s, tStatus.has(s) ? tStatus(s) : s]))}
         {select("currency", t("currency"), query.currency, currencies.map((c) => [c, displayCurrency(c) || c]))}
-        <label className="text-[11px] text-gray-400 font-medium">
+        <label className="text-[11px] text-gray-600 font-medium">
           {t("year")}
           <input type="number" min={1900} max={2100} defaultValue={query.year ?? ""} key={query.year ?? "none"}
             onBlur={(e) => onChange({ year: e.target.value || null })}
@@ -87,15 +87,16 @@ export function DealFilters({
         <TextFilter label={t("borrower")} value={query.borrower ?? ""} onCommit={(v) => onChange({ borrower: v || null })} />
         <TextFilter label={t("arranger")} value={query.arranger ?? ""} onCommit={(v) => onChange({ arranger: v || null })} />
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <label className="flex items-center gap-2 text-[11px] text-gray-400">
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-gray-100">
+        <label className="flex items-center gap-2 text-[11px] text-gray-600 cursor-pointer">
           <input type="checkbox" checked={!!query.include_merged}
-            onChange={(e) => onChange({ include_merged: e.target.checked ? "true" : null })} />
+            onChange={(e) => onChange({ include_merged: e.target.checked ? "true" : null })}
+            className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
           {t("include_merged")}
         </label>
         <button type="button" data-testid="deal-filters-reset"
           onClick={() => onChange(Object.fromEntries(DEAL_FILTER_KEYS.map((k) => [k, null])))}
-          className="px-3 py-1.5 rounded-lg border border-gray-700 text-xs text-gray-300 hover:border-emerald-500">
+          className="min-h-10 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors shadow-xs">
           {t("reset")}
         </button>
       </div>

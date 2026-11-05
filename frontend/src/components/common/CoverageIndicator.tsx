@@ -34,18 +34,18 @@ export function CoverageIndicator({
   const partial = isPartial === true;
 
   const badgeColor = !known
-    ? "bg-gray-900 text-gray-400 border-gray-800"
+    ? "bg-white text-gray-500 border-gray-200"
     : partial
-      ? "bg-amber-950/60 text-amber-300 border-amber-800/60"
-      : "bg-emerald-950/60 text-emerald-300 border-emerald-800/60";
+      ? "bg-amber-50 text-amber-700 border-amber-200"
+      : "bg-emerald-50 text-emerald-700 border-emerald-200";
 
   return (
     <div className={`flex flex-col gap-1.5 ${className}`} data-testid="coverage-indicator">
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-gray-400 font-medium">{label ?? t("label")}</span>
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs">
+        <span className="min-w-0 text-gray-500 font-medium">{label ?? t("label")}</span>
+        <div className="flex shrink-0 items-center gap-2">
           {representedCount != null && totalCount != null && (
-            <span className="text-gray-400 text-xs">
+            <span className="text-gray-500 text-xs">
               {representedCount}/{totalCount}
             </span>
           )}
@@ -56,7 +56,7 @@ export function CoverageIndicator({
       </div>
 
       {pct !== null && (
-        <div className="w-full h-1.5 rounded-full bg-gray-800 overflow-hidden">
+        <div className="w-full h-1.5 rounded-full bg-gray-100 overflow-hidden">
           <div
             className={`h-full rounded-full transition-all duration-500 ${partial ? "bg-amber-500" : "bg-emerald-500"}`}
             style={{ width: `${pct}%` }}
@@ -70,7 +70,7 @@ export function CoverageIndicator({
         </span>
       )}
 
-      {partial && <span className="text-[11px] text-amber-400/90">⚠️ {t("partial_warning")}</span>}
+      {partial && <span className="text-[11px] text-amber-700">⚠️ {t("partial_warning")}</span>}
     </div>
   );
 }

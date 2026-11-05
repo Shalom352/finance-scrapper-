@@ -1,0 +1,12 @@
+{
+  "_comment": "Names written in the syndication Excel -> EXACT directory name (institutions.name_official, entities canonical or short name). Maintained by the team; never filled by guess. Unlisted names are tried as written, then imported with their name alone and shown as 'to link'. Do NOT put deal names or people here: this file is versioned.",
+  "institutions": {
+    "ISDB": "BID",
+    "IsDB": "BID",
+    "Banque Islamique de Developpement": "BID",
+    "BAD (Banque Africaine de Developpement)": "BAD",
+    "Banque Africaine de Developpement": "BAD",
+    "AFDB": "BAD",
+    "PROPARCO": "Proparco"
+  }
+}

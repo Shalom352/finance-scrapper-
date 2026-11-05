@@ -53,12 +53,51 @@ registration number closes the previous official name (`valid_to`) and becomes t
 | always | `cb_umoa_reference_list` | CB-UMOA list (supervisor) | universe |
 | 1 | `bceao_regulatory_fascicle` | BCEAO *Bilans et comptes de résultat des banques et établissements financiers* | FINANCIAL_DOCUMENT, FINANCIAL_DATA |
 | 2 | `official_links_in_documents` | website addresses printed in entity-specific official documents | OFFICIAL_WEBSITE |
-| 3 | `official_website_crawl` | VERIFIED websites (robots.txt, home + 1 level) | ANNUAL_REPORT, FINANCIAL_DOCUMENT |
-| 4 | `brvm_market_listings` | BRVM listed-company pages | OFFICIAL_WEBSITE, ANNUAL_REPORT |
-| — | `secondary_verified` | disabled by policy (no search provider) | — |
+| 3 | `official_website_crawl` | VERIFIED websites (robots.txt, same-domain sitemaps, depth 2, page / PDF caps) | FINANCIAL_DOCUMENT |
+| 4 | `brvm_market_listings` | BRVM listed-company pages | SOURCE_NOT_FOUND |
+| 5 | `brvm_issuer_filings` | BRVM filings of listed issuers (phase 17) | DOCUMENT_NOT_FOUND |
+| 6 | `institution_document_extraction` | institution-specific documents (phase 17) | DOCUMENT_FOUND_UNVERIFIED, FINANCIAL_DATA |
+| 7 | `secondary_verified` | optional web-search leads; stored only as CANDIDATE after page-name check | SOURCE_NOT_FOUND, DOCUMENT_NOT_FOUND |
 
-A `SearchProvider` interface exists (`strategies/base.py`) but is deliberately not implemented.
-No URL is ever guessed from a bank name.
+Audit of 22/10/2026:
+
+- **Website verification**: a site is VERIFIED when it prints the full name with its country, or the name
+  without country together with the entity's country **and no other UMOA country** — a group site
+  (ecobank.com) or a sister bank's site stays CANDIDATE for a human.
+- **Retries**: NOT_FOUND **and BLOCKED** gaps are reopened at their retry date (a robots refusal or a
+  403 can be lifted). The strategies tried are counted per run, so a strategy that only ran (or
+  crashed) in an earlier run never makes a gap NOT_FOUND.
+- **One run at a time**: the CLI and the scheduler take the advisory lock `discovery_run`.
+- **Fetching**: retries with backoff on timeouts, 5xx and 429 (Retry-After honoured), a pause per
+  host, a body over the size cap is refused (never stored truncated).
+- **Re-reading**: `python -m app.discovery.run --reextract` reads again the institution documents
+  that produced no value (after an extractor fix).
+- **Official websites**: robots-declared sitemaps and a bounded `/sitemap.xml` fallback are checked
+  before the same-host HTML crawl. Sitemap indexes, candidate URLs, pages, and PDF downloads have
+  explicit limits. PDF query URLs are recognized; a year is taken from the report title or filename,
+  never from an upload directory. The report lists retrieval outcomes per website.
+- **OCR**: Tesseract is an optional, bounded path for scanned/corrupted pages of institution-specific
+  reports. It keeps the original PDF and page-numbered transcript. Values below 65% token confidence
+  are skipped; every accepted OCR value stays `needs_review` and is excluded from automatic validation.
+
+External search is optional and disabled by default. Set `DISCOVERY_SEARCH_PROVIDER=brave`, provide
+`BRAVE_SEARCH_API_KEY`, and set `DISCOVERY_SEARCH_STORAGE_RIGHTS_CONFIRMED=true` only when the provider
+plan or a written agreement allows retaining candidate URLs. A result is fetched without following
+redirects; it is recorded only as `CANDIDATE`, and a person must confirm domain ownership before it
+can enter the official-site crawler. No URL is guessed from a bank name.
+
+Confirm or retire one candidate with an auditable operator and evidence:
+
+```bash
+cd backend
+python -m app.discovery.review_source --entity-id <entity-id> --url <candidate-url> \
+  --actor <operator> --evidence "<ownership evidence>" --decision confirm
+```
+
+OCR defaults to off. To enable it after building the image with Tesseract and applying migration
+`0024_document_ocr_transcript`, set `DOCUMENT_OCR_ENABLED=true`; page count, DPI, language, and timeout
+are bounded by `DOCUMENT_OCR_MAX_PAGES`, `DOCUMENT_OCR_DPI`, `DOCUMENT_OCR_LANGUAGE`, and
+`DOCUMENT_OCR_TIMEOUT_SECONDS`.
 
 Fascicle data: only published lines mapped 1:1 to an existing catalogue metric are read
 (`TOTAL DE L'ACTIF`, `CREANCES SUR LA CLIENTELE`, `CREANCES INTERBANCAIRES`, `DETTES A L'EGARD DE LA

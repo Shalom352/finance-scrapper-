@@ -43,7 +43,7 @@ export function FinancialLineChart({
   if (validPoints.length === 0) {
     return (
       <div
-        className={`flex items-center justify-center border border-gray-800 rounded-2xl bg-gray-900/40 text-gray-400 text-xs p-8 ${className}`}
+        className={`flex items-center justify-center border border-gray-200 rounded-2xl bg-white text-gray-500 text-xs p-8 ${className}`}
         style={{ height }}
       >
         <span>
@@ -82,11 +82,11 @@ export function FinancialLineChart({
   const missingYears = sorted.filter((p) => p.value === null || p.value === undefined);
 
   return (
-    <div className={`flex flex-col rounded-2xl border border-gray-800 bg-gray-900/40 p-4 ${className}`}>
+    <div className={`flex flex-col rounded-2xl border border-gray-200 bg-white p-4 ${className}`}>
       {title && (
         <div className="flex items-center justify-between mb-2">
-          <h4 className="text-sm font-semibold text-gray-200">{title}</h4>
-          {metricLabel && <span className="text-xs text-gray-400">{metricLabel}</span>}
+          <h4 className="text-sm font-semibold text-gray-800">{title}</h4>
+          {metricLabel && <span className="text-xs text-gray-500">{metricLabel}</span>}
         </div>
       )}
 
@@ -105,17 +105,17 @@ export function FinancialLineChart({
               y1={paddingY + innerH * f}
               x2={chartWidth - paddingX}
               y2={paddingY + innerH * f}
-              stroke="#374151"
+              stroke="#e5e7eb"
               strokeDasharray="3 3"
               strokeWidth="0.8"
             />
           ))}
-          <line x1={paddingX} y1={paddingY + innerH} x2={chartWidth - paddingX} y2={paddingY + innerH} stroke="#4b5563" strokeWidth="1" />
+          <line x1={paddingX} y1={paddingY + innerH} x2={chartWidth - paddingX} y2={paddingY + innerH} stroke="#d1d5db" strokeWidth="1" />
 
-          <text x={paddingX - 8} y={paddingY + 4} textAnchor="end" fill="#9ca3af" fontSize="10">
+          <text x={paddingX - 8} y={paddingY + 4} textAnchor="end" fill="#6b7280" fontSize="10">
             {formatValue(maxVal)}
           </text>
-          <text x={paddingX - 8} y={paddingY + innerH} textAnchor="end" fill="#9ca3af" fontSize="10">
+          <text x={paddingX - 8} y={paddingY + innerH} textAnchor="end" fill="#6b7280" fontSize="10">
             {formatValue(minVal)}
           </text>
 
@@ -143,14 +143,14 @@ export function FinancialLineChart({
                   cx={cx}
                   cy={cy}
                   r={isHovered ? 6 : 4}
-                  fill="#065f46"
-                  stroke="#34d399"
+                  fill="#ffffff"
+                  stroke="#059669"
                   strokeWidth="2"
                   className="cursor-pointer transition-all"
                   onMouseEnter={() => setHoveredPoint(pt)}
                   onMouseLeave={() => setHoveredPoint(null)}
                 />
-                <text x={cx} y={paddingY + innerH + 16} textAnchor="middle" fill="#9ca3af" fontSize="10">
+                <text x={cx} y={paddingY + innerH + 16} textAnchor="middle" fill="#6b7280" fontSize="10">
                   {pt.year}
                 </text>
               </g>
@@ -171,11 +171,11 @@ export function FinancialLineChart({
         </svg>
 
         {hoveredPoint && (
-          <div className="absolute top-2 right-2 px-3 py-1.5 rounded-lg border border-emerald-500/40 bg-gray-950/90 text-xs shadow-xl backdrop-blur pointer-events-none">
-            <div className="text-gray-400 font-medium mb-0.5">{hoveredPoint.year}</div>
-            <div className="text-emerald-400 font-bold text-sm">{formatValue(hoveredPoint.value)}</div>
+          <div className="absolute top-2 right-2 px-3 py-1.5 rounded-lg border border-emerald-200 bg-gray-950/90 text-xs shadow-xl backdrop-blur pointer-events-none">
+            <div className="text-gray-500 font-medium mb-0.5">{hoveredPoint.year}</div>
+            <div className="text-emerald-700 font-bold text-sm">{formatValue(hoveredPoint.value)}</div>
             {hoveredPoint.status && (
-              <div className="text-[10px] text-gray-400 mt-0.5">
+              <div className="text-[10px] text-gray-500 mt-0.5">
                 {t("status")} : {tStatus.has(hoveredPoint.status) ? tStatus(hoveredPoint.status) : hoveredPoint.status}
               </div>
             )}

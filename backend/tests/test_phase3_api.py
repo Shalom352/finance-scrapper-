@@ -324,6 +324,7 @@ class TestSearchLogic:
         mock_db = AsyncMock()
         res_mock = MagicMock()
         res_mock.scalars.return_value.all.return_value = []
+        res_mock.scalar_one.return_value = 0  # real total per type
         mock_db.execute = AsyncMock(return_value=res_mock)
 
         app.dependency_overrides[get_db_session] = lambda: mock_db
@@ -337,6 +338,7 @@ class TestSearchLogic:
             assert "banking_groups" in data
             assert "sources" in data
             assert "documents" in data
+            assert data["deals"] == [] and data["totals"]["deals"] == 0
         finally:
             app.dependency_overrides.clear()
 

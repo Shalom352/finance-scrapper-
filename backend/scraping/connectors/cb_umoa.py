@@ -45,6 +45,7 @@ class CBUMOAConnector(BaseSourceConnector):
         self,
         client: httpx.AsyncClient,
         limit: int | None = None,
+        years: list[int] | None = None,
     ) -> list[DiscoveredDocument]:
         """
         Discover official documents across CB-UMOA publication sections.
@@ -70,6 +71,8 @@ class CBUMOAConnector(BaseSourceConnector):
                     document_type=doc_type,
                 )
                 for doc in docs:
+                    if not self.matches_requested_years(doc, years):
+                        continue
                     if doc.url not in seen_urls:
                         seen_urls.add(doc.url)
                         doc.metadata["section_description"] = section["description"]

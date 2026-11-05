@@ -273,7 +273,7 @@ describe("historical chart", () => {
   it("draws only real points, marks the gap, shows unit and currency", () => {
     const { container } = renderWithIntl(<HistoryCharts history={history} onProvenance={() => {}} />);
     expect(container.querySelectorAll('[data-testid="line-segment"]')).toHaveLength(2); // 2021–2022, 2024
-    expect(screen.getAllByTestId("history-point").map((r) => r.textContent?.slice(0, 4))).toEqual(["2021", "2022", "2024"]);
+    expect(screen.getAllByTestId("history-point").map((r) => r.textContent?.slice(0, 4))).toEqual(["2024", "2022", "2021"]); // newest first by default
     expect(screen.getByTestId("missing-years").textContent).toContain("2023");
     expect(screen.getByTestId("series-unit").textContent).toContain("FCFA");
   });

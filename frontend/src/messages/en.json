@@ -5,28 +5,67 @@
     "keywords": "UMOA, WAEMU, BCEAO, banks, financial data, West Africa, deals"
   },
   "nav": {
-    "home": "Dashboard",
+    "home": "Overview",
+    "deals": "Transactions",
+    "rankings": "Rankings",
     "institutions": "Institutions",
+    "sources": "Sources",
+    "documents": "Sources",
+    "data_quality": "To review",
+    "targeting": "Targeting",
+    "syndication": "Syndication",
+    "settings": "Settings",
     "countries": "UMOA Countries",
     "analytics": "Analytics & Ratios",
-    "documents": "Documents",
     "search": "Search",
-    "rankings": "Rankings",
     "comparisons": "Comparisons",
-    "financial_data": "Financial data",
-    "data_quality": "Data quality",
-    "deals": "Deals",
-    "targeting": "Targeting"
+    "financial_data": "Financial data"
   },
   "sidebar": {
+    "navigation_label": "Main navigation",
+    "groups": {
+      "activity": "Activity",
+      "data": "Data",
+      "analysis": "Analysis",
+      "management": "Quality and settings"
+    },
     "notice_title": "Official sources",
     "notice_body": "Data from BCEAO, UMOA Banking Commission publications and institutions' reports. Missing data is shown as \"—\"."
   },
   "topbar": {
     "open_menu": "Open navigation menu",
-    "search_placeholder": "Search a bank, a document..."
+    "search_placeholder": "Search a bank, a deal, an ISIN, a document…",
+    "guide": "Guide",
+    "open_guide": "Open the user guide"
   },
-  "footer": {
+  "guide": {
+    "eyebrow": "Explore the platform",
+    "title": "Welcome to UMOA Banking Intelligence",
+    "intro": "Visit the platform pages and learn what their main filters and tools are for.",
+    "step_count": "Step {current} of {total}",
+    "previous": "Previous",
+    "next": "Next",
+    "skip": "Skip guide",
+    "finish": "Finish",
+    "close": "Close guide",
+    "target_loading": "Opening the page and locating its controls…",
+    "steps": {
+      "overview": { "title": "Overview", "body": "The home page summarizes collected indicators, regional aggregates, and coverage. Choose a fiscal year to see data published for that year; the current and previous years are offered automatically." },
+      "search": { "title": "Global search", "body": "Search for a bank by name or acronym, a deal, an ISIN, a source, or a document. Open a result to view its details." },
+      "deals": { "title": "Transactions", "body": "Filter recorded deals by country, type, year, or status. Open a deal to review its sources and supporting evidence." },
+      "targeting": { "title": "Funding counterparties", "body": "Describe a financing need by country, sector, and deal type. The page shows banks and institutions with documented criteria; unknown information stays marked as unknown." },
+      "syndication": { "title": "Syndication", "body": "Follow mandates, lenders, terms, and contacts entered internally. This information is confidential and restricted to authorized staff." },
+      "institutions": { "title": "Institution directory", "body": "Filter institutions by name, country, or status. Open a profile to see financial statements, ratios, charts, and related documents." },
+      "countries": { "title": "UMOA countries", "body": "Compare aggregates and coverage across the Union’s eight countries. Open a country to see its institutions and available market shares." },
+      "financial_data": { "title": "Financial data", "body": "Explore financial line items by institution, fiscal year, scope, and period. Check quality status and provenance to find the source document." },
+      "documents": { "title": "Document center", "body": "Find collected publications by filtering document type and fiscal year. The columns show download and extraction status." },
+      "rankings": { "title": "Descriptive rankings", "body": "Rank published values by metric, fiscal year, and scope. Rankings describe the available figures and are not a qualitative assessment." },
+      "analytics": { "title": "Analytics and ratios", "body": "Review ratios, year-over-year changes, and sector aggregates. Calculations use the fiscal years and observations that are actually available." },
+      "comparisons": { "title": "Comparisons", "body": "Select several institutions to examine their indicators for the same fiscal year. Missing values remain marked as unavailable." },
+      "data_quality": { "title": "Data quality", "body": "Review flagged data, conflicting values, and their provenance. The review queue helps you verify evidence before assigning a status." },
+      "settings": { "title": "Collections and settings", "body": "Choose a source and scope, then start a collection. You can select a full year, follow progress live, and review the run history. A run stuck for more than six hours is automatically closed as failed so the next collection can start." }
+    }
+  },  "footer": {
     "disclaimer": "Data from official publications. No extrapolation or interpolation: a missing value is shown as \"—\"."
   },
   "common": {
@@ -36,10 +75,21 @@
     "empty_title": "No data available",
     "empty": "No observation matches the selected criteria.",
     "fiscal_year": "Fiscal year",
+    "choose_fiscal_year": "Choose a fiscal year",
+    "missing_year_data": "No financial data is available for {year} yet.",
+    "missing_aggregate_data": "No usable banking aggregate is available for {year}. Data may be missing or still awaiting qualification.",
+    "aggregate_load_error": "The {year} aggregates could not be loaded because the data service is not responding right now. Try again shortly.",
+    "open_collection_settings": "Open Settings to start a collection →",
     "pagination": {
       "range": "Showing {start} to {end} of {total} entries",
       "previous": "Previous",
       "next": "Next"
+    },
+    "sort": {
+      "label": "Sort by",
+      "asc": "Ascending",
+      "desc": "Descending",
+      "page_note": "Sorting applies to the rows of the current page."
     }
   },
   "status": {
@@ -344,9 +394,10 @@
   },
   "search": {
     "title": "Global search",
-    "subtitle": "Collected institutions, banking groups, sources and documents.",
-    "placeholder": "Search a bank, a group, a source or a document...",
+    "subtitle": "Institutions (with acronyms and former names), deals and ISINs, banking groups, sources and documents.",
+    "placeholder": "Bank, acronym, deal, ISIN, source or document…",
     "submit": "Search",
+    "query_min_length": "Enter at least 2 characters.",
     "empty_title": "No results",
     "empty": "No data matches \"{query}\".",
     "results_for": "Results for \"{query}\"",
@@ -356,7 +407,12 @@
     "groups_found": "Banking groups",
     "col_title": "Title",
     "col_type": "Type",
-    "col_year": "Fiscal year"
+    "col_year": "Fiscal year",
+    "deals_found": "Deals",
+    "show_more": "Show more ({shown} of {total})",
+    "loading_more": "Loading…",
+    "open_institution": "Open the institution",
+    "more_error": "The next results could not be loaded. Try again."
   },
   "analytics": {
     "title": "Financial analytics & ratios",
@@ -613,7 +669,8 @@
       "status": "Status",
       "source": "Source",
       "source_title": "Show full provenance",
-      "page": "p. {page}"
+      "page": "p. {page}",
+      "source_value_pending": "Source value — normalization pending"
     },
     "qualification": {
       "authoritative": "Retained value",
@@ -621,7 +678,11 @@
       "conflict": "Unresolved divergent values",
       "needs_review": "Not certified (needs review)",
       "rejected": "Rejected — not used",
-      "missing_value": "Value not provided"
+      "missing_value": "Value not provided",
+      "normalization_pending": "Amount extracted; unit or normalization pending",
+      "normalization_pending": "Amount extracted; unit or normalization pending",
+      "scope_unconfirmed": "Individual or consolidated scope is not confirmed by the document",
+      "scope_provisional": "to confirm"
     },
     "export": {
       "button": "Export to CSV",
@@ -720,7 +781,10 @@
       "by": "by {actor}",
       "unknown_actor": "identifier not provided",
       "value_change": "Value: {before} → {after}",
-      "created": "created"
+      "created": "created",
+      "sort_date": "Date",
+      "sort_action": "Action",
+      "sort_status": "Status"
     },
     "actions": {
       "title": "Decision",
@@ -755,6 +819,7 @@
       "verify": "Verification",
       "reject": "Rejection",
       "import": "Structured import",
+      "source_enrichment": "Automatic update from an official source",
       "mark_same_deal": "Same deal",
       "mark_distinct": "Distinct deals",
       "mark_same_deal_multi_source": "Same deal (several sources)"
@@ -772,7 +837,7 @@
       "open": "Examine",
       "duplicates_title": "Duplicate candidates — needs review",
       "duplicates_empty": "No open duplicate candidate.",
-      "duplicates_hint": "A candidate is only a possible duplicate: explicit criteria match, nothing is merged or deleted until a person decides."
+      "duplicates_hint": "Exact duplicates are merged automatically while their sources are retained. Separate operations (different auction reference, coupon or maturity) stay separate; only ambiguous cases remain for review."
     },
     "deal_review": {
       "back": "Back to the deal queue",
@@ -781,8 +846,14 @@
     }
   },
   "deals": {
-    "title": "Deals",
-    "subtitle": "Financing transactions recorded by structured import from official documents. Terms that are not published stay unavailable.",
+    "title": "UMOA Deals",
+    "subtitle": "Announced deals and documented financings.",
+    "import_button": "Import a deal",
+    "kpi_deals_tracked": "Tracked deals",
+    "kpi_published_amount": "Published volume",
+    "kpi_to_review": "To review",
+    "sources_title": "Recent sources",
+    "sources_link": "View all sources",
     "import_note": "Deals are added only by structured import referencing a document, a source and a page. No automatic extraction.",
     "count": "{total, plural, =0 {No deal} one {# deal} other {# deals}}",
     "empty_title": "No deal",
@@ -796,8 +867,8 @@
       "currency": "Currency",
       "status": "Status",
       "participant_role": "Participant role",
-      "borrower": "Borrower",
-      "arranger": "Arranger",
+      "borrower": "Borrower / issuer",
+      "arranger": "Arranger / lead manager",
       "all": "All",
       "text_placeholder": "Name or identifier",
       "include_merged": "Include deals attached to another deal",
@@ -817,6 +888,7 @@
     },
     "types": {
       "term_loan": "Term loan",
+      "credit_line": "Credit / refinancing line",
       "syndicated_loan": "Syndicated loan",
       "project_finance": "Project finance",
       "trade_finance": "Trade finance",
@@ -958,14 +1030,32 @@
         "yield_rate": "Weighted average yield",
         "use_of_proceeds": "Use of proceeds",
         "use_of_proceeds_categories": "Use-of-proceeds categories",
-        "filing_agent_raw": "Filing SGI (AMF API)"
+        "filing_agent_raw": "Filing SGI (AMF API)",
+        "debt_amount": "Debt",
+        "equity_amount": "Equity",
+        "debt_type": "Debt type"
+      },
+      "debt_equity_ratio": "Debt / equity ratio",
+      "debt_equity_ratio_note": "Computed from the two published amounts",
+      "debt_types": {
+        "senior_loan": "Senior loan",
+        "subordinated_loan": "Subordinated loan",
+        "mezzanine": "Mezzanine",
+        "convertible": "Convertible",
+        "credit_line": "Credit / refinancing line",
+        "guarantee": "Guarantee",
+        "bond": "Bond"
       },
       "instrument": "Public security (auction)",
       "entity": "Entity: {name}",
       "validation_flags": {
         "global_total_rounded": "Printed global total rounded (tranche amounts kept)",
         "issuer_label_truncated": "Truncated issuer label — country confirmed by the ISIN",
-        "page_lists_buyback_securities": "Buyback lines of the page ignored (justified by the buyback page of the PDF)"
+        "page_lists_buyback_securities": "Buyback lines of the page ignored (justified by the buyback page of the PDF)",
+        "dfi_own_commitment_only": "Amount = the institution's own financing (total project cost not published on the page)",
+        "pre_approval_disclosure": "Disclosed before approval / signing: the operation may not close",
+        "program_level_amount": "Programme amount, not this counterpart's line: not taken",
+        "listing_notice_only": "BRVM listing notice: amount, ISIN and arranger not published there"
       },
       "use_of_proceeds": "Use of proceeds",
       "filing_agent_note": "Raw field of the AMF API: the SGI that filed with the regulator. It is not a role.",
@@ -983,7 +1073,8 @@
         "issuer_official": "Official release",
         "issuer_press_release": "Issuer release",
         "regulator_index": "AMF index (metadata)",
-        "press_reported": "Press (to cross-check)"
+        "press_reported": "Press (to cross-check)",
+        "dfi_official": "Development finance institution (official site)"
       },
       "proceeds_categories": {
         "budget_financing": "Budget financing",
@@ -997,7 +1088,9 @@
         "social": "Social",
         "privatisation": "Privatisation",
         "other": "Other"
-      }
+      },
+      "single_source": "Single source",
+      "single_source_hint": "Only one source reports this deal: it is not corroborated by a second source."
     },
     "duplicates": {
       "title": "Duplicate candidates",
@@ -1012,7 +1105,13 @@
         "deal_type": "Same deal type",
         "participants": "Shared participant",
         "instrument": "Same security (ISIN and value date)",
-        "issuer": "Same issuer"
+        "issuer": "Same issuer",
+        "counterparty": "Same counterparty (borrower / issuer)",
+        "isin": "Same ISIN (other or missing value date)",
+        "label_issuer": "Same issuer in the label",
+        "coupon": "Same published coupon",
+        "tenor_years": "Same issue and maturity years",
+        "undated_isin": "Same ISIN, one of the two without a value date (article, index)"
       },
       "state": {
         "duplicate_candidate": "Duplicate candidate — needs review",
@@ -1033,6 +1132,12 @@
         "submit": "Record the decision",
         "done": "Decision recorded."
       }
+    },
+    "recent_sources_desc": {
+      "bceao": "Press releases and regional statistics",
+      "brvm": "Notices, prospectuses and announcements",
+      "umoa_titres": "Auction results and issuance documents",
+      "ifc": "Projects and financings in West Africa"
     }
   },
   "targeting": {
@@ -1116,6 +1221,9 @@
       "real_estate": "Real estate",
       "financial_services": "Financial services",
       "public_finance": "Public finance",
+      "climate": "Climate and environment",
+      "health_education": "Health and education",
+      "tourism": "Tourism",
       "other": "Other"
     }
   },
@@ -1156,5 +1264,318 @@
     "cancel": "Cancel",
     "done": "Automatic validation withdrawn.",
     "error": "Withdrawal failed (the row may have changed): reload the page."
+  },
+  "settings": {
+    "title": "Settings — data collection",
+    "subtitle": "Launch a collection on the official sources, follow its execution live and review the run history.",
+    "refresh": "Refresh",
+    "load_error": "Unable to load runs. Check that the API is available.",
+    "status": {
+      "running": "Running",
+      "completed": "Completed",
+      "partial_failure": "Partial success",
+      "failed": "Failed",
+      "skipped_concurrent": "Skipped (concurrent run)"
+    },
+    "triggers": {
+      "scheduled": "Scheduled",
+      "manual": "Manual",
+      "cli": "Command line"
+    },
+    "sources": {
+      "all": "All sources",
+      "bceao": "BCEAO",
+      "cb-umoa": "UMOA Banking Commission",
+      "brvm": "BRVM",
+      "umoa-titres": "UMOA-Titres",
+      "amf-umoa": "AMF-UMOA (operations index)",
+      "ifc": "IFC (project disclosures)",
+      "boad": "BOAD (approved projects)",
+      "proparco": "Proparco (project map)",
+      "bidc": "BIDC (official financing announcements)",
+      "press": "Financial press (Sika Finance, Ecofin, Financial Afrik)"
+    },
+    "kpi": {
+      "title": "Key indicators",
+      "last_run": "Last collection",
+      "never": "None",
+      "docs_found": "Documents found",
+      "docs_new": "New documents",
+      "docs_failed": "Failed documents",
+      "points": "Data points extracted",
+      "to_review": "Points to review",
+      "last_run_hint": "Last run",
+      "observations": "Stored observations",
+      "verified": "Verified observations",
+      "needs_review": "Observations to review",
+      "deals": "Deals",
+      "api": "API and database",
+      "api_ok": "Available",
+      "api_down": "Unavailable",
+      "success_rate": "Success rate",
+      "avg_duration": "Average duration",
+      "sample_hint": "Over the {count} runs of the history page"
+    },
+    "trigger": {
+      "title": "Launch a collection",
+      "source": "Source",
+      "year": "Year to collect",
+      "year_hint": "Configured historical period",
+      "configured_period": "the configured historical period",
+      "year_range": "Full-year collection for {year} (January 1 to December 31).",
+      "limit": "Limit per source",
+      "limit_hint": "1 to 100, empty: no limit",
+      "force": "Force reprocessing of already known documents",
+      "submit": "Launch collection",
+      "confirm_title": "Confirm launch",
+      "confirm_body": "A “{source}” collection ({scope}) covering {period} will start in the background. It may take several minutes.",
+      "confirm": "Confirm",
+      "cancel": "Cancel",
+      "running_block": "A collection is already running: wait for it to finish before launching another one.",
+      "started": "Collection launched. Its status updates below.",
+      "error": "Launch failed. Check that the API is available.",
+      "invalid_year": "Year between 1900 and 2100.",
+      "invalid_limit": "Limit between 1 and 100.",
+      "scope": "Scope",
+      "scope_all": "Financial statements and deals",
+      "scope_financial": "Bank financial statements",
+      "scope_deals": "Deals only",
+      "since": "Deals published from",
+      "until": "Deals published through",
+      "since_hint": "Optional",
+      "invalid_dates": "The end date must be the same as or later than the start date.",
+      "scope_not_available": "This source has no collection for this scope.",
+      "deals_summary": "Deals: {created} created, {already} already known, {duplicates} possible duplicate(s)"
+    },
+    "live": {
+      "abort": "Mark as failed",
+      "abort_hint": "If this run no longer progresses (process stopped, server restarted), close it so a new collection can be launched.",
+      "abort_confirm": "Confirm: mark the run as failed",
+      "abort_cancel": "Cancel",
+      "abort_error": "This run could not be closed. Try again or check the logs.",
+      "title_running": "Run in progress",
+      "title_last": "Last run",
+      "none": "No run recorded.",
+      "started": "Started on {date}",
+      "elapsed": "Elapsed: {time}",
+      "duration": "Duration: {time}",
+      "duration_unknown": "Unknown",
+      "polling": "Auto-refresh every {seconds} s",
+      "trigger": "Trigger",
+      "years": "Target years",
+      "sources_checked": "Sources checked",
+      "duration_at_least": "at least {time}",
+      "deals_partial": "At least {created} created · {enriched} completed · {known} already known",
+      "deals_progress": "Deals: {created} created · {enriched} completed · {known} already known",
+      "deal_fields_added": "{count} field(s) completed",
+      "not_finalized": "Not finalized",
+      "current_task": "In progress: {task}",
+      "pages_progress": "Auction pages: {done}/{total}",
+      "phases": {
+        "discovery": "Finding publications",
+        "download": "Downloading documents",
+        "parsing": "Reading documents",
+        "extraction": "Extracting data",
+        "deal_collection": "Collecting deals",
+        "finalizing": "Finalizing"
+      },
+      "docs_found": "Found",
+      "docs_new": "New",
+      "docs_downloaded": "Downloaded",
+      "docs_skipped": "Skipped",
+      "docs_failed": "Failed",
+      "points": "Data points",
+      "to_review": "To review",
+      "errors": "Errors ({count})",
+      "no_errors": "No error reported.",
+      "summary": "Summary"
+    },
+    "history": {
+      "title": "Run history",
+      "empty": "No run recorded.",
+      "date": "Date",
+      "trigger": "Trigger",
+      "status": "Status",
+      "duration": "Duration",
+      "duration_at_least": "≥ {time}",
+      "duration_unknown": "Unknown",
+      "not_finalized": "Not finalized",
+      "partial_result": "The run stopped before final counters were saved. Results may be incomplete or unknown; this display does not prove that no data was collected.",
+      "docs": "Documents",
+      "docs_detail": "{found} found · {new} new · {failed} failed",
+      "points": "Data points",
+      "deals": "Deals",
+      "deal_stats": "{created} created · {enriched} completed · {known} already known",
+      "deal_stats_partial": "At least {created} created · {enriched} completed · {known} already known",
+      "deal_fields_added": "{count} field(s) completed",
+      "deferred": "{count} item(s) deferred",
+      "to_review": "To review",
+      "errors": "Errors",
+      "details": "Details",
+      "hide": "Hide",
+      "years": "Years: {years}"
+    }
+  },
+  "syndication": {
+    "title": "Syndication",
+    "subtitle": "TOMASTEED's internal tracking of the deals it arranges: institutions approached, appetite, commitments and terms, as entered in the syndication file or in the platform. Internal data, never published.",
+    "confidential": "TOMASTEED internal data (including personal data): restricted access, do not share.",
+    "search": "Search (deal, institution, contact)",
+    "not_set": "not provided",
+    "not_linked": "to be linked to the directory",
+    "empty": "No syndication data",
+    "empty_hint": "Import the tracking file from Settings → Import the syndication tracker.",
+    "yes": "Yes",
+    "no": "No",
+    "tabs": {
+      "deals": "Deals",
+      "lenders": "Lender map",
+      "terms": "Funding terms",
+      "contacts": "Contacts"
+    },
+    "columns": {
+      "deal": "Deal",
+      "country": "Country",
+      "status": "Status",
+      "approached": "Approached",
+      "interested": "Interested",
+      "committed": "Committed",
+      "declined": "Declined",
+      "updated": "File date",
+      "institution": "Institution",
+      "type": "Type",
+      "countries": "Countries",
+      "deals": "Deals",
+      "tickets": "Tickets",
+      "maturities": "Maturities",
+      "ticket": "Commitment",
+      "rate": "Rate",
+      "arrangement_fee": "Arrangement fee",
+      "commitment_fee": "Commitment fee",
+      "maturity": "Maturity",
+      "name": "Name",
+      "function": "Position",
+      "email": "E-mail",
+      "phone": "Phone",
+      "dataroom": "Data room access",
+      "stage": "Stage",
+      "appetite": "Appetite",
+      "dossier": "File status",
+      "nda": "NDA (sent → received)",
+      "next_steps": "Next steps"
+    },
+    "statuses": {
+      "prospect": "Prospect",
+      "active": "Ongoing",
+      "on_hold": "Paused",
+      "closed_won": "Mandate executed",
+      "closed_lost": "Abandoned"
+    },
+    "stages": {
+      "approached": "Approached",
+      "interested": "Interested",
+      "declined": "Declined",
+      "term_sheet": "Term sheet",
+      "committed": "Committed",
+      "disbursed": "Disbursed",
+      "withdrawn": "Withdrawn"
+    },
+    "lender_types": {
+      "dfi": "DFI",
+      "bank": "Bank",
+      "guarantor": "Guarantor",
+      "investor": "Investor",
+      "other": "Other"
+    },
+    "origins": {
+      "excel_import": "Excel file",
+      "manual": "platform entry"
+    },
+    "contact_fields": {
+      "institution_name": "Institution",
+      "full_name": "Name",
+      "job_title": "Position",
+      "email": "E-mail",
+      "phone": "Phone"
+    },
+    "detail": {
+      "back": "Back to syndication",
+      "not_found": "Deal not found.",
+      "counterparties": "Institutions approached",
+      "no_counterparty": "No institution approached yet.",
+      "history": "history ({count})",
+      "add_event": "Record an event",
+      "edit": "Edit the deal",
+      "notes": "Notes",
+      "save": "Save",
+      "saved": "Saved.",
+      "save_error": "Saving failed.",
+      "edit_hint": "An edit made here is kept: if the next Excel file brings another value for the same field, the import will ask which one to keep.",
+      "contacts": "Contacts",
+      "no_contact": "No contact.",
+      "add_contact": "Add the contact",
+      "remove": "Remove",
+      "file_date": "file of {date}",
+      "edited": "edited in the platform",
+      "remove_confirm": "Confirm removal",
+      "remove_cancel": "Cancel"
+    },
+    "import": {
+      "title": "Import the syndication tracker",
+      "hint": "Upload the latest version of the “Suivi de Syndication” Excel file. A preview shows what will be created, updated or in conflict; nothing is written before you confirm.",
+      "file": ".xlsx file",
+      "preview": "Analyse the file",
+      "recompute": "Recompute the preview",
+      "apply": "Confirm the import",
+      "applied": "Import saved.",
+      "already_imported": "This exact file was already imported.",
+      "preview_error": "The file could not be analysed (structure not recognised or API unavailable).",
+      "apply_error": "The import failed: nothing was written.",
+      "not_set": "not provided",
+      "not_mapped": "— do not import this sheet —",
+      "detail_sheets": "Detailed tracking sheets",
+      "detail_sheets_hint": "Tell which deal each detailed tracking sheet belongs to (it is never linked by guess), then recompute the preview.",
+      "unresolved": "{count} institution(s) not linked to the directory",
+      "unresolved_hint": "They are imported with their name as written. To link them, add an exact alias in reference/syndication_aliases.json.",
+      "conflicts": "{count} conflict(s) to settle",
+      "conflicts_hint": "These values were changed in the platform AND in the file since the last import. Choose which one to keep; the other stays in the history.",
+      "keep_platform": "Keep the platform",
+      "keep_excel": "Take the Excel",
+      "decide_first": "Settle the {count} remaining conflict(s)",
+      "counts": {
+        "mandates": "Deals",
+        "events": "Institution events",
+        "contacts": "Contacts",
+        "file_date": "File update date"
+      },
+      "actions": {
+        "create": "to create",
+        "update": "to update",
+        "unchanged": "unchanged",
+        "conflict": "in conflict"
+      },
+      "history": {
+        "file": "File",
+        "file_date": "File date",
+        "status": "Status",
+        "actor": "By"
+      },
+      "status": {
+        "preview": "preview",
+        "applied": "imported",
+        "discarded": "discarded"
+      }
+    },
+    "import_title": "Import the tracker workbook (Excel)"
+  },
+  "errors": {
+    "not_found_title": "Page not found",
+    "not_found_body": "This page or item does not exist, or is no longer available.",
+    "back_home": "Back to home",
+    "search": "Search",
+    "error_title": "Something went wrong",
+    "error_body": "The page could not be displayed. Try again; if the problem persists, report the reference below.",
+    "retry": "Try again",
+    "reference": "Reference: {digest}"
   }
 }

@@ -398,10 +398,12 @@ def test_downgrade_refused_while_instrument_data_exists(pg, ingested):
     flagged = asyncio.run(_fetchval(pg["dsn"], "SELECT count(*) FROM deals WHERE validation_flags IS NOT NULL"))
     assert flagged > 0
     head = asyncio.run(_fetchval(pg["dsn"], "SELECT version_num FROM alembic_version"))
-    # 0015 first: refused while deals carry validation flags (the whole downgrade is rolled back).
-    with pytest.raises(RuntimeError, match="downgrade of 0015 refused"):
+    # Refused while deals carry data of a later revision (the whole downgrade is rolled back). Since
+    # migration 0020 the ingested deals also carry field-level excerpts and a source class, so the first
+    # refusing revision is 0020 (then 0016, then 0015 for the validation flags).
+    with pytest.raises(RuntimeError, match=r"downgrade of 00(15|16|20) refused"):
         _alembic_on(pg, "0014_public_debt_instruments", "downgrade")
-    with pytest.raises(RuntimeError, match="downgrade of 0015 refused"):
+    with pytest.raises(RuntimeError, match=r"downgrade of 00(15|16|20) refused"):
         _alembic_on(pg, "0013_institutional_discovery", "downgrade")
     # Later revisions (0016+) are rolled back with it: the database stays at its head.
     assert asyncio.run(_fetchval(pg["dsn"], "SELECT version_num FROM alembic_version")) == head
@@ -500,3 +502,24 @@ def test_no_transaction_is_open_during_http_requests(pg, ingested):
     assert report.deals_created == 0  # idempotent re-run
     assert len(fetcher.calls) > 5
     assert fetcher.open_during_get == [] and not still_open
+
+
+def test_umoa_titres_through_the_shared_collect_entry_point(pg, ingested):
+    """Audit 22/10/2026: UMOA-Titres goes through collect() (scheduled runs, collect_run CLI) — this path had
+    no test, and a new collector option (recheck) broke it in production."""
+    from app.services.deal_collection import collect
+
+    async def run():
+        engine, maker = await _session(pg["url"])
+        async with maker() as db:
+            result = await collect(db, ["umoa-titres"], since=date(2025, 1, 1), fetcher=StubFetcher(),
+                                   lock_engine=False, registrar=DocumentRegistrar(StorageManager(pg["storage"])),
+                                   recheck=True)
+        await engine.dispose()
+        return result
+
+    result = asyncio.run(run())
+    assert result.errors == []
+    summary = result.summaries["umoa-titres"]
+    assert summary["deals_created"] == 0  # already ingested by the fixture: idempotent
+    assert summary["coherence"]["deals_without_source_document"] == []

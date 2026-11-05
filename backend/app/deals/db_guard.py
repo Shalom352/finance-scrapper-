@@ -51,6 +51,7 @@ def check_target(
     url_source: str,
     application_name: str | None = None,
     expect_application_name: str | None = None,
+    min_revision: int = MIN_ALEMBIC_REVISION,
 ) -> VerifiedDatabase:
     if actual in FORBIDDEN_DATABASES:
         raise TargetDatabaseError(f"ABANDON: connecté à {actual!r}, base historique interdite pour ce runner.")
@@ -62,10 +63,10 @@ def check_target(
             f"et la base connectée {actual!r} n'est pas {WORKING_DATABASE!r}."
         )
     number = revision_number(alembic_version)
-    if number is None or number < MIN_ALEMBIC_REVISION:
+    if number is None or number < min_revision:
         raise TargetDatabaseError(
             f"ABANDON: {actual!r} est en alembic {alembic_version!r}, "
-            f"révision {MIN_ALEMBIC_REVISION:04d} minimum requise."
+            f"révision {min_revision:04d} minimum requise."
         )
     if expect_application_name is not None and application_name != expect_application_name:
         raise TargetDatabaseError(
@@ -81,6 +82,7 @@ async def verify_target_database(
     expect_db: str | None,
     url_source: str,
     expect_application_name: str | None = None,
+    min_revision: int = MIN_ALEMBIC_REVISION,
 ) -> VerifiedDatabase:
     """Read current_database(), application_name and alembic_version (read only), then check."""
     actual = (await db.execute(text("SELECT current_database()"))).scalar_one()
@@ -97,4 +99,5 @@ async def verify_target_database(
         url_source=url_source,
         application_name=application_name,
         expect_application_name=expect_application_name,
+        min_revision=min_revision,
     )

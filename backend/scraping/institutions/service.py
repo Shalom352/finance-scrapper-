@@ -78,7 +78,8 @@ class InstitutionProfileService:
 
     @staticmethod
     def selection(obs: list[ObservationSummary]) -> Selection:
-        usable = [o for o in obs if o.status != "rejected" and o.value_normalized is not None]
+        usable = [o for o in obs if o.status != "rejected" and o.value_normalized is not None
+                  and o.scope_evidence_class != "D"]
         return Selection(
             scopes=sorted({o.scope for o in usable if o.scope}),
             period_types=sorted({o.period_type for o in usable if o.period_type}),
@@ -88,7 +89,8 @@ class InstitutionProfileService:
     @staticmethod
     def select_rows(obs: list[ObservationSummary], period_type: str, data_scope: str) -> list[ObservationSummary]:
         """One period type and one scope — never mixed."""
-        return [o for o in obs if o.period_type == period_type and o.scope == data_scope]
+        return [o for o in obs if o.period_type == period_type and o.scope == data_scope
+                and o.scope_evidence_class != "D"]
 
     def qualify(
         self, rows: list[ObservationSummary]

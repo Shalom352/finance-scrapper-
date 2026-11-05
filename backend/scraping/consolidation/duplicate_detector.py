@@ -79,6 +79,7 @@ class DuplicateDetector:
             period_type=str(getattr(row, "period_type", "annual")),
             period_label=safe_str(getattr(row, "period_label", None)),
             scope=safe_str(getattr(row, "scope", None)),
+            scope_evidence_class=safe_str(getattr(row, "scope_evidence_class", None)),
             value_original=str(getattr(row, "value_original", "")),
             unit_original=safe_str(getattr(row, "unit_original", None)),
             currency_original=safe_str(getattr(row, "currency_original", None)),
@@ -110,42 +111,40 @@ class DuplicateDetector:
             for obs in observations
         ]
 
-        grouped: dict[tuple[str, str, int, str, str | None], list[ObservationSummary]] = defaultdict(list)
+        grouped: dict[tuple, list[ObservationSummary]] = defaultdict(list)
 
         for obs in parsed_obs:
+            if not obs.document_id or obs.page_number is None:
+                continue
             metric_code = getattr(obs, "metric_code", "")
             if not metric_code and hasattr(obs, "metric"):
                 metric_code = getattr(obs.metric, "code", "")
 
             # If metric_code is still empty, try extracting from raw row if accessible
-            key = (obs.institution_id, metric_code, obs.period_year, obs.period_type, obs.scope)
+            # Documents and pages are independent evidence; only repeats on the same page
+            # can be duplicate rows.
+            key = (obs.institution_id, metric_code, obs.period_year, obs.period_type, obs.scope,
+                   obs.document_id, obs.page_number)
             grouped[key].append(obs)
 
         duplicates: list[DuplicateGroup] = []
 
-        for (inst_id, metric_code, year, p_type, scope), items in grouped.items():
+        for (inst_id, metric_code, year, p_type, scope, document_id, page_number), items in grouped.items():
             if len(items) < 2:
                 continue
 
-            logical_key_str = f"{inst_id}:{metric_code}:{year}:{p_type}:{scope}"
+            logical_key_str = f"{inst_id}:{metric_code}:{year}:{p_type}:{scope}:{document_id}:{page_number}"
 
             # Check value identity
             first_val = items[0].value_normalized
             values_match = all(
                 self._are_values_equal(first_val, it.value_normalized)
+                and (items[0].unit_normalized or None) == (it.unit_normalized or None)
+                and (items[0].currency_normalized or None) == (it.currency_normalized or None)
                 for it in items[1:]
             )
 
-            # Check document origins
-            unique_docs = {it.document_id for it in items}
-
-            dup_type: DuplicateType
-            if values_match and len(unique_docs) == 1:
-                dup_type = "duplicate_identical"
-            elif values_match and len(unique_docs) > 1:
-                dup_type = "duplicate_different_source"
-            else:
-                dup_type = "duplicate_potential"
+            dup_type: DuplicateType = "duplicate_identical" if values_match else "duplicate_potential"
 
             duplicates.append(
                 DuplicateGroup(

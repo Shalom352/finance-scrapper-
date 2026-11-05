@@ -197,8 +197,9 @@ def test_counters_are_counts_not_scores():
 
 def test_routes_order():
     from app.main import create_app
+    from tests.route_inventory import iter_routes
 
-    paths = [r.path for r in create_app().routes if r.path.startswith("/api/v1/data-quality")]
+    paths = [r.path for r in iter_routes(create_app()) if r.path.startswith("/api/v1/data-quality")]
     assert paths.index("/api/v1/data-quality/summary") < paths.index("/api/v1/data-quality/{data_id}")
 
 

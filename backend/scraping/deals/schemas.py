@@ -22,6 +22,7 @@ from app.constants.deals import (
     AMOUNT_UNITS,
     DEAL_TYPES,
     DEAL_VALIDATION_FLAGS,
+    DEBT_TYPES,
     INSTRUMENT_TYPES,
     INTEREST_RATE_TYPES,
     ISO_4217_CURRENCIES,
@@ -36,6 +37,7 @@ Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 Ref = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=50)]
 
 DealType = Literal[DEAL_TYPES]  # type: ignore[valid-type]
+DebtType = Literal[DEBT_TYPES]  # type: ignore[valid-type]
 Role = Literal[PARTICIPANT_ROLES]  # type: ignore[valid-type]
 RateType = Literal[INTEREST_RATE_TYPES]  # type: ignore[valid-type]
 Unit = Literal[AMOUNT_UNITS]  # type: ignore[valid-type]
@@ -67,6 +69,10 @@ class SourceRef(BaseModel):
     excerpt: str | None = None
     # Deal fields this source attests (field-level provenance).
     fields: list[ProvenanceField] = Field(default_factory=list)
+    # Optional quotation per attested field (migration 0020): the exact words that carry the value.
+    field_excerpts: dict[ProvenanceField, Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]] = (
+        Field(default_factory=dict)
+    )
     # Phase 19 — confidence class and press / release metadata (an article body is never stored).
     source_class: SourceClass | None = None
     publisher: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)] | None = None
@@ -77,6 +83,9 @@ class SourceRef(BaseModel):
 
     @model_validator(mode="after")
     def press_rules(self) -> "SourceRef":
+        unattested = sorted(set(self.field_excerpts) - set(self.fields))
+        if unattested:
+            raise ValueError(f"field_excerpts for fields this source does not attest: {', '.join(unattested)}")
         if self.source_class == "press_reported" and (self.url is None or self.publisher is None):
             raise ValueError("a press_reported source requires url and publisher")
         if self.paywalled and self.fields:
@@ -143,6 +152,10 @@ class DealImportRecord(BaseModel):
     grace_period_months: int | None = Field(default=None, ge=0)
     fees: str | None = None
     guarantees: str | None = None
+    # Debt / equity split, each only when published as such (never derived from a ratio or a total).
+    debt_amount: Decimal | None = Field(default=None, gt=0)
+    equity_amount: Decimal | None = Field(default=None, gt=0)
+    debt_type: DebtType | None = None
     announcement_date: date | None = None
     signing_date: date | None = None
     financial_close_date: date | None = None
@@ -188,6 +201,8 @@ class DealImportRecord(BaseModel):
             raise ValueError("source refs must be unique within a deal")
         if self.amount is not None and self.currency is None:
             raise ValueError("currency is required when amount is given (no implicit currency)")
+        if (self.debt_amount is not None or self.equity_amount is not None) and self.currency is None:
+            raise ValueError("currency is required when debt_amount or equity_amount is given")
         if self.maturity_date and self.value_date and self.maturity_date <= self.value_date:
             raise ValueError("maturity_date must be after value_date")
         attested = {f for s in self.sources for f in s.fields}

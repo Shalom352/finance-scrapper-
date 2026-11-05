@@ -44,3 +44,41 @@ def test_fuzzy_contains_on_postgres(value: str, query: str, expected: bool) -> N
         return bool(result)
 
     assert asyncio.run(run()) is expected
+
+
+# Audit 22/10/2026 (R2): word search — punctuation and word order no longer hide a match.
+def test_query_words() -> None:
+    from app.db.text_search import query_words
+
+    assert query_words("Ecobank Côte d'Ivoire") == ["ecobank", "cote", "divoire"]
+    assert query_words("  - ") == []
+    assert fold("Œuvre") == "ouvre"  # same first letter as the SQL translate()
+
+
+@pytest.mark.parametrize(
+    ("value", "query", "expected"),
+    [
+        ("ECOBANK - CÔTE D'IVOIRE", "Ecobank Côte d'Ivoire", True),
+        ("ECOBANK - CÔTE D'IVOIRE", "ecobank cote divoire", True),
+        ("ECOBANK - CÔTE D'IVOIRE", "cote ecobank", True),  # any order
+        ("ECOBANK - CÔTE D’IVOIRE", "ecobank côte d’ivoire", True),
+        ("ECOBANK - BÉNIN", "ecobank cote", False),  # every word must appear
+        ("Taux 100% garanti", "100%", True),
+    ],
+)
+def test_all_words_on_postgres(value: str, query: str, expected: bool) -> None:
+    from app.db.text_search import all_words
+
+    params = _server_params()
+    if not _reachable(params):
+        pytest.skip("No PostgreSQL server reachable — integration tests skipped")
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    async def run() -> bool:
+        engine = create_async_engine(_async_dsn(params, params["base_db"]))
+        async with engine.connect() as conn:
+            result = (await conn.execute(select(all_words([literal(value)], query)))).scalar_one()
+        await engine.dispose()
+        return bool(result)
+
+    assert asyncio.run(run()) is expected

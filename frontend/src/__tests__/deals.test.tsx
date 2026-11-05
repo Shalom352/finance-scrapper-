@@ -20,6 +20,8 @@ const state = vi.hoisted(() => ({
   deal: null as unknown,
   history: [] as unknown[],
   analytics: null as unknown,
+  summary: null as unknown,
+  summaryCalls: [] as Record<string, unknown>[],
   queue: null as unknown,
   dups: null as unknown,
   dealError: null as number | null,
@@ -54,6 +56,10 @@ vi.mock("@/lib/api", () => {
     },
     getInstitutionsAll: () =>
       Promise.resolve([{ id: "inst-a", name_official: "Banque A", institution_type: "bank", country_id: "ci", status: "active" }]),
+    getDealSummary: (q: Record<string, unknown>) => {
+      state.summaryCalls.push(q);
+      return Promise.resolve(state.summary);
+    },
     getDealAnalytics: (d: string) => {
       state.analyticsCalls.push(d);
       return Promise.resolve(state.analytics);
@@ -145,6 +151,8 @@ beforeEach(() => {
   state.deal = detail();
   state.history = events;
   state.analytics = analytics;
+  state.summary = { key: null, label: null, deals: 1, by_status: { needs_review: 1 }, amounts: [], deals_without_amount: 1 };
+  state.summaryCalls = [];
   state.queue = page([listItem()]);
   state.dups = page([candidate()]);
   state.dealError = null;
@@ -174,6 +182,28 @@ describe("Deal explorer", () => {
     expect(state.sets.at(-1)).toEqual({ status: "verified", page: null });
   });
 
+  it("tiles summarise ALL the matching deals, amounts scaled by their unit (audit U2)", async () => {
+    state.params = new URLSearchParams("country=SN");
+    state.summary = {
+      key: null, label: null, deals: 603, by_status: { needs_review: 14, verified: 580, reviewed: 9 },
+      amounts: [
+        { currency: "XOF", unit: "millions", total: 11356223.48, deals: 581 },
+        { currency: "XOF", unit: "units", total: 390000000000, deals: 3 },
+        { currency: "EUR", unit: "millions", total: 10, deals: 1 },
+      ],
+      deals_without_amount: 6,
+    };
+    renderWithIntl(<DealsPage />, "fr");
+    const volumes = await screen.findAllByTestId("deal-volume");
+    expect(state.summaryCalls[0]).toMatchObject({ country: "SN" }); // same filters as the list
+    expect(volumes.map((v) => v.textContent)).toHaveLength(2); // one total per currency, never summed across
+    const text = volumes.map((v) => (v.textContent ?? "").replace(/\s/g, " "));
+    expect(text[0]).toMatch(/^11 746,\d+ Md FCFA$/); // 11 356 223,48 millions + 390 Md, not "576,7 k"
+    expect(text[1]).toMatch(/^10,00 M/);
+    expect(screen.getByText("603")).toBeTruthy();
+    expect(screen.getByText("14")).toBeTruthy(); // to review: from the server, not from the displayed page
+  });
+
   it("shows an explicit empty state", async () => {
     state.deals = page([]);
     renderWithIntl(<DealsPage />, "en");
@@ -194,7 +224,7 @@ describe("Deal explorer", () => {
 });
 
 describe("Deal detail", () => {
-  it("renders every section; unpublished terms are 'unavailable', never 0", async () => {
+  it("renders every section; unpublished terms are 'not published', never 0", async () => {
     const view = renderWithIntl(<DealPage params={params("deal-1")} />, "en");
     await screen.findByTestId("deal-title");
     for (const id of ["deal-summary", "deal-terms", "deal-participants", "deal-timeline", "deal-project",
@@ -202,8 +232,9 @@ describe("Deal detail", () => {
       expect(screen.getByTestId(id)).toBeTruthy();
     }
     for (const f of ["interest_rate", "spread_bps", "maturity_months", "grace_period_months", "fees", "guarantees"]) {
-      expect(screen.getByTestId(`deal-field-${f}`).textContent).toMatch(/Unavailable/);
+      expect(screen.getByTestId(`deal-field-${f}`).textContent).toMatch(/Not published/);
     }
+    expect(screen.getByTestId("deal-field-debt_equity_ratio").textContent).toMatch(/Not published/);
     expect(screen.getByTestId("deal-field-closing_date").textContent).toMatch(/Not published/);
     expect(screen.getByTestId("deal-field-signing_date").textContent).toContain("03/15/2024"); // no time-zone shift
     expect(screen.getByTestId("deal-field-amount").textContent).toMatch(/p\. 3/); // field-level provenance
@@ -244,6 +275,29 @@ describe("Deal detail", () => {
     expect(classes).toEqual(["Note d'information visée", "Presse (à recouper)"]);
     expect(view.container.textContent).toMatch(/Article payant/);
     expect(view.container.textContent).not.toMatch(NO_JUNK);
+  });
+
+  it("collected DFI deal: debt / equity, ratio from two published amounts, field quotation, flag, source class", async () => {
+    state.deal = detail({
+      debt_amount: 70000000, equity_amount: 30000000, debt_type: "senior_loan", debt_equity_ratio: 2.33,
+      currency: "EUR", unit: "units",
+      validation_flags: [{ code: "dfi_own_commitment_only", detail: "amount = Proparco's financing as published" }],
+      sources: [
+        { id: "src-1", deal_id: "deal-1", document_id: "doc-1", document_title: "Fiche projet Proparco", document_url: null,
+          source_id: "s1", source_name: "Proparco", page_number: 1, excerpt: null, source_class: "dfi_official",
+          fields: ["title", "amount", "currency"] },
+      ],
+      field_provenance: { title: ["src-1"], amount: ["src-1"], currency: ["src-1"] },
+      field_excerpts: { amount: [{ deal_source_id: "src-1", excerpt: "Montant du financement (€) : 52650000" }] },
+    });
+    renderWithIntl(<DealPage params={params("deal-1")} />, "fr");
+    await screen.findByTestId("deal-title");
+    expect(screen.getByTestId("deal-field-debt_type").textContent).toMatch(/Prêt senior/);
+    expect(screen.getByTestId("deal-field-debt_equity_ratio").textContent).toMatch(/2,33/);
+    expect(screen.getByTestId("deal-field-debt_equity_ratio").textContent).toMatch(/deux montants publiés/);
+    expect(screen.getByTestId("deal-field-excerpt").textContent).toContain("Montant du financement (€) : 52650000");
+    expect(screen.getByTestId("deal-validation-flags").textContent).toMatch(/financement de l'institution seule/);
+    expect(screen.getByTestId("deal-source-class").textContent).toMatch(/Institution de financement/);
   });
 
   it("links participants to the institution directory only when the id is known (Deal → Institution)", async () => {

@@ -19,7 +19,12 @@ from sqlalchemy import extract, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.constants.deals import SECONDARY_SOURCE_CLASSES
+from app.constants.deals import (
+    ARRANGER_FILTER_ROLES,
+    BORROWER_FILTER_ROLES,
+    DEAL_STATUSES,
+    SECONDARY_SOURCE_CLASSES,
+)
 from app.db.text_search import fuzzy_contains
 from app.models.country import Country
 from app.models.deal import Deal, DealDuplicateCandidate, DealParticipant, DealSource
@@ -35,6 +40,7 @@ from app.schemas.deal import (
     DealListItem,
     DealParticipantRead,
     DealSourceRead,
+    FieldExcerptRead,
     MergedDealRead,
 )
 from scraping.financial_data.review import (
@@ -138,7 +144,9 @@ def _list_query(
         conds.append(Deal.currency == currency)
     if status:
         conds.append(Deal.status == status)
-    for value, roles in ((borrower, ("borrower",)), (arranger, ("arranger",))):
+    # "Borrower" = the party receiving the financing, whatever the instrument: a bond's issuer included
+    # (sovereign bonds have no "borrower" row). "Arranger" = arranging / lead-managing roles.
+    for value, roles in ((borrower, BORROWER_FILTER_ROLES), (arranger, ARRANGER_FILTER_ROLES)):
         cond = _party(value, roles)
         if cond is not None:
             conds.append(cond)
@@ -247,6 +255,14 @@ def _deal_actions(deal: Deal, open_candidates: int) -> list[str]:
     return actions
 
 
+def debt_equity_ratio(debt: Decimal | None, equity: Decimal | None) -> Decimal | None:
+    """Debt / equity, ONLY from two published amounts of the same deal (same currency by construction:
+    both are stored in the deal currency). One of them missing -> None, never a market average."""
+    if debt is None or equity is None or equity <= 0:
+        return None
+    return (debt / equity).quantize(Decimal("0.01"))
+
+
 async def get_deal(db: AsyncSession, deal_id: str) -> DealDetail | None:
     deal = (
         await db.execute(select(Deal).options(*_deal_options()).where(Deal.id == deal_id, Deal.deleted_at.is_(None)))
@@ -256,9 +272,12 @@ async def get_deal(db: AsyncSession, deal_id: str) -> DealDetail | None:
 
     by_source: dict[str, list[str]] = defaultdict(list)
     provenance: dict[str, list[str]] = defaultdict(list)
+    excerpts: dict[str, list[FieldExcerptRead]] = defaultdict(list)
     for fs in deal.field_sources:
         by_source[fs.deal_source_id].append(fs.field_name)
         provenance[fs.field_name].append(fs.deal_source_id)
+        if fs.excerpt:
+            excerpts[fs.field_name].append(FieldExcerptRead(deal_source_id=fs.deal_source_id, excerpt=fs.excerpt))
 
     candidates = (
         await db.execute(
@@ -311,7 +330,9 @@ async def get_deal(db: AsyncSession, deal_id: str) -> DealDetail | None:
         amount_original=deal.amount_original, interest_rate=deal.interest_rate,
         interest_rate_type=deal.interest_rate_type, benchmark=deal.benchmark, spread_bps=deal.spread_bps,
         maturity_months=deal.maturity_months, grace_period_months=deal.grace_period_months, fees=deal.fees,
-        guarantees=deal.guarantees, financial_close_date=deal.financial_close_date,
+        guarantees=deal.guarantees, debt_amount=deal.debt_amount, equity_amount=deal.equity_amount,
+        debt_type=deal.debt_type, debt_equity_ratio=debt_equity_ratio(deal.debt_amount, deal.equity_amount),
+        financial_close_date=deal.financial_close_date,
         closing_date=deal.closing_date, auction_reference=deal.auction_reference, auction_date=deal.auction_date,
         maturity_date=deal.maturity_date, yield_rate=deal.yield_rate,
         validation_flags=list(deal.validation_flags or []), use_of_proceeds=deal.use_of_proceeds,
@@ -321,7 +342,8 @@ async def get_deal(db: AsyncSession, deal_id: str) -> DealDetail | None:
         verified_by=deal.verified_by, created_at=deal.created_at,
         participants=[_participant_read(p) for p in deal.participants],
         sources=[_source_read(s, sorted(by_source[s.id])) for s in deal.sources],
-        field_provenance=dict(provenance), duplicates=duplicates, merged_deals=merged_reads,
+        field_provenance=dict(provenance), field_excerpts=dict(excerpts), duplicates=duplicates,
+        merged_deals=merged_reads,
         allowed_actions=_deal_actions(deal, open_count),
     )
 
@@ -544,6 +566,35 @@ async def deal_counts(db: AsyncSession) -> dict[str, int]:
         "deals_rejected": rows.get("rejected", 0),
         "deals_duplicate_candidates": open_c,
     }
+
+
+async def deal_summary(db: AsyncSession, **filters: Any) -> DealAnalyticsRow:
+    """Summary of ALL the deals matching the explorer filters (not the current page): counts per
+    status and amount totals per (currency, unit), reviewed / verified deals only."""
+    conds = _list_query(**filters)
+    counted = dict(
+        (await db.execute(select(Deal.status, func.count(Deal.id)).where(*conds).group_by(Deal.status))).all()
+    )
+    # Every status is listed, 0 included: "0 to review" is a count, not a missing value.
+    by_status = {s: counted.get(s, 0) for s in DEAL_STATUSES}
+    sums = (
+        await db.execute(
+            select(Deal.currency, Deal.unit, func.sum(Deal.amount), func.count(Deal.id))
+            .where(*conds, Deal.amount.is_not(None), Deal.currency.is_not(None), Deal.status.in_(AMOUNT_STATUSES))
+            .group_by(Deal.currency, Deal.unit)
+        )
+    ).all()
+    without = (
+        await db.execute(
+            select(func.count(Deal.id)).where(*conds, or_(Deal.amount.is_(None), Deal.currency.is_(None)))
+        )
+    ).scalar_one()
+    return DealAnalyticsRow(
+        key=None, deals=sum(by_status.values()), by_status=by_status,
+        amounts=[CurrencyTotal(currency=c, unit=u, total=t, deals=n)
+                 for c, u, t, n in sorted(sums, key=lambda r: (r[0], r[1] or ""))],
+        deals_without_amount=without,
+    )
 
 
 # --------------------------------------------------------------------------- analytics (descriptive)

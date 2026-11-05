@@ -8,6 +8,7 @@ import { UMOA_COUNTRY_CODES } from "@/lib/countries";
 import { displayCurrency, MISSING } from "@/lib/formatters";
 import { useLabels } from "@/lib/useLabels";
 import { MAX_SELECTED_INSTITUTIONS } from "@/lib/financialData";
+import { getSelectableYears } from "@/lib/url";
 import { selectCls } from "@/components/rankings/IndicatorSelect";
 
 type Updates = Record<string, string | number | null>;
@@ -42,6 +43,7 @@ export function ExplorerFilters({
   const [search, setSearch] = useState("");
 
   const byId = useMemo(() => new Map(institutions.map((i) => [i.id, i])), [institutions]);
+  const periodYears = getSelectableYears(facets?.period_years ?? []);
   const matches = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return [];
@@ -56,9 +58,9 @@ export function ExplorerFilters({
   const statusLabel = (s: string) => (tStatus.has(s) ? tStatus(s) : s);
 
   return (
-    <div className="p-4 rounded-2xl border border-gray-800 bg-gray-900/40 space-y-3" data-testid="explorer-filters">
+    <div className="p-4 rounded-2xl border border-gray-200 bg-white space-y-3" data-testid="explorer-filters" data-guide="financial-data">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <label className="text-[11px] text-gray-400 font-medium">
+        <label className="text-[11px] text-gray-500 font-medium">
           {t("country")}
           <select value={query.country_code ?? ""} onChange={(e) => onChange({ country: e.target.value })} className={selectCls}>
             <option value="">{t("all")}</option>
@@ -70,7 +72,7 @@ export function ExplorerFilters({
           </select>
         </label>
 
-        <label className="text-[11px] text-gray-400 font-medium">
+        <label className="text-[11px] text-gray-500 font-medium">
           {t("indicator")}
           <select value={query.metric_code ?? ""} onChange={(e) => onChange({ metric: e.target.value })} className={selectCls}>
             <option value="">{t("all")}</option>
@@ -82,11 +84,11 @@ export function ExplorerFilters({
           </select>
         </label>
 
-        <label className="text-[11px] text-gray-400 font-medium">
+        <label className="text-[11px] text-gray-500 font-medium">
           {t("year")}
           <select value={query.period_year ?? ""} onChange={(e) => onChange({ year: e.target.value })} className={selectCls}>
             <option value="">{t("all")}</option>
-            {(facets?.period_years ?? []).map((y) => (
+            {periodYears.map((y) => (
               <option key={y} value={y}>
                 {y}
               </option>
@@ -94,7 +96,7 @@ export function ExplorerFilters({
           </select>
         </label>
 
-        <label className="text-[11px] text-gray-400 font-medium">
+        <label className="text-[11px] text-gray-500 font-medium">
           {t("currency")}
           <select
             value={query.currency_normalized ?? ""}
@@ -111,7 +113,7 @@ export function ExplorerFilters({
         </label>
 
         {/* Period type and scope always hold ONE value: rows of different periods or scopes are never mixed. */}
-        <label className="text-[11px] text-gray-400 font-medium">
+        <label className="text-[11px] text-gray-500 font-medium">
           {t("period_type")}
           <select value={query.period_type ?? ""} onChange={(e) => onChange({ period: e.target.value })} className={selectCls}>
             {openDimensions && <option value="">{t("all")}</option>}
@@ -123,7 +125,7 @@ export function ExplorerFilters({
           </select>
         </label>
 
-        <label className="text-[11px] text-gray-400 font-medium">
+        <label className="text-[11px] text-gray-500 font-medium">
           {t("scope")}
           <select value={query.scope ?? ""} onChange={(e) => onChange({ scope: e.target.value })} className={selectCls}>
             {openDimensions && <option value="">{t("all")}</option>}
@@ -135,7 +137,7 @@ export function ExplorerFilters({
           </select>
         </label>
 
-        <label className="text-[11px] text-gray-400 font-medium">
+        <label className="text-[11px] text-gray-500 font-medium">
           {t("status")}
           <select value={query.status ?? ""} onChange={(e) => onChange({ status: e.target.value })} className={selectCls}>
             <option value="">{statusAllLabel ?? t("status_all_valid")}</option>
@@ -147,7 +149,7 @@ export function ExplorerFilters({
           </select>
         </label>
 
-        <div className="text-[11px] text-gray-400 font-medium relative">
+        <div className="text-[11px] text-gray-500 font-medium relative">
           <label htmlFor="explorer-institution-search">{t("institution")}</label>
           <input
             id="explorer-institution-search"
@@ -160,7 +162,7 @@ export function ExplorerFilters({
           />
           {matches.length > 0 && (
             <ul
-              className="absolute z-20 mt-1 w-full max-h-60 overflow-y-auto rounded-xl border border-gray-800 bg-gray-950 shadow-xl"
+              className="absolute z-20 mt-1 w-full max-h-60 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-xl"
               role="listbox"
               aria-label={t("institution")}
             >
@@ -174,7 +176,7 @@ export function ExplorerFilters({
                       setIds([...institutionIds, i.id]);
                       setSearch("");
                     }}
-                    className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-gray-800"
+                    className="w-full text-left px-3 py-2 text-xs text-gray-800 hover:bg-gray-100"
                   >
                     {i.name_official} <span className="text-gray-500">({i.country?.code ?? MISSING})</span>
                   </button>
@@ -190,14 +192,14 @@ export function ExplorerFilters({
           {institutionIds.map((id) => (
             <span
               key={id}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-700 bg-gray-900 text-xs text-gray-200"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-300 bg-white text-xs text-gray-800"
             >
               {byId.get(id)?.name_official ?? id}
               <button
                 type="button"
                 onClick={() => setIds(institutionIds.filter((x) => x !== id))}
                 aria-label={t("remove_institution", { name: byId.get(id)?.name_official ?? id })}
-                className="text-gray-500 hover:text-rose-300"
+                className="text-gray-500 hover:text-rose-700"
               >
                 ✕
               </button>

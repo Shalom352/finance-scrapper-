@@ -27,15 +27,15 @@ export function SummaryCounts({ counts }: { counts: ReviewCenterCounts }) {
   return (
     <section aria-label={t("title")} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-3" data-testid="dq-counts">
       {KEYS.map((k) => (
-        <div key={k} className="p-3 rounded-xl border border-gray-800 bg-gray-900/40" data-testid={`dq-count-${k}`}>
-          <div className="text-[11px] text-gray-400">{t(k)}</div>
-          <div className="text-xl font-black text-white">{fmt.number(counts[k])}</div>
+        <div key={k} className="p-3 rounded-xl border border-gray-200 bg-white" data-testid={`dq-count-${k}`}>
+          <div className="text-[11px] text-gray-500">{t(k)}</div>
+          <div className="text-xl font-black text-gray-900">{fmt.number(counts[k])}</div>
         </div>
       ))}
       {DEAL_KEYS.filter((k) => typeof counts[k] === "number").map((k) => (
-        <div key={k} className="p-3 rounded-xl border border-gray-800 bg-gray-900/40" data-testid={`dq-count-${k}`}>
-          <div className="text-[11px] text-gray-400">{t(k)}</div>
-          <div className="text-xl font-black text-white">{fmt.number(counts[k])}</div>
+        <div key={k} className="p-3 rounded-xl border border-gray-200 bg-white" data-testid={`dq-count-${k}`}>
+          <div className="text-[11px] text-gray-500">{t(k)}</div>
+          <div className="text-xl font-black text-gray-900">{fmt.number(counts[k])}</div>
         </div>
       ))}
     </section>

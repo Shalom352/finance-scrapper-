@@ -53,8 +53,8 @@ export function DealQueue({
     <div className="space-y-6" data-testid="dq-deal-queue">
       <section className="space-y-2">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 className="text-sm font-bold text-white">{t("title")}</h2>
-          <label className="text-[11px] text-gray-400 font-medium w-56">
+          <h2 className="text-sm font-bold text-gray-900">{t("title")}</h2>
+          <label className="text-[11px] text-gray-500 font-medium w-56">
             {t("status")}
             <select value={status} onChange={(e) => onChange({ deal_status: e.target.value === "needs_review" ? null : e.target.value, page: null })}
               className={selectCls} data-testid="dq-deal-status">
@@ -72,7 +72,7 @@ export function DealQueue({
           <EmptyState title={t("empty_title")} description={t("empty_hint")} icon="✅" />
         ) : (
           <>
-            <p className="text-xs text-gray-400" data-testid="dq-deal-count">{t("count", { total: queue.data.total })}</p>
+            <p className="text-xs text-gray-500" data-testid="dq-deal-count">{t("count", { total: queue.data.total })}</p>
             <DealTable items={queue.data.items} hrefFor={(d) => `/data-quality/deals/${d.id}`} />
             <Pagination currentPage={page} pageSize={DEAL_PAGE_SIZE} total={queue.data.total}
               onPageChange={(p) => onChange({ page: p > 1 ? p : null })} />
@@ -81,7 +81,7 @@ export function DealQueue({
       </section>
 
       <section className="space-y-2" data-testid="dq-deal-duplicates">
-        <h2 className="text-sm font-bold text-white">{t("duplicates_title")}</h2>
+        <h2 className="text-sm font-bold text-gray-900">{t("duplicates_title")}</h2>
         <p className="text-[11px] text-gray-500">{t("duplicates_hint")}</p>
         {dups.status === "loading" ? (
           <TableSkeleton rows={2} cols={3} />
@@ -92,9 +92,9 @@ export function DealQueue({
         ) : (
           <ul className="space-y-2 text-xs">
             {dups.data.items.map((c) => (
-              <li key={c.id} className="p-3 rounded-xl border border-amber-800/50 bg-amber-950/20" data-testid="dq-deal-duplicate">
-                <span className="font-semibold text-amber-300">{tDup("badge")}</span>{" "}
-                <Link href={`/data-quality/deals/${c.other_deal_id}`} className="text-emerald-300 hover:underline">
+              <li key={c.id} className="p-3 rounded-xl border border-amber-200 bg-amber-50" data-testid="dq-deal-duplicate">
+                <span className="font-semibold text-amber-700">{tDup("badge")}</span>{" "}
+                <Link href={`/data-quality/deals/${c.other_deal_id}`} className="text-emerald-700 hover:underline">
                   {c.other_deal_title ?? c.other_deal_id}
                 </Link>
                 <span className="block text-gray-500 mt-1">

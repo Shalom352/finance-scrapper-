@@ -105,9 +105,10 @@ class Document(Base):
     # never counted as an institution's own document.
     document_scope: Mapped[str] = mapped_column(String(30), nullable=False, default="unknown", index=True, server_default="unknown")
 
-    # Text layer of the file (Phase 17): only machine_readable pages are ever extracted; a scanned or
-    # font-corrupted PDF stays a discovered document with full provenance but yields no observation.
+    # Original text-layer status (Phase 17), retained even when optional OCR is used.
     text_layer_status: Mapped[str] = mapped_column(String(30), nullable=False, default="unknown", server_default="unknown")
+    # Page-numbered OCR transcript, when enabled; the original source artifact remains unchanged.
+    ocr_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     file_format: Mapped[str | None] = mapped_column(String(20), nullable=True)
     # Financial year the document reports on (as stated by the document / its official listing)
     reporting_year: Mapped[int | None] = mapped_column(Integer, nullable=True)

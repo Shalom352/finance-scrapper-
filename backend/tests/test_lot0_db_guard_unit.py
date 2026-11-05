@@ -178,8 +178,9 @@ async def test_runner_stops_before_any_http_request(monkeypatch, capsys):
 
     seen = {}
 
-    async def refuse(db, *, expect_db, url_source, expect_application_name=None):
+    async def refuse(db, *, expect_db, url_source, expect_application_name=None, min_revision=None):
         seen["expect_application_name"] = expect_application_name
+        seen["min_revision"] = min_revision
         raise TargetDatabaseError("ABANDON: test")
 
     def no_lock(*a, **k):
@@ -197,6 +198,7 @@ async def test_runner_stops_before_any_http_request(monkeypatch, capsys):
     assert await umoa_titres_run.main_async() == 2
     assert "ABANDON: test" in capsys.readouterr().out
     assert seen["expect_application_name"] == RUNNER_APPLICATION_NAME
+    assert seen["min_revision"] == 20  # the deals carry field-level excerpts since migration 0020
     import os
 
     assert os.environ["DB_APPLICATION_NAME"] == RUNNER_APPLICATION_NAME  # set by the runner itself

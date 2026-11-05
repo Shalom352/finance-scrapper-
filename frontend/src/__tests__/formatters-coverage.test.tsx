@@ -84,8 +84,9 @@ describe("formatters", () => {
     expect(formatCurrency(1000, "EUR", "fr")).toContain("EUR");
   });
 
-  it("dates: fr DD/MM/YYYY, en MM/DD/YYYY", () => {
-    expect(formatDate("2024-03-05T12:00:00Z", "fr")).toBe("05/03/2024");
-    expect(formatDate("2024-03-05T12:00:00Z", "en")).toBe("03/05/2024");
+  it("dates: month in letters, fr \"5 mars 2024\", en \"Mar 5, 2024\"", () => {
+    expect(formatDate("2024-03-05T12:00:00Z", "fr")).toBe("5 mars 2024"); // month in letters: never misread
+    expect(formatDate("2024-03-05T12:00:00Z", "en")).toBe("Mar 5, 2024");
+    expect(formatDate("2026-10-02", "en")).toBe("Oct 2, 2026"); // a calendar day is never shifted by the time zone
   });
 });

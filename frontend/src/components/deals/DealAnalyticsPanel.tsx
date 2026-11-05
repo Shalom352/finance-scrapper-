@@ -46,10 +46,10 @@ export function DealAnalyticsPanel({ dimension, onDimension }: { dimension: Deal
   };
 
   return (
-    <section className="p-4 rounded-2xl border border-gray-800 bg-gray-900/40 space-y-3" data-testid="deal-analytics">
+    <section className="p-4 rounded-2xl border border-gray-200/90 bg-white shadow-xs space-y-3" data-testid="deal-analytics">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h2 className="text-sm font-bold text-white">{t("title")}</h2>
-        <label className="text-[11px] text-gray-400 font-medium w-56">
+        <h2 className="text-sm font-bold text-gray-900">{t("title")}</h2>
+        <label className="text-[11px] text-gray-600 font-medium w-56">
           {t("dimension")}
           <select value={dimension} onChange={(e) => onDimension(e.target.value as DealDimension)} className={selectCls}
             data-testid="deal-analytics-dimension">
@@ -69,43 +69,43 @@ export function DealAnalyticsPanel({ dimension, onDimension }: { dimension: Deal
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
-            <thead className="text-gray-400">
+            <thead className="text-gray-500 border-b border-gray-100">
               <tr>
-                <th className="py-2 px-2 text-left">{t("group")}</th>
-                <th className="py-2 px-2 text-right">{t("deals")}</th>
-                <th className="py-2 px-2 text-left">{t("by_status")}</th>
-                <th className="py-2 px-2 text-left">{t("amounts")}</th>
+                <th className="py-2.5 px-3 text-left font-semibold">{t("group")}</th>
+                <th className="py-2.5 px-3 text-right font-semibold">{t("deals")}</th>
+                <th className="py-2.5 px-3 text-left font-semibold">{t("by_status")}</th>
+                <th className="py-2.5 px-3 text-left font-semibold">{t("amounts")}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800/60">
+            <tbody className="divide-y divide-gray-100">
               {state.data.rows.map((r) => (
-                <tr key={r.key ?? "none"} data-testid="deal-analytics-row">
-                  <td className="py-2 px-2 text-gray-100 font-semibold">{groupLabel(r.key, r.label)}</td>
-                  <td className="py-2 px-2 text-right text-gray-200">{fmt.number(r.deals)}</td>
-                  <td className="py-2 px-2">
+                <tr key={r.key ?? "none"} data-testid="deal-analytics-row" className="hover:bg-gray-50/70">
+                  <td className="py-2.5 px-3 text-gray-900 font-semibold">{groupLabel(r.key, r.label)}</td>
+                  <td className="py-2.5 px-3 text-right text-gray-700 font-medium">{fmt.number(r.deals)}</td>
+                  <td className="py-2.5 px-3">
                     <div className="flex flex-wrap gap-1">
                       {Object.entries(r.by_status).map(([s, n]) => (
                         <span key={s} className="inline-flex items-center gap-1">
                           <StatusBadge status={s} size="sm" />
-                          <span className="text-gray-400">{fmt.number(n)}</span>
+                          <span className="text-gray-500 text-[11px] font-medium">{fmt.number(n)}</span>
                         </span>
                       ))}
                     </div>
                   </td>
-                  <td className="py-2 px-2 text-gray-200">
+                  <td className="py-2.5 px-3 text-gray-800">
                     {r.amounts.length === 0 ? (
-                      <span className="text-gray-500">{t("no_amount")}</span>
+                      <span className="text-gray-400">{t("no_amount")}</span>
                     ) : (
-                      <ul className="space-y-0.5" data-testid="deal-analytics-amounts">
+                      <ul className="space-y-0.5 font-medium" data-testid="deal-analytics-amounts">
                         {r.amounts.map((a) => (
                           <li key={`${a.currency}-${a.unit ?? ""}`}>
                             {amount(a.total, a.currency, a.unit)}{" "}
-                            <span className="text-gray-500">({t("amount_deals", { count: a.deals })})</span>
+                            <span className="text-gray-500 font-normal">({t("amount_deals", { count: a.deals })})</span>
                           </li>
                         ))}
                       </ul>
                     )}
-                    <span className="block text-[10px] text-gray-500">{t("without_amount", { count: r.deals_without_amount })}</span>
+                    <span className="block text-[10px] text-gray-400 mt-0.5">{t("without_amount", { count: r.deals_without_amount })}</span>
                   </td>
                 </tr>
               ))}

@@ -77,34 +77,34 @@ function InstitutionsContent() {
     <div className="space-y-6 animate-fade-in pb-12">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">{t("title")}</h1>
-          <p className="text-xs text-gray-400 mt-1">{t("subtitle")}</p>
+          <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">{t("title")}</h1>
+          <p className="text-xs text-gray-500 mt-1">{t("subtitle")}</p>
         </div>
         {result && (
-          <span className="px-3 py-1.5 rounded-xl border border-gray-800 bg-gray-900/60 text-xs font-semibold text-gray-300">
+          <span className="px-3 py-1.5 rounded-xl border border-gray-200 bg-gray-50/80 text-xs font-semibold text-gray-700">
             {t("count", { count: result.total })}
           </span>
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-2xl border border-gray-800 bg-gray-900/40">
-        <label className="text-[11px] text-gray-400 font-medium">
+      <div data-guide="institutions" className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-2xl border border-gray-200 bg-white">
+        <label className="text-[11px] text-gray-500 font-medium">
           {t("search_label")}
           <input
             type="search"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={t("search_placeholder")}
-            className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-800 bg-gray-950 text-xs text-gray-200 placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+            className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
           />
         </label>
 
-        <label className="text-[11px] text-gray-400 font-medium">
+        <label className="text-[11px] text-gray-500 font-medium">
           {t("country_label")}
           <select
             value={country}
             onChange={(e) => set({ country: e.target.value, page: null })}
-            className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-800 bg-gray-950 text-xs text-gray-200 focus:border-emerald-500 focus:outline-none"
+            className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 focus:border-emerald-500 focus:outline-none"
           >
             <option value="">{t("filter_country")}</option>
             {UMOA_COUNTRY_CODES.map((c) => (
@@ -115,12 +115,12 @@ function InstitutionsContent() {
           </select>
         </label>
 
-        <label className="text-[11px] text-gray-400 font-medium">
+        <label className="text-[11px] text-gray-500 font-medium">
           {t("status_label")}
           <select
             value={status}
             onChange={(e) => set({ status: e.target.value, page: null })}
-            className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-800 bg-gray-950 text-xs text-gray-200 focus:border-emerald-500 focus:outline-none"
+            className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 focus:border-emerald-500 focus:outline-none"
           >
             <option value="">{t("filter_status")}</option>
             {INSTITUTION_STATUSES.map((s) => (
@@ -147,11 +147,11 @@ function InstitutionsContent() {
           }}
         />
       ) : (
-        <div className="rounded-2xl border border-gray-800 bg-gray-900/30 overflow-hidden">
+        <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-gray-800 bg-gray-900/60 text-gray-400 font-semibold uppercase tracking-wider">
+                <tr className="border-b border-gray-200 bg-gray-50/80 text-gray-500 font-semibold uppercase tracking-wider">
                   <th className="py-3 px-4">{t("columns.name")}</th>
                   <th className="py-3 px-4">{t("columns.country")}</th>
                   <th className="py-3 px-4">{t("columns.group")}</th>
@@ -160,23 +160,23 @@ function InstitutionsContent() {
                   <th className="py-3 px-4 text-right">{t("columns.actions")}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-800/60">
+              <tbody className="divide-y divide-gray-100">
                 {result.items.map((inst) => (
-                  <tr key={inst.id} className="hover:bg-gray-800/30 transition-colors group">
-                    <td className="py-3.5 px-4 font-bold text-gray-200">
-                      <Link href={`/institutions/${inst.id}`} className="hover:text-emerald-400 transition-colors block">
+                  <tr key={inst.id} className="hover:bg-gray-50 transition-colors group">
+                    <td className="py-3.5 px-4 font-bold text-gray-800">
+                      <Link href={`/institutions/${inst.id}`} className="hover:text-emerald-700 transition-colors block">
                         {inst.name_official}
                       </Link>
                       {inst.name_commercial && (
-                        <span className="text-[11px] text-gray-400 block font-normal">{inst.name_commercial}</span>
+                        <span className="text-[11px] text-gray-500 block font-normal">{inst.name_commercial}</span>
                       )}
                     </td>
-                    <td className="py-3.5 px-4 text-gray-300" data-testid="country-cell">
-                      <span className="font-semibold text-emerald-400 mr-1.5">{inst.country?.code ?? MISSING}</span>
+                    <td className="py-3.5 px-4 text-gray-700" data-testid="country-cell">
+                      <span className="font-semibold text-emerald-700 mr-1.5">{inst.country?.code ?? MISSING}</span>
                       <span>{inst.country ? labels.country(inst.country) : ""}</span>
                     </td>
-                    <td className="py-3.5 px-4 text-gray-400">{inst.banking_group?.name ?? MISSING}</td>
-                    <td className="py-3.5 px-4 text-gray-400">{labels.institutionType(inst.institution_type) || MISSING}</td>
+                    <td className="py-3.5 px-4 text-gray-500">{inst.banking_group?.name ?? MISSING}</td>
+                    <td className="py-3.5 px-4 text-gray-500">{labels.institutionType(inst.institution_type) || MISSING}</td>
                     <td className="py-3.5 px-4 text-center">
                       <StateBadge
                         label={tStatus.has(inst.status) ? tStatus(inst.status) : inst.status}
@@ -186,7 +186,7 @@ function InstitutionsContent() {
                     <td className="py-3.5 px-4 text-right">
                       <Link
                         href={`/institutions/${inst.id}`}
-                        className="px-3 py-1.5 rounded-lg border border-gray-700 bg-gray-800/60 group-hover:bg-emerald-600 text-gray-300 group-hover:text-white transition-all text-xs font-semibold"
+                        className="px-3 py-1.5 rounded-lg border border-gray-300 bg-gray-100 group-hover:bg-emerald-600 text-gray-700 group-hover:text-white transition-all text-xs font-semibold"
                       >
                         {t("open")}
                       </Link>

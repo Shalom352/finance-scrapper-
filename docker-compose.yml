@@ -29,7 +29,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-umoa_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      # Bound to this machine only: the database is never reachable from the network.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/db/init:/docker-entrypoint-initdb.d:ro
@@ -51,7 +52,10 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      APP_ENV: ${APP_ENV:-production}
+      # The Docker stack runs in production mode (SQL not echoed, /docs off, write routes need the token);
+      # APP_ENV in .env keeps driving local development (uvicorn --reload).
+      APP_ENV: ${DOCKER_APP_ENV:-production}
+      DEFAULT_LOCALE: ${DEFAULT_LOCALE:-fr}
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_DB: ${POSTGRES_DB:-umoa_banking}
@@ -60,12 +64,50 @@ services:
       # Empty on purpose: the DSN is built from the POSTGRES_* values above (container network),
       # never from a host-side DATABASE_URL.
       DATABASE_URL: ""
+      DB_APPLICATION_NAME: ${DB_APPLICATION_NAME:-umoa_backend}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       BACKEND_DEBUG: "false"
       BACKEND_LOG_LEVEL: ${BACKEND_LOG_LEVEL:-INFO}
       DOCUMENTS_STORAGE_PATH: /app/data/downloads
+      SCRAPER_CONCURRENCY: ${SCRAPER_CONCURRENCY:-3}
+      SCRAPER_TIMEOUT: ${SCRAPER_TIMEOUT:-60}
+      # .env is not copied into the image (.dockerignore): every setting the app reads must be passed here.
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-}
+      INGESTION_ENABLED: ${INGESTION_ENABLED:-false}
+      INGESTION_SCHEDULE: ${INGESTION_SCHEDULE:-0 8,20 * * *}
+      INGESTION_TIMEZONE: ${INGESTION_TIMEZONE:-Africa/Abidjan}
+      INGESTION_HISTORICAL_YEARS: ${INGESTION_HISTORICAL_YEARS:-5}
+      INGESTION_CONCURRENCY_LIMIT: ${INGESTION_CONCURRENCY_LIMIT:-1}
+      INGESTION_STALE_RUN_HOURS: ${INGESTION_STALE_RUN_HOURS:-6}
+      DEAL_COLLECTION_ENABLED: ${DEAL_COLLECTION_ENABLED:-true}
+      DEAL_COLLECTION_SOURCES: ${DEAL_COLLECTION_SOURCES:-umoa-titres,brvm,amf-umoa,ifc,boad,proparco,bidc}
+      DEAL_COLLECTION_LOOKBACK_DAYS: ${DEAL_COLLECTION_LOOKBACK_DAYS:-120}
+      DEAL_COLLECTION_DELAY_SECONDS: ${DEAL_COLLECTION_DELAY_SECONDS:-2}
+      DEAL_COLLECTION_MAX_PAGES: ${DEAL_COLLECTION_MAX_PAGES:-200}
+      AUTO_VALIDATION_ENABLED: ${AUTO_VALIDATION_ENABLED:-true}
+      AUTO_VALIDATION_SCOPE_CLASSES: ${AUTO_VALIDATION_SCOPE_CLASSES:-A,B,C}
+      AUTO_VALIDATION_SINGLE_SOURCE_STATUS: ${AUTO_VALIDATION_SINGLE_SOURCE_STATUS:-reviewed}
+      DISCOVERY_ENABLED: ${DISCOVERY_ENABLED:-false}
+      DISCOVERY_SCHEDULE: ${DISCOVERY_SCHEDULE:-0 3 * * *}
+      DISCOVERY_UNIVERSE: ${DISCOVERY_UNIVERSE:-UMOA.BANKING}
+      DISCOVERY_HISTORICAL_YEARS: ${DISCOVERY_HISTORICAL_YEARS:-5}
+      DISCOVERY_FASCICLE_EDITIONS: ${DISCOVERY_FASCICLE_EDITIONS:-1}
+      DISCOVERY_REFERENCE_EDITIONS: ${DISCOVERY_REFERENCE_EDITIONS:-1}
+      DISCOVERY_MAX_ROUNDS: ${DISCOVERY_MAX_ROUNDS:-30}
+      DISCOVERY_SEARCH_PROVIDER: ${DISCOVERY_SEARCH_PROVIDER:-none}
+      BRAVE_SEARCH_API_KEY: ${BRAVE_SEARCH_API_KEY:-}
+      DISCOVERY_SEARCH_STORAGE_RIGHTS_CONFIRMED: ${DISCOVERY_SEARCH_STORAGE_RIGHTS_CONFIRMED:-false}
+      DISCOVERY_SEARCH_RESULTS_PER_ENTITY: ${DISCOVERY_SEARCH_RESULTS_PER_ENTITY:-5}
+      DISCOVERY_SEARCH_MAX_ENTITIES_PER_RUN: ${DISCOVERY_SEARCH_MAX_ENTITIES_PER_RUN:-20}
+      DOCUMENT_OCR_ENABLED: ${DOCUMENT_OCR_ENABLED:-false}
+      DOCUMENT_OCR_LANGUAGE: ${DOCUMENT_OCR_LANGUAGE:-fra+eng}
+      DOCUMENT_OCR_DPI: ${DOCUMENT_OCR_DPI:-200}
+      DOCUMENT_OCR_MAX_PAGES: ${DOCUMENT_OCR_MAX_PAGES:-40}
+      DOCUMENT_OCR_TIMEOUT_SECONDS: ${DOCUMENT_OCR_TIMEOUT_SECONDS:-45}
+      SYNDICATION_MAX_UPLOAD_BYTES: ${SYNDICATION_MAX_UPLOAD_BYTES:-15000000}
     ports:
-      - "${BACKEND_PORT:-8000}:8000"
+      # Bound to this machine only: users go through the frontend proxy (Basic Auth + internal token).
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
     volumes:
       - documents_data:/app/data
     networks:
@@ -76,7 +118,7 @@ services:
       context: ./frontend
       args:
         # Browser-side API URL, inlined at build time.
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        NEXT_PUBLIC_API_URL: ""
     container_name: umoa_frontend
     restart: unless-stopped
     depends_on:
@@ -85,6 +127,10 @@ services:
     environment:
       # Server-side rendering calls the API on the container network.
       INTERNAL_API_URL: http://backend:8000
+      BASIC_AUTH_USER: ${BASIC_AUTH_USER}
+      BASIC_AUTH_USERS: ${BASIC_AUTH_USERS}
+      # Shared secret added by the Next.js middleware to proxied /api calls (backend write routes).
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-}
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     networks:

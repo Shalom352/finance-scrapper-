@@ -10,7 +10,8 @@ where it stands in the EXISTING authority rule applied to its logical key
   - "conflict":      divergent unverified values — no value is certified;
   - "needs_review":  the authoritative candidate still needs review (not certified);
   - "rejected":      rejected observation — never a valid financial value;
-  - "missing_value": no normalized value stored — never shown as 0.
+  - "missing_value": no source value stored — never shown as 0;
+  - "normalization_pending": a source value exists but has not been normalized.
 
 The rule itself is not reimplemented: qualify_metric → EligibilityEngine.
 """
@@ -22,7 +23,10 @@ from scraping.analytics.eligibility import EligibilityEngine
 from scraping.consolidation.models import ObservationSummary
 from scraping.rankings.eligibility import qualify_metric
 
-Qualification = Literal["authoritative", "superseded", "conflict", "needs_review", "rejected", "missing_value"]
+Qualification = Literal[
+    "authoritative", "superseded", "conflict", "needs_review", "rejected",
+    "missing_value", "normalization_pending",
+]
 
 LogicalKey = tuple[str, str, int, str, str | None]
 
@@ -53,7 +57,8 @@ def qualify_rows(
             out[o.id] = ("rejected", None)
             continue
         if o.value_normalized is None:
-            out[o.id] = ("missing_value", None)
+            qualification = "normalization_pending" if (o.value_original or "").strip() else "missing_value"
+            out[o.id] = (qualification, None)
             continue
         cand = decisions.get(logical_key(o))
         if cand is None:

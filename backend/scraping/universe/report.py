@@ -300,6 +300,23 @@ def _rounds(rounds) -> list[str]:
     out.append(_table(["#", "Strategy", "Targets", "Sources found", "New entities", "New docs", "Doc links",
                        "New observations", "Entities before", "Entities after", "Docs cov.", "Data cov.",
                        "Errors"], rows))
+    crawls = [r for r in rounds if r.strategy_code == "official_website_crawl" and r.details]
+    if crawls:
+        sites = crawls[-1].details.get("sites", [])
+        out += ["", "### Official-site retrieval outcomes (latest crawl round)", ""]
+        if sites:
+            out.append(_table(["Entity", "Site", "Outcome", "Pages", "Sitemaps", "PDF candidates", "Stored",
+                               "Fetch failures", "Invalid", "Oversized", "Robots blocked"], [
+                [s.get("entity_id"), s.get("site"), s.get("outcome"), s.get("pages_visited"),
+                 f"{s.get('sitemaps_checked', 0)}/{s.get('sitemaps_requested', 0)}",
+                 s.get("unique_candidate_pdfs", 0), s.get("pdfs_stored", 0),
+                 s.get("pdf_fetch_failures", 0) + s.get("page_fetch_failures", 0)
+                 + s.get("sitemap_fetch_failures", 0),
+                 s.get("invalid_pdfs", 0), s.get("oversized_pdfs", 0),
+                 s.get("pdf_blocked", 0) + s.get("sitemap_blocked", 0) + s.get("page_blocked", 0)]
+                for s in sites]))
+        else:
+            out.append("No verified institution websites were available in this crawl round.")
     return out + [""]
 
 

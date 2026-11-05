@@ -97,7 +97,7 @@ python -m app.validation.run --expect-db <base>                      # observati
 python -m app.validation.run --expect-db <base> --revoke-all --actor <id> --reason "<motif>"   # tout retirer
 ```
 
-Option : `AUTO_VALIDATION_ENABLED=true` lance la validation après chaque ingestion automatique ;
+Dans Docker, `AUTO_VALIDATION_ENABLED=true` est activé par défaut et lance la validation après chaque ingestion automatique ;
 `AUTO_VALIDATION_SCOPE_CLASSES` (défaut `A,B,C`) fixe les classes de preuve de périmètre acceptées
 (retirer `C` pour exiger une mention explicite du périmètre).
 
@@ -107,7 +107,7 @@ Option : `AUTO_VALIDATION_ENABLED=true` lance la validation après chaque ingest
 |---|---|
 | Provenance | établissement, source, document, page, valeur et unité d'origine ; devise pour un montant |
 | Normalisation | valeur d'origine × multiplicateur de l'unité = valeur normalisée ; devise inchangée |
-| Relecture du document | la valeur d'origine est **imprimée sur sa page** du fichier stocké (relu à chaque passage) ; fichier absent = échec |
+| Relecture du document | la valeur d'origine est **imprimée sur sa page** du PDF stocké (relu à chaque passage) ; fichier absent, page illisible ou valeur absente = échec |
 | Périmètre | classe de preuve dans les classes acceptées |
 | Signaux qualité | aucun signal bloquant (`cross_edition_mismatch`, `cross_statement_mismatch`…) |
 | Aucune valeur concurrente | aucune autre observation non rejetée de même clé avec une autre valeur (tolérance d'arrondi de l'unité) |
@@ -118,6 +118,8 @@ Option : `AUTO_VALIDATION_ENABLED=true` lance la validation après chaque ingest
 Résultat : tous les contrôles passent **et** corroboration → `verified` (automatique) ; tous passent, source unique →
 `reviewed` (automatique) ; un échec → statut inchangé, rapport conservé (`auto_validation`) et affiché.
 
+La relecture utilise le PDF archivé et le numéro de page lié à l'observation. Les extractions OCR restent en revue humaine : leur valeur n'est pas acceptée automatiquement sur la seule base du même OCR.
+
 Choix du propriétaire : `--single-source-status verified` (ou `AUTO_VALIDATION_SINGLE_SOURCE_STATUS=verified`)
 donne `verified` (automatique) aussi aux lignes à source unique dont tous les contrôles passent ; les lignes déjà
 `reviewed` automatiquement sont alors promues. Toujours retirable par une personne.
@@ -125,7 +127,11 @@ donne `verified` (automatique) aussi aux lignes à source unique dont tous les c
 **Transactions** — au moins une source primaire (note visée, résultat UMOA-Titres, communiqué de l'émetteur ;
 jamais la presse seule ni l'index AMF), tous les champs publiés attestés, rôles lus dans le texte (une lecture
 de logo ou de scan exige une personne), aucun doublon en suspens, montant positif avec devise.
-Deux documents **primaires** distincts (la presse et l'index AMF ne comptent pas) → `verified` ; sinon `reviewed`.
+Deux documents **primaires** de deux **sources différentes** (la presse et l'index AMF ne comptent pas) → `verified` ;
+sinon `reviewed`. Deux documents d'une même source (le PDF de résultats et la page d'émission UMOA-Titres) ne
+sont pas une corroboration (audit du 22/10/2026) : une transaction validée automatiquement par l'ancienne règle
+est réévaluée au run suivant et repasse en `reviewed`, avec son événement d'audit. L'interface affiche « Source
+unique » sur une transaction qu'une seule source publie.
 
 **Garde-fous** : les décisions humaines ne sont jamais modifiées ; une revue humaine est marquée
 `validation_method = 'human'` ; le retrait (`POST /api/v1/data-quality/{id}/revoke-automatic`,

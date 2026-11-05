@@ -6,6 +6,7 @@ a value outside these lists is refused at import, never mapped to a "closest" va
 
 DEAL_TYPES = (
     "term_loan",
+    "credit_line",
     "syndicated_loan",
     "project_finance",
     "trade_finance",
@@ -63,6 +64,11 @@ PARTICIPANT_ROLES = (
     "paying_agent",
 )
 
+# Explorer filters (audit 22/10/2026: "Emprunteur" matched no deal — sovereign bonds have an issuer, no
+# borrower — and "Arrangeur" missed the lead managers named in the notes).
+BORROWER_FILTER_ROLES = ("borrower", "issuer")
+ARRANGER_FILTER_ROLES = ("arranger", "co_arranger", "lead_manager", "co_lead_manager")
+
 # Roles through which an institution PROVIDES or ORGANISES financing (used by the targeting view).
 FINANCING_ROLES = (
     "lender",
@@ -105,7 +111,12 @@ SOURCE_CLASSES = (
     "issuer_press_release",  # signed issuer release reproduced in full
     "regulator_index",  # AMF API metadata: never a role (D2)
     "press_reported",  # press article: needs a primary source before verification (D4)
+    # Migration 0020: disclosure on a development finance institution's own domain (IFC, BOAD,
+    # Proparco). Primary for the institution's OWN participation; it never attests the share of others.
+    "dfi_official",
 )
+# Phase 19 vocabulary, kept for the migration 0020 downgrade.
+PHASE19_SOURCE_CLASSES = SOURCE_CLASSES[:-1]
 # A deal attested ONLY by these classes cannot be verified (409) until a primary source is added.
 SECONDARY_SOURCE_CLASSES = ("press_reported", "regulator_index")
 
@@ -120,6 +131,9 @@ SECTORS = (
     "real_estate",
     "financial_services",
     "public_finance",
+    "climate",
+    "health_education",
+    "tourism",
     "other",
 )
 
@@ -129,9 +143,33 @@ LINK_RELATIONS = ("subsidiary", "shareholder")
 
 INTEREST_RATE_TYPES = ("fixed", "floating")
 
+# Nature of the debt as PUBLISHED (migration 0020). Closed list: an unknown wording leaves it NULL.
+DEBT_TYPES = (
+    "senior_loan",
+    "subordinated_loan",
+    "mezzanine",
+    "convertible",
+    "credit_line",
+    "guarantee",
+    "bond",
+)
+
 AMOUNT_UNITS = ("units", "thousands", "millions", "billions")
 
 DEAL_STATUSES = ("extracted", "needs_review", "reviewed", "verified", "rejected")
+
+# Funnel status of one URL read by an automated deal collector (migration 0020). Exactly one per URL.
+DEAL_COLLECTION_OUTCOMES = (
+    "produced",  # deal(s) imported as needs_review
+    "already_imported",  # every ingestion_key already exists: nothing written
+    "out_of_scope",  # not a UMOA deal, not a deal type collected, or outside the date window
+    "not_a_deal",  # page read, nothing publishable as a deal on it
+    "refused",  # parser refused the page (contradiction, ambiguous value): reported, nothing written
+    "import_refused",  # the importer refused the records (validation / references)
+    "fetch_failed",  # network error or HTTP error other than an access restriction
+    "restricted",  # 401 / 402 / 403 / login wall / robots.txt: never bypassed
+    "error",  # unexpected exception, reported
+)
 
 DUPLICATE_STATES = ("duplicate_candidate", "same_deal", "distinct_deals", "same_deal_multi_source")
 DUPLICATE_DECISIONS = ("same_deal", "distinct_deals", "same_deal_multi_source")
@@ -180,6 +218,13 @@ PHASE18_PROVENANCE_FIELDS = PROVENANCE_FIELDS
 # Use of proceeds and raw AMF filing agent (migration 0016), tracked field by field as well.
 SOURCING_PROVENANCE_FIELDS = ("use_of_proceeds", "use_of_proceeds_categories", "filing_agent_raw")
 PROVENANCE_FIELDS = PROVENANCE_FIELDS + SOURCING_PROVENANCE_FIELDS
+# Phase 19-21 vocabulary, kept for the migration 0020 downgrade.
+PHASE19_PROVENANCE_FIELDS = PROVENANCE_FIELDS
+
+# Debt / equity split (migration 0020): each amount only when it is published as such. The ratio
+# is never stored; the API derives it only when both amounts are published in the same currency.
+STRUCTURE_PROVENANCE_FIELDS = ("debt_amount", "equity_amount", "debt_type")
+PROVENANCE_FIELDS = PROVENANCE_FIELDS + STRUCTURE_PROVENANCE_FIELDS
 
 # Public securities as named by the issuing Treasury / UMOA-Titres. Closed list: never guessed.
 #   OAT = Obligation Assimilable du Trésor · BAT = Bon Assimilable du Trésor
@@ -190,6 +235,11 @@ DEAL_VALIDATION_FLAGS = (
     "global_total_rounded",  # printed global total = integer rounding of the tranche sum
     "issuer_label_truncated",  # issuer printed truncated, country confirmed by the ISIN prefix
     "page_lists_buyback_securities",  # emission page also lists bought-back securities (ignored, verified)
+    # Automated deal collection (migration 0020).
+    "dfi_own_commitment_only",  # only the institution's own commitment is published: deal amount left NULL
+    "pre_approval_disclosure",  # disclosed before board approval / signing: the deal may never close
+    "program_level_amount",  # the published figure is a programme envelope, not this counterpart's line
+    "listing_notice_only",  # BRVM first-listing line: no amount, ISIN or arranger published there
 )
 
 # ISO 4217 codes accepted at import. Explicit list: an unknown code is refused,
@@ -215,3 +265,9 @@ MANDATE_STATUSES = ("prospect", "active", "on_hold", "closed_won", "closed_lost"
 COUNTERPARTY_STAGES = ("approached", "interested", "declined", "term_sheet", "committed", "disbursed", "withdrawn")
 # Stages that show an appetite for the deal (used by the targeting view).
 POSITIVE_STAGES = ("interested", "term_sheet", "committed", "disbursed")
+
+# Syndication tracker (migration 0022) — TOMASTEED's internal Excel "Suivi de Syndication".
+LENDER_TYPES = ("dfi", "bank", "guarantor", "investor", "other")
+# Where an internal record comes from: an Excel import, or an edit made in the platform.
+RECORD_ORIGINS = ("excel_import", "manual")
+SYNDICATION_IMPORT_STATUSES = ("preview", "applied", "discarded")

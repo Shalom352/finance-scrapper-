@@ -13,6 +13,7 @@ import { ProvenancePanel } from "@/components/provenance/ProvenancePanel";
 import { ExplorerFilters } from "@/components/financial-data/ExplorerFilters";
 import { ExplorerTable } from "@/components/financial-data/ExplorerTable";
 import { ExportButton } from "@/components/financial-data/ExportButton";
+import { YearDataNotice } from "@/components/common/YearDataNotice";
 
 export default function FinancialDataPage() {
   return (
@@ -69,8 +70,8 @@ function FinancialDataContent() {
     <div className="space-y-6 animate-fade-in pb-12">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">{t("title")}</h1>
-          <p className="text-xs text-gray-400 mt-1">{t("subtitle")}</p>
+          <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">{t("title")}</h1>
+          <p className="text-xs text-gray-500 mt-1">{t("subtitle")}</p>
         </div>
         <ExportButton key={queryKey} query={query} total={total} />
       </div>
@@ -82,6 +83,10 @@ function FinancialDataContent() {
         institutions={institutions}
         onChange={change}
       />
+
+      {query.period_year !== undefined && (
+        <YearDataNotice year={query.period_year} availableYears={facets?.period_years ?? null} />
+      )}
 
       <div className="text-[11px] text-gray-500 space-y-1">
         <p>{t("note_rows")}</p>
@@ -96,7 +101,7 @@ function FinancialDataContent() {
         <EmptyState title={t("empty_title")} description={t("empty_hint")} icon="📂" />
       ) : (
         <section className="space-y-2">
-          <p className="text-xs text-gray-400" data-testid="explorer-count">
+          <p className="text-xs text-gray-500" data-testid="explorer-count">
             {t("count", { total: result.data.total })}
           </p>
           <ExplorerTable

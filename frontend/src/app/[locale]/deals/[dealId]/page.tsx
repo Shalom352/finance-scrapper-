@@ -45,7 +45,7 @@ function DealContent({ dealId }: { dealId: string }) {
   }, [dealId, reload]);
 
   const back = (
-    <Link href={`/deals${qs ? `?${qs}` : ""}`} className="text-xs text-emerald-300 hover:underline" data-testid="deal-back">
+    <Link href={`/deals${qs ? `?${qs}` : ""}`} className="inline-flex items-center min-h-10 text-xs text-emerald-700 hover:underline" data-testid="deal-back">
       ← {t("back")}
     </Link>
   );
@@ -68,7 +68,7 @@ function DealContent({ dealId }: { dealId: string }) {
   return (
     <div className="space-y-6 animate-fade-in pb-12">
       {back}
-      <h1 className="text-2xl font-black text-white tracking-tight" data-testid="deal-title">{state.deal.title}</h1>
+      <h1 className="text-2xl font-black text-gray-900 tracking-tight" data-testid="deal-title">{state.deal.title}</h1>
       <DealDetailView deal={state.deal} history={state.history} reviewHref={`/data-quality/deals/${state.deal.id}`} />
     </div>
   );

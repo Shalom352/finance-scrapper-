@@ -48,6 +48,13 @@ class DealSourceRead(BaseModel):
     paywalled: bool | None = None
 
 
+class FieldExcerptRead(BaseModel):
+    """The quotation of one source attesting one field (migration 0020)."""
+
+    deal_source_id: str
+    excerpt: str
+
+
 class DealDuplicateRead(BaseModel):
     id: str
     other_deal_id: str
@@ -103,6 +110,11 @@ class DealDetail(DealListItem):
     grace_period_months: int | None = None
     fees: str | None = None
     guarantees: str | None = None
+    # Debt / equity as published (migration 0020); the ratio is derived ONLY from both amounts.
+    debt_amount: Decimal | None = None
+    equity_amount: Decimal | None = None
+    debt_type: str | None = None
+    debt_equity_ratio: Decimal | None = None
     financial_close_date: date | None = None
     closing_date: date | None = None
     auction_reference: str | None = None
@@ -127,6 +139,8 @@ class DealDetail(DealListItem):
     sources: list[DealSourceRead]
     # field name -> ids of the deal sources attesting it
     field_provenance: dict[str, list[str]]
+    # field name -> quotation(s) of the sources attesting it (when recorded)
+    field_excerpts: dict[str, list[FieldExcerptRead]] = Field(default_factory=dict)
     duplicates: list[DealDuplicateRead]
     merged_deals: list[MergedDealRead]
     allowed_actions: list[str]

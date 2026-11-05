@@ -9,10 +9,15 @@ from decimal import Decimal
 
 import pytest
 
+from scraping.quality.ocr import OCRPage, OCRWord
 from scraping.quality.text_layer import assess_page, assess_pdf_bytes, assess_texts
 from scraping.universe.coverage import EntityCoverage
 from scraping.universe.gaps import missing_items
-from scraping.universe.institution_statements import InstitutionStatementParser, page_unit
+from scraping.universe.institution_statements import (
+    InstitutionStatementParser,
+    _ocr_lines,
+    page_unit,
+)
 from scraping.universe.resolution import EntityResolver, IndexedEntity
 from scraping.universe.strategies.base import DiscoveryContext
 from scraping.universe.strategies.institution_documents import BrvmIssuerFilingsStrategy
@@ -99,6 +104,49 @@ class TestInstitutionStatements:
         pdf = build_text_pdf([GARBLED_LINES * 3 + ["2021", "2022", "TOTAL ACTIF 1 000 2 000"]])
         res = InstitutionStatementParser().parse_bytes(pdf, "x")
         assert res.values == [] and res.skipped_pages[1] == "text layer corrupted"
+
+    def test_ocr_boxes_reconstruct_catalogue_label_and_grouped_amount(self):
+        words = [
+            OCRWord("TOTAL", 10, 10, 32, 20, .92, 1, 1, 1),
+            OCRWord("ACTIF", 35, 10, 55, 20, .90, 1, 1, 1),
+            OCRWord("120", 90, 10, 105, 20, .88, 1, 1, 1),
+            OCRWord("000", 108, 10, 125, 20, .86, 1, 1, 1),
+        ]
+        lines = _ocr_lines(OCRPage("TOTAL ACTIF 120 000", words, .89))
+        assert any(line.text == "TOTAL ACTIF" for line in lines)
+        assert any(line.text == "120 000" and line.confidence == .86 for line in lines)
+
+    def test_ocr_extraction_stays_needs_review(self, monkeypatch):
+        words = []
+
+        def add(text, x, y, line, confidence=.92):
+            words.append(OCRWord(text, x, y, x + max(8, len(text) * 5), y + 10,
+                                 confidence, 1, 1, line))
+
+        # Two year headers followed by three statement rows with values aligned under both years.
+        add("2023", 300, 20, 1)
+        add("2022", 400, 20, 1)
+        rows = [
+            ("TOTAL DE L ACTIF", "100", "90"),
+            ("CREANCES SUR LA CLIENTELE", "70", "65"),
+            ("DETTES A L EGARD DE LA CLIENTELE", "50", "45"),
+        ]
+        for row_no, (label, left, right) in enumerate(rows, start=2):
+            y = row_no * 25
+            x = 20
+            for token in label.split():
+                add(token, x, y, row_no)
+                x += max(8, len(token) * 5) + 2
+            add(left, 300, y, row_no, .90)
+            add(right, 400, y, row_no, .88)
+        transcript = "\n".join(" ".join(w.text for w in words if w.line == line) for line in range(1, 5))
+        monkeypatch.setattr("scraping.universe.institution_statements.recognize_page",
+                            lambda *_args, **_kwargs: OCRPage(transcript, words, .89))
+        scanned = build_text_pdf([[]])
+        parsed = InstitutionStatementParser().parse_bytes(scanned, "FIXTURE annual report", ocr_enabled=True)
+        assert len(parsed.values) == 6
+        assert all(value.extraction_method == "ocr" and value.confidence_score < Decimal("0.900")
+                   for value in parsed.values)
 
 
 # =========================================================================== BRVM pages & resolution

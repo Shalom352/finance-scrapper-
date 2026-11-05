@@ -15,6 +15,7 @@ import type {
   ComparisonRow,
   CountryComparison,
   DealAnalytics,
+  DealAnalyticsRow,
   DealDetail,
   DealDimension,
   DealDuplicate,
@@ -48,10 +49,12 @@ import type {
   RatioDefinition,
   RatioResult,
   SearchResults,
+  SearchType,
   SectorAggregation,
   SectorComparison,
   SectorStructure,
 } from "@/types";
+import { getSelectableYears } from "@/lib/url";
 
 /**
  * Browser: the public API URL (inlined at build time). Server components: INTERNAL_API_URL
@@ -109,11 +112,22 @@ async function readJson<T>(response: Response): Promise<T> {
   }
 }
 
+/**
+ * Server-side calls go straight to the backend (INTERNAL_API_URL), not through the Next.js proxy:
+ * they carry the internal token themselves (internal routes, migration 0022). Browser calls get it
+ * from the proxy (src/proxy.ts) after its Basic Auth check — the token never reaches the browser.
+ */
+function internalHeaders(): Record<string, string> {
+  if (typeof window !== "undefined") return {};
+  const token = process.env.INTERNAL_API_TOKEN;
+  return token ? { "X-Internal-Token": token } : {};
+}
+
 async function apiFetch<T>(path: string): Promise<T> {
   let response: Response;
   try {
     // No Content-Type on a GET: nothing is sent, and it would force a CORS preflight.
-    response = await fetch(`${API_BASE}${path}`, { headers: { Accept: "application/json" } });
+    response = await fetch(`${API_BASE}${path}`, { headers: { Accept: "application/json", ...internalHeaders() } });
   } catch (err) {
     throw new ApiError(0, err instanceof Error ? err.message : "Network error");
   }
@@ -127,9 +141,39 @@ async function apiPost<T>(path: string, body: unknown): Promise<T> {
   try {
     response = await fetch(`${API_BASE}${path}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers: { "Content-Type": "application/json", Accept: "application/json", ...internalHeaders() },
       body: JSON.stringify(body),
     });
+  } catch (err) {
+    throw new ApiError(0, err instanceof Error ? err.message : "Network error");
+  }
+  if (!response.ok) throw await errorFromResponse(response);
+  return readJson<T>(response);
+}
+
+/** PATCH / DELETE JSON (internal routes). DELETE answers 204: nothing to read. */
+async function apiSend<T>(method: "PATCH" | "DELETE", path: string, body?: unknown): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers: { Accept: "application/json", ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+                 ...internalHeaders() },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch (err) {
+    throw new ApiError(0, err instanceof Error ? err.message : "Network error");
+  }
+  if (!response.ok) throw await errorFromResponse(response);
+  return response.status === 204 ? (undefined as T) : readJson<T>(response);
+}
+
+/** Multipart upload (no Content-Type header: the browser sets the boundary). */
+async function apiUpload<T>(path: string, form: FormData): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, { method: "POST", body: form,
+                                                  headers: { Accept: "application/json", ...internalHeaders() } });
   } catch (err) {
     throw new ApiError(0, err instanceof Error ? err.message : "Network error");
   }
@@ -245,6 +289,7 @@ export async function getDocuments(params?: {
   page?: number;
   page_size?: number;
   institution_id?: string;
+  source_id?: string;
   document_type?: string;
   period_year?: number;
 }): Promise<PaginatedResponse<Document>> {
@@ -434,6 +479,16 @@ export async function resolveSectorYear(
   return years.length > 0 ? Math.max(...years) : null;
 }
 
+/** Keep explicit current/recent-year selections even when no matching data exists yet. */
+export async function resolveSelectableSectorYear(
+  requested: number | null,
+  availableYears: number[],
+  country_code?: string,
+): Promise<number | null> {
+  if (requested !== null && getSelectableYears(availableYears).includes(requested)) return requested;
+  return resolveSectorYear(null, availableYears, country_code);
+}
+
 // ============================================================
 // Analytics
 // ============================================================
@@ -495,8 +550,17 @@ export async function getSectorStructure(params: {
 // Search
 // ============================================================
 
-export async function searchGlobal(q: string): Promise<SearchResults> {
-  return apiFetch<SearchResults>(`/api/v1/search${buildQuery({ q })}`);
+/** Global search; `types` + `page` load the next page of one result type ("show more"). */
+export async function searchGlobal(q: string, opts: { types?: SearchType; page?: number } = {}): Promise<SearchResults> {
+  const res = await apiFetch<SearchResults>(`/api/v1/search${buildQuery({ q, types: opts.types, page: opts.page })}`);
+  return {
+    ...res,
+    deals: res.deals ?? [],
+    totals: res.totals ?? {
+      institutions: res.institutions.length, deals: (res.deals ?? []).length, banking_groups: res.banking_groups.length,
+      sources: res.sources.length, documents: res.documents.length,
+    },
+  };
 }
 
 // ============================================================
@@ -673,6 +737,16 @@ export async function getDealHistory(id: string): Promise<ReviewEvent[]> {
   return (rows ?? []).map(normalizeEvent);
 }
 
+/** Counts and amount totals of ALL the deals matching the filters (not only the displayed page). */
+export async function getDealSummary(query: DealQuery): Promise<DealAnalyticsRow> {
+  const r = await apiFetch<DealAnalyticsRow>(`/api/v1/deals/summary${buildQuery({ ...query })}`);
+  return {
+    ...r,
+    by_status: r.by_status ?? {},
+    amounts: (r.amounts ?? []).map((a) => numericFields(a, ["total"])),
+  };
+}
+
 export async function getDealAnalytics(dimension: DealDimension): Promise<DealAnalytics> {
   const res = await apiFetch<DealAnalytics>(`/api/v1/deals/analytics${buildQuery({ dimension })}`);
   return {
@@ -737,6 +811,69 @@ export async function getLatestIngestionRun(): Promise<IngestionRun | null> {
   }
 }
 
+/** Paginated history of ingestion runs, newest first (server order on `started_at`). */
+export async function listIngestionRuns(page = 1, pageSize = 20): Promise<PaginatedResponse<IngestionRun>> {
+  return apiFetch<PaginatedResponse<IngestionRun>>(
+    `/api/v1/ingestion/runs${buildQuery({ page, page_size: Math.min(pageSize, MAX_PAGE_SIZE) })}`,
+  );
+}
+
+export async function getIngestionRun(runId: string): Promise<IngestionRun> {
+  return apiFetch<IngestionRun>(`/api/v1/ingestion/runs/${encodeURIComponent(runId)}`);
+}
+
+/** Sources accepted by POST /api/v1/ingestion/trigger (mirror of the backend Literal). */
+export const INGESTION_SOURCES = [
+  "all", "bceao", "cb-umoa", "brvm", "umoa-titres", "amf-umoa", "ifc", "boad", "proparco", "bidc", "press",
+] as const;
+export type IngestionSource = (typeof INGESTION_SOURCES)[number];
+
+/** Phases of a run: bank statements, deal collection, or both (mirror of the backend Literal). */
+export const INGESTION_SCOPES = ["all", "financial", "deals"] as const;
+export type IngestionScope = (typeof INGESTION_SCOPES)[number];
+/** Sources of each phase (mirror of app.services.deal_collection). */
+export const FINANCIAL_SOURCES: readonly IngestionSource[] = ["bceao", "cb-umoa", "brvm", "umoa-titres"];
+export const DEAL_SOURCES: readonly IngestionSource[] = ["umoa-titres", "brvm", "amf-umoa", "ifc", "boad", "proparco", "bidc", "press"];
+
+export interface IngestionTriggerParams {
+  source: IngestionSource;
+  scope?: IngestionScope;
+  year?: number | null;
+  limit?: number | null;
+  /** Deals: first publication / modification date (YYYY-MM-DD). */
+  since?: string | null;
+  /** Deals: last publication / modification date (YYYY-MM-DD). */
+  until?: string | null;
+  force?: boolean;
+}
+
+/** Launch a manual ingestion run; the backend reads its parameters from the query string. */
+export async function triggerIngestion(
+  params: IngestionTriggerParams,
+): Promise<{ message: string; run_id: string | null; status: string }> {
+  const qs = buildQuery({
+    source: params.source, scope: params.scope && params.scope !== "all" ? params.scope : undefined,
+    year: params.year, limit: params.limit, since: params.since || undefined, until: params.until || undefined,
+    force: params.force || undefined,
+  });
+  return apiPost(`/api/v1/ingestion/trigger${qs}`, {});
+}
+
+/** Close a run still recorded "running" whose process is gone (409 when it is no longer running). */
+export async function abortIngestionRun(runId: string): Promise<IngestionRun> {
+  return apiPost<IngestionRun>(`/api/v1/ingestion/runs/${encodeURIComponent(runId)}/abort`, {});
+}
+
+/** Readiness probe: true when the API and its database answer (503 otherwise). */
+export async function getApiHealth(): Promise<boolean> {
+  try {
+    await apiFetch<unknown>("/api/v1/health");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 
 // Phase 20 — targeting (explicit criteria, no score).
 export async function getTargeting(query: TargetingQuery): Promise<TargetingResponse> {
@@ -755,3 +892,52 @@ export async function postRevokeAutomatic(
     : `/api/v1/data-quality/${encodeURIComponent(id)}/revoke-automatic`;
   return apiPost<unknown>(path, decision);
 }
+
+
+// ============================================================
+// Syndication tracker (internal, migration 0022)
+// ============================================================
+
+import type {
+  ConflictDecision,
+  SyndicationContact,
+  SyndicationDeal,
+  SyndicationDealDetail,
+  SyndicationEvent,
+  SyndicationImport,
+  SyndicationLender,
+  SyndicationTerm,
+} from "@/types";
+
+const SY = "/api/v1/syndication";
+
+export async function previewSyndicationImport(file: File, sheetMapping: Record<string, string> = {}
+): Promise<SyndicationImport> {
+  const form = new FormData();
+  form.append("file", file);
+  if (Object.keys(sheetMapping).length) form.append("sheet_mapping", JSON.stringify(sheetMapping));
+  return apiUpload<SyndicationImport>(`${SY}/imports/preview`, form);
+}
+
+export async function applySyndicationImport(id: string, decisions: Record<string, ConflictDecision>
+): Promise<SyndicationImport> {
+  return apiPost<SyndicationImport>(`${SY}/imports/${encodeURIComponent(id)}/apply`, { decisions });
+}
+
+export const listSyndicationImports = () => apiFetch<SyndicationImport[]>(`${SY}/imports`);
+export const listSyndicationDeals = () => apiFetch<SyndicationDeal[]>(`${SY}/deals`);
+export const getSyndicationDeal = (id: string) =>
+  apiFetch<SyndicationDealDetail>(`${SY}/deals/${encodeURIComponent(id)}`);
+export const updateSyndicationDeal = (id: string, changes: Partial<SyndicationDeal>) =>
+  apiSend<SyndicationDealDetail>("PATCH", `${SY}/deals/${encodeURIComponent(id)}`, changes);
+export const addSyndicationEvent = (id: string, event: Partial<SyndicationEvent>) =>
+  apiPost<SyndicationEvent>(`${SY}/deals/${encodeURIComponent(id)}/counterparties`, event);
+export const listSyndicationLenders = () => apiFetch<SyndicationLender[]>(`${SY}/lenders`);
+export const listSyndicationTerms = () => apiFetch<SyndicationTerm[]>(`${SY}/terms`);
+export const listSyndicationContacts = () => apiFetch<SyndicationContact[]>(`${SY}/contacts`);
+export const createSyndicationContact = (c: Partial<SyndicationContact>) =>
+  apiPost<SyndicationContact>(`${SY}/contacts`, c);
+export const updateSyndicationContact = (id: string, c: Partial<SyndicationContact>) =>
+  apiSend<SyndicationContact>("PATCH", `${SY}/contacts/${encodeURIComponent(id)}`, c);
+export const deleteSyndicationContact = (id: string) =>
+  apiSend<void>("DELETE", `${SY}/contacts/${encodeURIComponent(id)}`);

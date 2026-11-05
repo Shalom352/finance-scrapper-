@@ -117,3 +117,11 @@ run*_report.json
 audits/**
 !audits/**/
 !audits/**/*.md
+
+# ----------------------------
+# Internal TOMASTEED files (syndication tracker: personal contacts, confidential pipeline)
+# Never committed. Keep them in backend/data/private/ (see docs/syndication.md).
+# ----------------------------
+*.xlsx
+*.xlsm
+backend/data/private/

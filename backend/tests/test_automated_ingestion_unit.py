@@ -158,6 +158,67 @@ class TestIngestionConcurrency:
         assert run.trigger_type == "manual"
 
 
+@pytest.mark.asyncio
+class TestRunNeverStaysRunning:
+    """Audit 22/10/2026 (F1): a run left "running" blocked every later run for 8 days."""
+
+    async def test_crash_inside_the_phases_closes_the_run_as_failed(self):
+        run = MagicMock(id="run-1", status="running", errors=None)
+        db = AsyncMock()
+        result = MagicMock()
+        result.scalar_one_or_none.side_effect = [None, run]  # no active run; the trigger's own run
+        result.scalar_one.return_value = run
+        db.execute.return_value = result
+
+        service = IngestionService()
+        with patch.object(IngestionService, "_run_phases", AsyncMock(side_effect=RuntimeError("boom"))):
+            out = await service.execute_run(db=db, trigger_type="manual", run_id="run-1")
+
+        assert out is run
+        assert run.status == "failed"
+        assert run.finished_at is not None
+        assert run.errors[-1]["phase"] == "run" and "boom" in run.errors[-1]["error"]
+        db.rollback.assert_awaited()
+
+    async def test_skip_closes_the_run_created_by_the_trigger(self):
+        trigger_run = MagicMock(id="run-2", status="running")
+        active = MagicMock(id="other-run")
+        db = AsyncMock()
+        result = MagicMock()
+        result.scalar_one_or_none.side_effect = [active, trigger_run]
+        db.execute.return_value = result
+
+        out = await IngestionService().execute_run(db=db, trigger_type="manual", run_id="run-2")
+
+        assert out is trigger_run
+        assert trigger_run.status == "skipped_concurrent"  # not a second row next to a stuck one
+        assert "other-run" in trigger_run.summary_text
+        db.add.assert_not_called()
+
+    async def test_expire_stale_runs_marks_old_running_runs_failed(self):
+        from app.services.ingestion import expire_stale_runs
+
+        db = AsyncMock()
+        db.execute.return_value = MagicMock(rowcount=1)
+        assert await expire_stale_runs(db, max_age_hours=6) == 1
+        stmt = db.execute.await_args.args[0]
+        assert "UPDATE ingestion_runs" in str(stmt) and "started_at <" in str(stmt)
+        db.commit.assert_awaited()
+
+    async def test_abort_only_closes_a_running_run(self):
+        from app.services import ingestion as svc
+
+        done = MagicMock(status="completed")
+        with patch.object(svc, "get_ingestion_run_by_id", AsyncMock(return_value=done)):
+            assert await svc.abort_run(AsyncMock(), "r", actor="ana") is done
+        assert done.status == "completed"
+
+        stuck = MagicMock(status="running")
+        with patch.object(svc, "get_ingestion_run_by_id", AsyncMock(return_value=stuck)):
+            await svc.abort_run(AsyncMock(), "r", actor="ana")
+        assert stuck.status == "failed" and "ana" in stuck.summary_text
+
+
 # ==============================================================================
 # 4. Error Resilience & Partial Failure
 # ==============================================================================

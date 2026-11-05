@@ -21,6 +21,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.constants.deals import PROVENANCE_FIELDS
 from app.models.country import Country
 from app.models.deal import (
     Deal,
@@ -261,23 +262,31 @@ async def _check_references(db: AsyncSession, records: list[DealImportRecord]) -
 # --------------------------------------------------------------------------- duplicates
 
 
-def _facts(deal_id: str, r: DealImportRecord) -> DealFacts:
+def _facts(deal_id: str, r: DealImportRecord, *, country_id: str | None = None) -> DealFacts:
     return DealFacts(
         id=deal_id, deal_type=r.deal_type, project_name=r.project_name, amount=r.amount, currency=r.currency,
+        unit=r.unit,
         signing_date=r.signing_date, announcement_date=r.announcement_date,
         participants=[(p.role, p.institution_id, p.name) for p in r.participants],
         isin=r.isin, value_date=r.value_date,
         issuer_entities=frozenset(p.entity_id for p in r.participants if p.role == "issuer" and p.entity_id),
+        title=r.title,
+        auction_reference=r.auction_reference, auction_date=r.auction_date, maturity_date=r.maturity_date,
+        instrument_type=r.instrument_type, country_id=country_id,
+        financial_close_date=r.financial_close_date, closing_date=r.closing_date,
+        operation_key=r.ingestion_key,
     )
 
 
 async def _existing_facts(db: AsyncSession) -> list[DealFacts]:
-    """Existing, non-rejected, non-merged deals that carry an anchor (borrower, project or instrument).
+    """Existing, non-rejected, non-merged deals that may carry an anchor (borrower / issuer, project,
+    instrument, or a bond label in the title).
 
     Names are compared on a normalized key computed in Python (accents / punctuation), so the
     lookup is not pre-filtered by name in SQL: a candidate is never missed because of spelling.
     """
-    has_borrower = select(DealParticipant.deal_id).where(DealParticipant.role == "borrower")
+    # Borrower or issuer: the counterparty anchor compares them across roles (migration 0020).
+    has_party = select(DealParticipant.deal_id).where(DealParticipant.role.in_(("borrower", "issuer")))
     rows = (
         await db.execute(
             select(Deal)
@@ -286,17 +295,24 @@ async def _existing_facts(db: AsyncSession) -> list[DealFacts]:
                 Deal.deleted_at.is_(None),
                 Deal.status != "rejected",
                 Deal.merged_into_deal_id.is_(None),
-                or_(Deal.id.in_(has_borrower), Deal.project_name.is_not(None), Deal.isin.is_not(None)),
+                or_(Deal.id.in_(has_party), Deal.project_name.is_not(None), Deal.isin.is_not(None),
+                    Deal.title.contains("%", autoescape=True)),  # a bond label prints its coupon
             )
         )
     ).scalars().all()
     return [
         DealFacts(
             id=d.id, deal_type=d.deal_type, project_name=d.project_name, amount=d.amount, currency=d.currency,
+            unit=d.unit,
             signing_date=d.signing_date, announcement_date=d.announcement_date,
             participants=[(p.role, p.institution_id, p.participant_name) for p in d.participants],
             isin=d.isin, value_date=d.value_date,
             issuer_entities=frozenset(p.entity_id for p in d.participants if p.role == "issuer" and p.entity_id),
+            title=d.title,
+            auction_reference=d.auction_reference, auction_date=d.auction_date, maturity_date=d.maturity_date,
+            instrument_type=d.instrument_type, country_id=d.country_id,
+            financial_close_date=d.financial_close_date, closing_date=d.closing_date,
+            operation_key=d.ingestion_key,
         )
         for d in rows
     ]
@@ -330,7 +346,8 @@ async def import_deals(
                 amount=r.amount, currency=r.currency, unit=r.unit, interest_rate=r.interest_rate,
                 interest_rate_type=r.interest_rate_type, benchmark=r.benchmark, spread_bps=r.spread_bps,
                 maturity_months=r.maturity_months, grace_period_months=r.grace_period_months, fees=r.fees,
-                guarantees=r.guarantees, announcement_date=r.announcement_date, signing_date=r.signing_date,
+                guarantees=r.guarantees, debt_amount=r.debt_amount, equity_amount=r.equity_amount,
+                debt_type=r.debt_type, announcement_date=r.announcement_date, signing_date=r.signing_date,
                 financial_close_date=r.financial_close_date, closing_date=r.closing_date,
                 instrument_type=r.instrument_type, isin=r.isin, auction_reference=r.auction_reference,
                 auction_date=r.auction_date, value_date=r.value_date, maturity_date=r.maturity_date,
@@ -354,7 +371,8 @@ async def import_deals(
             await db.flush()
             for s in r.sources:
                 for f in dict.fromkeys(s.fields):  # validated against PROVENANCE_FIELDS by the schema
-                    db.add(DealFieldSource(deal_id=deal.id, field_name=f, deal_source_id=by_ref[s.ref].id))
+                    db.add(DealFieldSource(deal_id=deal.id, field_name=f, deal_source_id=by_ref[s.ref].id,
+                                           excerpt=s.field_excerpts.get(f)))
             for p in r.participants:
                 db.add(DealParticipant(
                     deal_id=deal.id, participant_name=p.name, institution_id=p.institution_id,
@@ -368,7 +386,7 @@ async def import_deals(
                 reason=f"Structured import: {origin}", actor=actor, value_before=None, value_after=r.amount,
             ))
             report.created_ids.append(deal.id)
-            new_facts.append(_facts(deal.id, r))
+            new_facts.append(_facts(deal.id, r, country_id=countries.get(r.country_code) if r.country_code else None))
 
         await db.flush()
         created = set(report.created_ids)
@@ -385,6 +403,11 @@ async def import_deals(
                                               state="duplicate_candidate"))
                 report.duplicate_candidates.append((a.id, b.id, criteria))
 
+        # Recheck old candidates using auction references and exact bond terms. Exact repeated
+        # operations are merged, while confirmed separate issues leave the review queue.
+        from app.services.deduplication import reconcile_deal_duplicates
+        await reconcile_deal_duplicates(db, dry_run=dry_run)
+
         if dry_run:
             await db.rollback()
         else:
@@ -393,6 +416,121 @@ async def import_deals(
         await db.rollback()
         raise
     return report
+
+
+async def enrich_existing_deals(
+    db: AsyncSession,
+    deal_records: list[tuple[Deal, DealImportRecord]],
+    *,
+    actor: str,
+) -> tuple[int, int]:
+    """Fill missing published fields on auto-imported deals, preserving every existing value.
+
+    The ingestion key must already have matched a record from the same collector. Only records that
+    still need review are eligible. New values receive the same field-level source trail as a fresh
+    import; verified, reviewed, rejected, and merged deals are left untouched.
+    """
+    eligible = [
+        (deal, record) for deal, record in deal_records
+        if deal.status in (IMPORT_STATUS, "extracted") and deal.merged_into_deal_id is None
+    ]
+    if not eligible:
+        return 0, 0
+
+    country_codes = {
+        record.country_code for _, record in eligible if record.country_code is not None
+    }
+    countries = dict((await db.execute(
+        select(Country.code, Country.id).where(Country.code.in_(country_codes))
+    )).all()) if country_codes else {}
+
+    deal_ids = [deal.id for deal, _ in eligible]
+    source_rows = (await db.execute(
+        select(DealSource).where(DealSource.deal_id.in_(deal_ids))
+    )).scalars().all()
+    sources_by_key = {(row.deal_id, row.document_id, row.page_number): row for row in source_rows}
+    field_rows = (await db.execute(
+        select(DealFieldSource).where(DealFieldSource.deal_id.in_(deal_ids))
+    )).scalars().all()
+    field_keys = {(row.deal_id, row.field_name, row.deal_source_id) for row in field_rows}
+
+    enriched_deals = enriched_fields = 0
+    for deal, record in eligible:
+        amount_before = deal.amount
+        changed_fields: list[str] = []
+        refs_by_field = {
+            field_name: next((src for src in record.sources if field_name in src.fields), None)
+            for field_name in PROVENANCE_FIELDS
+        }
+        for field_name in PROVENANCE_FIELDS:
+            value = getattr(record, field_name, None)
+            if value is None:
+                continue
+            attr = "country_id" if field_name == "country_code" else field_name
+            current = getattr(deal, attr)
+            if current is not None:
+                continue
+            if field_name == "country_code":
+                value = countries.get(value)
+                if value is None:
+                    raise ValueError(f"country '{record.country_code}' is not registered")
+            setattr(deal, attr, value)
+            changed_fields.append(field_name)
+
+        if not changed_fields:
+            continue
+        enriched_deals += 1
+        for field_name in changed_fields:
+            source_ref = refs_by_field[field_name]
+            if source_ref is None:
+                raise ValueError(f"field '{field_name}' has no source in validated record")
+            source_key = (deal.id, source_ref.document_id, source_ref.page)
+            deal_source = sources_by_key.get(source_key)
+            if deal_source is None:
+                deal_source = DealSource(
+                    deal_id=deal.id,
+                    document_id=source_ref.document_id,
+                    source_id=source_ref.source_id,
+                    page_number=source_ref.page,
+                    excerpt=source_ref.excerpt,
+                    source_class=source_ref.source_class,
+                    publisher=source_ref.publisher,
+                    title=source_ref.title,
+                    url=source_ref.url,
+                    published_at=source_ref.published_at,
+                    paywalled=source_ref.paywalled,
+                )
+                db.add(deal_source)
+                await db.flush()
+                sources_by_key[source_key] = deal_source
+            field_key = (deal.id, field_name, deal_source.id)
+            if field_key not in field_keys:
+                db.add(DealFieldSource(
+                    deal_id=deal.id,
+                    field_name=field_name,
+                    deal_source_id=deal_source.id,
+                    excerpt=source_ref.field_excerpts.get(field_name),
+                ))
+                field_keys.add(field_key)
+                enriched_fields += 1
+        source_name = next(
+            (src.publisher or src.title or src.url for src in record.sources
+             if any(field_name in src.fields for field_name in changed_fields)),
+            None,
+        ) or "official source"
+        db.add(FinancialDataReviewEvent(
+            deal_id=deal.id,
+            action="source_enrichment",
+            previous_status=deal.status,
+            new_status=deal.status,
+            reason=f"Missing fields added from {source_name}: {', '.join(changed_fields)}",
+            actor=actor,
+            value_before=amount_before,
+            value_after=deal.amount,
+        ))
+
+    await db.flush()
+    return enriched_deals, enriched_fields
 
 
 async def import_file(db: AsyncSession, filename: str, text: str, *, actor: str, dry_run: bool = False

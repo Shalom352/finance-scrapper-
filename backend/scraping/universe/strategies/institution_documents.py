@@ -16,10 +16,10 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 from datetime import UTC, datetime
-from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
+from app.core.config import get_settings
 from app.models.discovery import DocumentEntity
 from app.models.document import Document
 from app.models.financial_data import FinancialData
@@ -33,7 +33,7 @@ from scraping.quality.checks import (
 )
 from scraping.quality.scope import DocumentScopeContext
 from scraping.quality.text_layer import assess_pdf_bytes
-from scraping.universe.http import extract_links, html_to_text
+from scraping.universe.http import extract_links, html_to_text, is_pdf_url
 from scraping.universe.institution_statements import InstitutionStatementParser
 from scraping.universe.normalize import country_codes_in, normalize_name
 from scraping.universe.strategies.base import DiscoveryContext, DiscoveryStrategy, StrategyResult
@@ -94,7 +94,7 @@ class BrvmIssuerFilingsStrategy(DiscoveryStrategy):
             if not page.ok:
                 result.errors.append({"url": BRVM + path, "error": page.error})
                 continue
-            pdfs = [u for u, _a in extract_links(page.text, page.final_url or BRVM + path) if u.lower().endswith(".pdf")]
+            pdfs = [u for u, _a in extract_links(page.text, page.final_url or BRVM + path) if is_pdf_url(u)]
             annual = [u for u in pdfs if _ANNUAL_FILING.search(u) and not _INTERIM_FILING.search(u)]
             if not annual:
                 no_annual.append(name)
@@ -183,18 +183,25 @@ class BrvmIssuerFilingsStrategy(DiscoveryStrategy):
 # ====================================================================== extraction
 class InstitutionDocumentExtractionStrategy(DiscoveryStrategy):
     code = "institution_document_extraction"
-    description = ("Institution-specific documents: text-layer gate, comparative statements parser (catalogue "
-                   "metrics only), Phase-16 scope guard; scanned / corrupted pages yield no observation")
+    description = ("Institution-specific documents: text-layer assessment, optional bounded OCR for scanned pages, "
+                   "comparative statements parser (catalogue metrics only), Phase-16 scope guard")
     priority = 2
     handles = frozenset({"DOCUMENT_FOUND_UNVERIFIED", "FINANCIAL_DATA"})
 
     async def run(self, ctx: DiscoveryContext, targets) -> StrategyResult:
         result = StrategyResult(targets=len(targets))
+        # Not read yet; or, on request (--reextract, after an extractor fix), read without any value
+        # stored — such a document is otherwise never read again (audit 22/10/2026, D7).
+        not_read = Document.extracted_at.is_(None)
+        if ctx.options.get("reextract"):
+            not_read = or_(not_read, ~Document.id.in_(select(FinancialData.document_id).where(
+                FinancialData.document_id.is_not(None))))
         docs = (await ctx.db.execute(select(Document).where(
             Document.document_scope == "institution_specific", Document.entity_id.is_not(None),
-            Document.download_status == "downloaded", Document.extracted_at.is_(None),
+            Document.download_status == "downloaded", not_read,
             Document.deleted_at.is_(None)))).scalars().all()
         report = []
+        settings = get_settings()
         for doc in docs:
             content = ctx.registrar.read_bytes(doc)
             if content is None:
@@ -203,7 +210,17 @@ class InstitutionDocumentExtractionStrategy(DiscoveryStrategy):
             layer = assess_pdf_bytes(content)
             doc.text_layer_status = layer.status
             doc.file_format = doc.file_format or "pdf"
-            parsed = InstitutionStatementParser().parse_bytes(content, doc.title or "")
+            parsed = InstitutionStatementParser().parse_bytes(
+                content, doc.title or "", ocr_enabled=settings.document_ocr_enabled,
+                ocr_language=settings.document_ocr_language, ocr_dpi=settings.document_ocr_dpi,
+                ocr_max_pages=settings.document_ocr_max_pages,
+                ocr_timeout_seconds=settings.document_ocr_timeout_seconds,
+            )
+            transcript_truncated = False
+            if parsed.ocr_text:
+                transcript = "\n\n".join(f"[Page {page}]\n{text}" for page, text in sorted(parsed.ocr_text.items()))
+                transcript_truncated = len(transcript) > 250_000
+                doc.ocr_text = (transcript[:249_960] + "\n[OCR TRANSCRIPT TRUNCATED]") if transcript_truncated else transcript
             created = await self._store(ctx, doc, content, parsed)
             years = sorted({v.year for v in parsed.values})
             doc.reporting_year = _year_in(doc.title or "") or (years[-1] if years else None)
@@ -216,7 +233,10 @@ class InstitutionDocumentExtractionStrategy(DiscoveryStrategy):
             if parsed.values:
                 await self._activate_sources(ctx, doc)
             report.append({"document_id": doc.id, "text_layer": layer.status, "statement_pages": parsed.statement_pages,
-                           "skipped_pages": parsed.skipped_pages, "values": len(parsed.values), "created": created})
+                           "skipped_pages": parsed.skipped_pages, "ocr_pages": parsed.ocr_pages,
+                           "ocr_text_chars": len(doc.ocr_text or ""), "ocr_text_truncated": transcript_truncated,
+                           "ocr_values": sum(value.extraction_method == "ocr" for value in parsed.values),
+                           "values": len(parsed.values), "created": created})
         result.details["documents"] = report
         await ctx.db.flush()
         return result
@@ -256,6 +276,12 @@ class InstitutionDocumentExtractionStrategy(DiscoveryStrategy):
                 "extracted", f"institution document p.{v.page_number}: '{v.line_label}' col. {v.year}",
                 assessment, unit_flag,
             )
+            flags = list(unit_flag)
+            if v.extraction_method == "ocr":
+                status = "needs_review"
+                notes = (notes + "; " if notes else "") + "OCR value requires visual review"
+                flags.append({"code": "ocr_visual_review_required",
+                              "detail": f"p.{v.page_number}: compare the extracted digits with the original PDF"})
             existing = (await ctx.db.execute(select(FinancialData).where(
                 FinancialData.entity_id == entity_id, FinancialData.document_id == doc.id,
                 FinancialData.metric_code == v.metric_code, FinancialData.period_year == v.year,
@@ -275,10 +301,10 @@ class InstitutionDocumentExtractionStrategy(DiscoveryStrategy):
                 # Normalized only when the document states its unit (DATA MISSING > DATA WRONG).
                 value_normalized=(v.value * v.multiplier) if v.multiplier is not None else None,
                 unit_normalized="absolute" if v.multiplier is not None else None,
-                currency_normalized=v.currency, page_number=v.page_number, extraction_method="pdf_text",
-                confidence_score=Decimal("0.900"), status=status, notes=notes, extracted_at=utcnow(),
+                currency_normalized=v.currency, page_number=v.page_number, extraction_method=v.extraction_method,
+                confidence_score=v.confidence_score, status=status, notes=notes, extracted_at=utcnow(),
                 scope_evidence_class=assessment.evidence_class, scope_reason_code=assessment.reason_code,
-                scope_evidence=assessment.evidence, quality_flags=unit_flag or None,
+                scope_evidence=assessment.evidence, quality_flags=flags or None,
                 source_location=f"p.{v.page_number} · {v.line_label} · col. {v.year}"[:500],
             )
             ctx.db.add(row)

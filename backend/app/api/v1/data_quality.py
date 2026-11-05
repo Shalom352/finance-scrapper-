@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.financial_data import SortQ, split_ids
+from app.core.internal_auth import actor_of, write_access
 from app.db.session import get_db_session
 from app.schemas.common import PaginatedResponse
 from app.schemas.data_quality import (
@@ -50,7 +51,7 @@ router = APIRouter(prefix="/api/v1/data-quality", tags=["data-quality"])
 # A human withdraws an automatic validation: back to needs_review, never re-validated automatically.
 
 
-async def _revoke(model, row_id: str, payload: ReviewActionRequest, db: AsyncSession) -> None:
+async def _revoke(model, row_id: str, payload: ReviewActionRequest, db: AsyncSession, user: str | None) -> None:
     from sqlalchemy import select
 
     from scraping.validation.automatic import RevokeError, revoke
@@ -62,7 +63,7 @@ async def _revoke(model, row_id: str, payload: ReviewActionRequest, db: AsyncSes
     if payload.expected_status is not None and row.status != payload.expected_status:
         raise HTTPException(status_code=409, detail=f"Status is now '{row.status}'; reload before deciding")
     try:
-        await revoke(db, row, actor=payload.actor, reason=payload.reason)
+        await revoke(db, row, actor=actor_of(payload.actor, user), reason=payload.reason)
     except RevokeError as err:
         await db.rollback()
         raise HTTPException(status_code=422, detail=str(err)) from err
@@ -71,21 +72,23 @@ async def _revoke(model, row_id: str, payload: ReviewActionRequest, db: AsyncSes
 
 @router.post("/deals/{deal_id}/revoke-automatic", summary="Withdraw an automatic validation (deal)",
              response_model=DealDetail)
-async def revoke_deal_automatic(deal_id: str, payload: ReviewActionRequest, db: AsyncSession = Depends(get_db_session)):
+async def revoke_deal_automatic(deal_id: str, payload: ReviewActionRequest, db: AsyncSession = Depends(get_db_session),
+    user: str | None = Depends(write_access)):
     from app.models.deal import Deal
 
-    await _revoke(Deal, deal_id, payload, db)
+    await _revoke(Deal, deal_id, payload, db, user)
     return await get_deal(db, deal_id)
 
 
 @router.post("/{data_id}/revoke-automatic", summary="Withdraw an automatic validation (observation)",
              response_model=FinancialDataRead)
 async def revoke_observation_automatic(data_id: str, payload: ReviewActionRequest,
-                                       db: AsyncSession = Depends(get_db_session)):
+                                       db: AsyncSession = Depends(get_db_session),
+    user: str | None = Depends(write_access)):
     from app.models.financial_data import FinancialData
     from app.services.financial_data import get_financial_data_by_id
 
-    await _revoke(FinancialData, data_id, payload, db)
+    await _revoke(FinancialData, data_id, payload, db, user)
     return await get_financial_data_by_id(db, data_id)
 
 
@@ -162,10 +165,11 @@ async def deal_duplicates(
 @router.post("/deal-duplicates/{candidate_id}/decide", summary="Human decision on a duplicate candidate",
              response_model=DealDuplicateRead)
 async def decide_deal_duplicate(candidate_id: str, payload: DuplicateDecisionRequest,
-                                db: AsyncSession = Depends(get_db_session)):
+                                db: AsyncSession = Depends(get_db_session),
+    user: str | None = Depends(write_access)):
     return await _decide(
         lambda: decide_duplicate(
-            db, candidate_id, decision=payload.decision, actor=payload.actor, reason=payload.reason,
+            db, candidate_id, decision=payload.decision, actor=actor_of(payload.actor, user), reason=payload.reason,
             primary_deal_id=payload.primary_deal_id, expected_state=payload.expected_state,
         ),
         db,
@@ -182,10 +186,11 @@ async def deal_detail(deal_id: str, db: AsyncSession = Depends(get_db_session)) 
 
 @router.post("/deals/{deal_id}/{action}", summary="review / verify / reject a deal", response_model=DealDetail)
 async def decide_on_deal(deal_id: str, action: Literal["review", "verify", "reject"], payload: ReviewActionRequest,
-                         db: AsyncSession = Depends(get_db_session)):
+                         db: AsyncSession = Depends(get_db_session),
+    user: str | None = Depends(write_access)):
     return await _decide(
         lambda: decide_deal(
-            db, deal_id, action, actor=payload.actor, reason=payload.reason,
+            db, deal_id, action, actor=actor_of(payload.actor, user), reason=payload.reason,
             expected_status=payload.expected_status, expected_updated_at=payload.expected_updated_at,
         ),
         db,
@@ -223,10 +228,11 @@ async def _decide(action, db: AsyncSession) -> FinancialDataRead:
 
 
 @router.post("/{data_id}/review", summary="Mark as reviewed (existing transition)", response_model=FinancialDataRead)
-async def review(data_id: str, payload: ReviewActionRequest, db: AsyncSession = Depends(get_db_session)):
+async def review(data_id: str, payload: ReviewActionRequest, db: AsyncSession = Depends(get_db_session),
+    user: str | None = Depends(write_access)):
     return await _decide(
         lambda: review_financial_data(
-            db, data_id, reviewer_notes=payload.reason, actor=payload.actor,
+            db, data_id, reviewer_notes=payload.reason, actor=actor_of(payload.actor, user),
             expected_status=payload.expected_status, expected_updated_at=payload.expected_updated_at,
         ),
         db,
@@ -235,10 +241,11 @@ async def review(data_id: str, payload: ReviewActionRequest, db: AsyncSession = 
 
 @router.post("/{data_id}/verify", summary="Verify a reviewed observation (existing transition)",
              response_model=FinancialDataRead)
-async def verify(data_id: str, payload: ReviewActionRequest, db: AsyncSession = Depends(get_db_session)):
+async def verify(data_id: str, payload: ReviewActionRequest, db: AsyncSession = Depends(get_db_session),
+    user: str | None = Depends(write_access)):
     return await _decide(
         lambda: verify_financial_data(
-            db, data_id, verified_by=payload.actor, verification_notes=payload.reason,
+            db, data_id, verified_by=actor_of(payload.actor, user), verification_notes=payload.reason,
             expected_status=payload.expected_status, expected_updated_at=payload.expected_updated_at,
         ),
         db,
@@ -247,10 +254,11 @@ async def verify(data_id: str, payload: ReviewActionRequest, db: AsyncSession = 
 
 @router.post("/{data_id}/reject", summary="Reject (reason mandatory, existing transition)",
              response_model=FinancialDataRead)
-async def reject(data_id: str, payload: ReviewActionRequest, db: AsyncSession = Depends(get_db_session)):
+async def reject(data_id: str, payload: ReviewActionRequest, db: AsyncSession = Depends(get_db_session),
+    user: str | None = Depends(write_access)):
     return await _decide(
         lambda: reject_financial_data(
-            db, data_id, reason=payload.reason, actor=payload.actor,
+            db, data_id, reason=payload.reason, actor=actor_of(payload.actor, user),
             expected_status=payload.expected_status, expected_updated_at=payload.expected_updated_at,
         ),
         db,

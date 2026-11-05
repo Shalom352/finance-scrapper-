@@ -37,8 +37,10 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.constants.deals import (
+    DEAL_COLLECTION_OUTCOMES,
     DEAL_STATUSES,
     DEAL_TYPES,
+    DEBT_TYPES,
     DUPLICATE_STATES,
     INSTRUMENT_TYPES,
     INTEREST_RATE_TYPES,
@@ -104,6 +106,11 @@ class Deal(Base):
         Index("ix_deals_isin", "isin"),
         Index("ix_deals_auction_reference", "auction_reference"),
         Index("ix_deals_value_date", "value_date"),
+        CheckConstraint("debt_amount IS NULL OR debt_amount > 0", name="ck_deals_debt_amount_positive"),
+        CheckConstraint("equity_amount IS NULL OR equity_amount > 0", name="ck_deals_equity_amount_positive"),
+        CheckConstraint(
+            f"debt_type IS NULL OR debt_type IN ({sql_in(DEBT_TYPES)})", name="ck_deals_debt_type"
+        ),
         Index(
             "uq_deals_ingestion_key",
             "ingestion_key",
@@ -131,6 +138,10 @@ class Deal(Base):
     grace_period_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
     fees: Mapped[str | None] = mapped_column(Text, nullable=True)
     guarantees: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Debt / equity split (migration 0020), in the deal currency, each ONLY when published as such.
+    debt_amount: Mapped[Decimal | None] = mapped_column(Numeric(24, 6), nullable=True)
+    equity_amount: Mapped[Decimal | None] = mapped_column(Numeric(24, 6), nullable=True)
+    debt_type: Mapped[str | None] = mapped_column(String(30), nullable=True)
 
     announcement_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     signing_date: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -234,6 +245,8 @@ class DealFieldSource(Base):
     deal_id: Mapped[str] = mapped_column(ForeignKey("deals.id", ondelete="RESTRICT"), nullable=False)
     field_name: Mapped[str] = mapped_column(String(40), nullable=False)
     deal_source_id: Mapped[str] = mapped_column(ForeignKey("deal_sources.id", ondelete="RESTRICT"), nullable=False)
+    # The quotation of the source that attests THIS field (migration 0020); NULL for older rows.
+    excerpt: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     deal: Mapped[Deal] = relationship("Deal", back_populates="field_sources", lazy="noload")
 
@@ -355,3 +368,27 @@ class InstitutionLink(Base):
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     to_institution: Mapped["Institution | None"] = relationship("Institution", lazy="noload")
+
+
+class DealCollectionCheckpoint(Base):
+    """What an automated collector already read (migration 0020): one row per source and URL.
+
+    A page is fetched again only when its published ``lastmod`` changed, so a scheduled run does not
+    re-read thousands of unchanged disclosures. The outcome is the funnel status of the last reading.
+    """
+
+    __tablename__ = "deal_collection_checkpoints"
+    __table_args__ = (
+        UniqueConstraint("source_key", "url", name="uq_deal_collection_checkpoints_source_url"),
+        CheckConstraint(f"outcome IN ({sql_in(DEAL_COLLECTION_OUTCOMES)})", name="ck_deal_collection_checkpoints_outcome"),
+        Index("ix_deal_collection_checkpoints_source", "source_key"),
+    )
+
+    source_key: Mapped[str] = mapped_column(String(30), nullable=False)
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    lastmod: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # Version of the collector's parser that wrote the outcome (migration 0023): a newer parser reads again.
+    parser_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    outcome: Mapped[str] = mapped_column(String(40), nullable=False)
+    detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

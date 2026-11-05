@@ -10,7 +10,7 @@ never ranked.
 from collections import defaultdict
 from decimal import Decimal
 
-from sqlalchemy import distinct, select
+from sqlalchemy import distinct, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -109,6 +109,8 @@ class RankingService:
             FinancialData.period_type == period_type,
             FinancialData.scope == data_scope,
             FinancialData.consolidation_scope == data_scope,
+            or_(FinancialData.scope_evidence_class.is_(None),
+                FinancialData.scope_evidence_class.in_(("A", "B", "C"))),
             FinancialData.observation_level == RANKED_OBSERVATION_LEVEL,
             FinancialData.status.notin_(("rejected", "needs_review")),
             FinancialData.value_normalized.isnot(None),
@@ -154,6 +156,9 @@ class RankingService:
             for r in rows:
                 if r.scope != data_scope:
                     continue  # another accounting scope is another ranking, not an exclusion
+                if r.scope_evidence_class == "D":
+                    incompatible.setdefault(r.institution_id, "scope_unconfirmed")
+                    continue
                 if r.observation_level != RANKED_OBSERVATION_LEVEL:
                     incompatible.setdefault(r.institution_id, "observation_level_incompatible")
                     continue

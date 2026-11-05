@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.constants.discovery import (
@@ -75,15 +75,24 @@ class GapQueue:
         self.retry_days = retry_days
 
     async def reopen_due(self, db: AsyncSession, force: bool = False) -> int:
-        """Reopen NOT_FOUND gaps whose retry date has passed (or all of them on an explicit operator
-        request, e.g. after an extractor change). BLOCKED gaps are never reopened here."""
+        """Start of a run. Reopen NOT_FOUND and BLOCKED gaps whose retry date has passed (or all of them
+        on an explicit operator request, e.g. after an extractor change): a robots refusal or a 403 can be
+        lifted, so a blocked gap is retried like the others (audit 22/10/2026, D4).
+
+        The strategies tried are counted per run: the list of every gap to be searched in this run is
+        reset, so a strategy that only ran (or crashed) in an earlier run never makes the gap NOT_FOUND."""
         now = utcnow()
-        stmt = select(DiscoveryGap).where(DiscoveryGap.status == "NOT_FOUND", DiscoveryGap.deleted_at.is_(None))
+        stmt = select(DiscoveryGap).where(DiscoveryGap.status.in_(("NOT_FOUND", "BLOCKED")),
+                                          DiscoveryGap.deleted_at.is_(None))
         if not force:
-            stmt = stmt.where(DiscoveryGap.next_attempt_at <= now)
+            stmt = stmt.where(or_(DiscoveryGap.next_attempt_at.is_(None), DiscoveryGap.next_attempt_at <= now))
         due = (await db.execute(stmt)).scalars().all()
         for gap in due:
             gap.status = "OPEN"
+        searched = (await db.execute(select(DiscoveryGap).where(
+            DiscoveryGap.status.in_(("OPEN", "SEARCHING")), DiscoveryGap.deleted_at.is_(None)))).scalars().all()
+        for gap in searched:
+            gap.strategies_tried = []
         await db.flush()
         return len(due)
 
@@ -189,6 +198,7 @@ class GapQueue:
             if gap.entity_id in blocked_entity_ids:
                 gap.status = "BLOCKED"
                 gap.reason = f"{gap.reason or ''} | blocked during {strategy_code}".strip(" |")
+                gap.next_attempt_at = now + timedelta(days=self.retry_days)  # retried, never final
             elif gap.status == "OPEN":
                 gap.status = "SEARCHING"
         await db.flush()

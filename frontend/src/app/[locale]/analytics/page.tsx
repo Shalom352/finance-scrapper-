@@ -45,7 +45,7 @@ const TABS: Tab[] = ["ratios", "growth", "aggregations", "compare"];
 type Load<T> = { status: "loading" } | { status: "error" } | { status: "ready"; data: T };
 
 const selectCls =
-  "mt-1 w-full px-3 py-2 rounded-xl border border-gray-800 bg-gray-950 text-xs text-gray-200 focus:border-emerald-500 focus:outline-none";
+  "mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 focus:border-emerald-500 focus:outline-none";
 
 export default function AnalyticsPage() {
   return (
@@ -96,17 +96,17 @@ function AnalyticsContent() {
   return (
     <div className="space-y-6 animate-fade-in pb-12">
       <div>
-        <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">{t("title")}</h1>
-        <p className="text-xs text-gray-400 mt-1">{t("subtitle")}</p>
+        <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">{t("title")}</h1>
+        <p className="text-xs text-gray-500 mt-1">{t("subtitle")}</p>
       </div>
 
-      <div className="flex flex-wrap border-b border-gray-800 gap-4 text-xs font-semibold">
+      <div className="flex flex-wrap border-b border-gray-200 gap-4 text-xs font-semibold">
         {TABS.map((key) => (
           <button
             key={key}
             onClick={() => set({ tab: key })}
-            className={`pb-3 px-1 border-b-2 transition-colors ${
-              tab === key ? "border-emerald-500 text-emerald-400 font-bold" : "border-transparent text-gray-400 hover:text-gray-200"
+            className={`min-h-10 pb-3 px-1 border-b-2 transition-colors ${
+              tab === key ? "border-emerald-500 text-emerald-700 font-bold" : "border-transparent text-gray-500 hover:text-gray-800"
             }`}
           >
             {t(`tabs.${key}`)}
@@ -114,8 +114,8 @@ function AnalyticsContent() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-2xl border border-gray-800 bg-gray-900/40">
-        <label className="text-[11px] text-gray-400 font-medium">
+      <div data-guide="analytics" className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-2xl border border-gray-200 bg-white">
+        <label className="text-[11px] text-gray-500 font-medium">
           {t("fiscal_year")}
           <select
             value={year ?? ""}
@@ -132,7 +132,7 @@ function AnalyticsContent() {
           </select>
         </label>
         {tab !== "compare" && (
-          <label className="text-[11px] text-gray-400 font-medium">
+          <label className="text-[11px] text-gray-500 font-medium">
             {t("country_filter")}
             <select value={country} onChange={(e) => set({ country: e.target.value })} className={selectCls}>
               <option value="">{t("all_countries")}</option>
@@ -197,7 +197,7 @@ function RatiosTab({ year, country }: { year: number; country: string }) {
 
   return (
     <div className="space-y-6">
-      <label className="block text-[11px] text-gray-400 font-medium max-w-md">
+      <label className="block text-[11px] text-gray-500 font-medium max-w-md">
         {t("select_ratio")}
         <select value={ratioCode} onChange={(e) => set({ ratio: e.target.value })} className={selectCls}>
           {definitions.map((d) => (
@@ -209,22 +209,22 @@ function RatiosTab({ year, country }: { year: number; country: string }) {
       </label>
 
       {def && (
-        <div className="p-5 rounded-2xl border border-gray-800 bg-gray-900/60 flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs">
+        <div className="p-5 rounded-2xl border border-gray-200 bg-gray-50/80 flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs">
           <div className="space-y-1">
-            <span className="font-bold text-gray-200 text-sm">{locale === "en" ? def.name_en : def.name_fr}</span>
-            <p className="text-gray-400">{locale === "en" ? def.description_en : def.description_fr}</p>
+            <span className="font-bold text-gray-800 text-sm">{locale === "en" ? def.name_en : def.name_fr}</span>
+            <p className="text-gray-500">{locale === "en" ? def.description_en : def.description_fr}</p>
             <div className="pt-1 flex flex-wrap gap-2 text-[11px]">
               <span className="text-gray-500">{t("rules")}</span>
               {def.eligibility_rules.map((r, i) => (
-                <span key={i} className="text-emerald-400 font-medium">
+                <span key={i} className="text-emerald-700 font-medium">
                   • {r}
                 </span>
               ))}
             </div>
           </div>
-          <div className="shrink-0 p-3 rounded-xl bg-gray-950 border border-gray-800 text-center font-mono">
+          <div className="shrink-0 p-3 rounded-xl bg-white border border-gray-200 text-center font-mono">
             <span className="text-[10px] text-gray-500 block uppercase">{t("formula")}</span>
-            <span className="text-xs text-emerald-300 font-bold">{def.formula}</span>
+            <span className="text-xs text-emerald-700 font-bold">{def.formula}</span>
           </div>
         </div>
       )}
@@ -264,7 +264,7 @@ function GrowthTab({ year, country }: { year: number; country: string }) {
 
   return (
     <div className="space-y-6">
-      <label className="block text-[11px] text-gray-400 font-medium max-w-md">
+      <label className="block text-[11px] text-gray-500 font-medium max-w-md">
         {t("select_metric")}
         <select value={metric} onChange={(e) => set({ metric: e.target.value })} className={selectCls}>
           {CORE_METRICS.map((m) => (
@@ -283,10 +283,10 @@ function GrowthTab({ year, country }: { year: number; country: string }) {
       ) : state.data.length === 0 ? (
         <EmptyState title={t("empty_title")} description={t("empty")} />
       ) : (
-        <div className="rounded-2xl border border-gray-800 bg-gray-900/30 overflow-x-auto">
+        <div className="rounded-2xl border border-gray-200 bg-white overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-gray-800 bg-gray-900/60 text-gray-400 font-semibold uppercase tracking-wider">
+              <tr className="border-b border-gray-200 bg-gray-50/80 text-gray-500 font-semibold uppercase tracking-wider">
                 <th className="py-3 px-4">{t("table.institution")}</th>
                 <th className="py-3 px-4">{t("table.country")}</th>
                 <th className="py-3 px-4 text-right">{t("table.current_val")}</th>
@@ -296,28 +296,28 @@ function GrowthTab({ year, country }: { year: number; country: string }) {
                 <th className="py-3 px-4 text-center">{t("table.status")}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800/60">
+            <tbody className="divide-y divide-gray-100">
               {state.data.map((g, idx) => {
                 const pct = g.growth_percent;
                 // Neutral colours: a variation is a fact, not a judgement (the arrow gives the sign).
-                const tone = pct === null ? "text-gray-500" : "text-gray-200";
+                const tone = pct === null ? "text-gray-500" : "text-gray-800";
                 const arrow = pct === null ? "" : pct > 0 ? "▲ " : pct < 0 ? "▼ " : "";
                 return (
-                  <tr key={`${g.institution_id}-${idx}`} className="hover:bg-gray-800/30 transition-colors">
-                    <td className="py-3.5 px-4 font-bold text-gray-200">
+                  <tr key={`${g.institution_id}-${idx}`} className="hover:bg-gray-50 transition-colors">
+                    <td className="py-3.5 px-4 font-bold text-gray-800">
                       {g.institution_name ?? g.institution_id}
-                      {g.reason && <span className="block text-[11px] font-normal text-amber-400/90">{reasonLabel(g.reason)}</span>}
+                      {g.reason && <span className="block text-[11px] font-normal text-amber-700">{reasonLabel(g.reason)}</span>}
                     </td>
-                    <td className="py-3.5 px-4 font-mono font-bold text-emerald-400">{g.country_code ?? MISSING}</td>
-                    <td className="py-3.5 px-4 text-right text-gray-300">
+                    <td className="py-3.5 px-4 font-mono font-bold text-emerald-700">{g.country_code ?? MISSING}</td>
+                    <td className="py-3.5 px-4 text-right text-gray-700">
                       <span className="block text-[10px] text-gray-500">{g.current_year}</span>
                       {fmt.compact(g.current_value, g.currency)}
                     </td>
-                    <td className="py-3.5 px-4 text-right text-gray-400">
+                    <td className="py-3.5 px-4 text-right text-gray-500">
                       <span className="block text-[10px] text-gray-500">{g.previous_year}</span>
                       {fmt.compact(g.previous_value, g.currency)}
                     </td>
-                    <td className="py-3.5 px-4 text-right font-mono text-gray-300">{fmt.compact(g.absolute_change, g.currency)}</td>
+                    <td className="py-3.5 px-4 text-right font-mono text-gray-700">{fmt.compact(g.absolute_change, g.currency)}</td>
                     <td className={`py-3.5 px-4 text-right font-black text-sm ${tone}`}>
                       {arrow}
                       {fmt.signedPercent(pct, 2)}
@@ -364,7 +364,7 @@ function AggregationsTab({ year, country }: { year: number; country: string }) {
 
   return (
     <div className="space-y-6">
-      <label className="block text-[11px] text-gray-400 font-medium max-w-md">
+      <label className="block text-[11px] text-gray-500 font-medium max-w-md">
         {t("select_metric")}
         <select value={metric} onChange={(e) => set({ metric: e.target.value })} className={selectCls}>
           {CORE_METRICS.map((m) => (
@@ -384,20 +384,20 @@ function AggregationsTab({ year, country }: { year: number; country: string }) {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {state.data.map((agg, idx) => (
-            <div key={`${agg.country_code}-${idx}`} className="p-5 rounded-2xl border border-gray-800 bg-gray-900/40 flex flex-col justify-between">
+            <div key={`${agg.country_code}-${idx}`} className="p-5 rounded-2xl border border-gray-200 bg-white flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-gray-200 text-sm">
+                  <span className="font-bold text-gray-800 text-sm">
                     {agg.country_code && tCountries.has(agg.country_code) ? tCountries(agg.country_code) : (agg.country_name ?? MISSING)}
                   </span>
-                  <span className="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono font-bold text-emerald-400">
+                  <span className="px-2 py-0.5 rounded bg-gray-100 text-xs font-mono font-bold text-emerald-700">
                     {agg.country_code ?? MISSING}
                   </span>
                 </div>
                 <span className="text-[11px] text-gray-500">
                   {labels.metric(agg.metric_code)} · {agg.year}
                 </span>
-                <span className="text-xl font-black text-white block mt-2">{fmt.compact(agg.total_value, agg.currency)}</span>
+                <span className="text-xl font-black text-gray-900 block mt-2">{fmt.compact(agg.total_value, agg.currency)}</span>
                 {agg.status === "needs_review" && <StatusBadge status="needs_review" size="sm" className="mt-1" />}
               </div>
               <div className="mt-4 pt-3 border-t border-gray-800/80">
@@ -419,8 +419,8 @@ function AggregationsTab({ year, country }: { year: number; country: string }) {
 function CompareTab() {
   const t = useTranslations("analytics.compare");
   return (
-    <div className="p-6 rounded-2xl border border-gray-800 bg-gray-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-      <p className="text-sm text-gray-300">{t("moved")}</p>
+    <div className="p-6 rounded-2xl border border-gray-200 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <p className="text-sm text-gray-700">{t("moved")}</p>
       <Link
         href="/comparisons"
         className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors"

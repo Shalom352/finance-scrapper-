@@ -13,7 +13,9 @@ Rules (DATA MISSING > DATA WRONG):
     except the duration "N ans" expressed in months (N x 12);
   - the issuer is linked to one of the 8 sovereign_state entities only when the printed issuer
     ("ETAT DU MALI") and the ISIN country prefix designate the same country;
-  - PDF / page contradiction on an attested value -> the whole auction is skipped and reported;
+  - PDF / page contradictions on dates, rates or issuance identity refuse the auction. When retained
+    amounts disagree but the PDF's tranche amounts reconcile to its printed global total, the signed
+    PDF supplies the amount and the discrepancy is retained as a validation flag;
   - deals enter through the Phase 13 importer only: needs_review, field-level provenance,
     audit event, duplicate candidates. Idempotence: deterministic ingestion_key.
 """
@@ -39,14 +41,19 @@ ISIN_RE = re.compile(rf"^{ISIN}$")
 DENOMINATION_RE = re.compile(rf"^({ISIN}) ?-(BAT|OAT)-\d{{2}}-\d{{4}}$")
 # Issuance references (ADJ-...); the year may be printed truncated ("-202"): kept exactly as printed.
 AUCTION_REF_RE = re.compile(r"^ADJ-[A-Z0-9]+(?: ?-[A-Z0-9]*)*$")
+AUCTION_REF_SCAN_RE = re.compile(r"(?<![A-Z0-9])ADJ-[A-Z0-9]+(?: ?-[A-Z0-9]*)*")
 # Buyback references (RA-...): a buyback is never an issuance.
 BUYBACK_REF_RE = re.compile(r"^RA-[A-Z0-9 -]+$")
+BUYBACK_REF_SCAN_RE = re.compile(r"(?<![A-Z0-9])RA-[A-Z0-9]+(?:-[A-Z0-9]+)*")
 DATE_RE = re.compile(r"(\d{2})/(\d{2})/(\d{4})")
 DURATION_RE = re.compile(r"^(\d+)\s*(jours|ans|an|mois)$", re.IGNORECASE)
 PCT_RE = re.compile(r"^(\d+(?:[,.]\d+)?)\s*%$")
 # A lone dash in a per-security list = no result for that security (kept as a placeholder, never 0).
 PCT_OR_DASH_RE = re.compile(r"^(?:(\d+(?:[,.]\d+)?)\s*%|-+)$")
 TRANCHE_AMOUNT_RE = re.compile(r"^(\d[\d ]*(?:,\d+)?)\s*millions de F ?CFA", re.IGNORECASE)
+TRANCHE_AMOUNT_SCAN_RE = re.compile(
+    r"(?<!\d)(\d[\d ]*(?:[,.]\d+)?)\s*millions?\s+de\s+F\s*CFA", re.IGNORECASE
+)
 NUMBER_RE = re.compile(r"^:?\s*(\d[\d ]*(?:,\d+)?)$")
 # Global retained amount, alone or followed by its unit on the same line ("10 000,21 millions de FCFA, ...").
 GLOBAL_TOTAL_RE = re.compile(r"^:?\s*(\d[\d ]*(?:,\d+)?)(?:\s+millions\b.*)?$", re.IGNORECASE)
@@ -81,6 +88,8 @@ TRUNCATED_ISSUER_LABELS = {
 FLAG_GLOBAL_TOTAL_ROUNDED = "global_total_rounded"
 FLAG_ISSUER_LABEL_TRUNCATED = "issuer_label_truncated"
 FLAG_PAGE_LISTS_BUYBACK_SECURITIES = "page_lists_buyback_securities"
+FLAG_PAGE_AMOUNT_CONFLICT = "page_amount_conflict_pdf_total_reconciled"
+FLAG_PAGE_RESULT_TYPE_MISMATCH = "page_result_type_mismatch_offer_matched"
 
 
 def norm(text: str) -> str:
@@ -168,24 +177,49 @@ def _label_index(tokens: list[str], prefix: str, start: int = 0) -> int | None:
 
 def _collect(tokens: list[str], start: int, pattern: re.Pattern[str], limit: int | None = None,
              include_label: bool = False) -> list[re.Match[str]]:
-    """Consecutive tokens after a label matching `pattern` (a lone ':' token is skipped)."""
+    """Consecutive values after a label, including several columns printed on one PDF line."""
+    inline_pattern = re.compile(pattern.pattern.removeprefix("^").removesuffix("$"), pattern.flags)
     out: list[re.Match[str]] = []
     i = start if include_label else start + 1
     while i < len(tokens) and (limit is None or len(out) < limit):
         tok = tokens[i].lstrip(":").strip()
         if include_label and i == start:
-            tok = tok.split(":", 1)[1].strip() if ":" in tok else ""
+            if ":" in tok:
+                tok = tok.split(":", 1)[1].strip()
+            else:
+                matches = list(inline_pattern.finditer(tok))
+                if matches:
+                    out.extend(matches[: max(0, limit - len(out))] if limit is not None else matches)
+                i += 1
+                continue
             if not tok:
                 i += 1
                 continue
         if not tok:
             i += 1
             continue
-        m = pattern.match(tok)
-        if not m:
+        matches = list(inline_pattern.finditer(tok))
+        if not matches:
             break
-        out.append(m)
+        out.extend(matches[: max(0, limit - len(out))] if limit is not None else matches)
         i += 1
+    return out
+
+
+def _references_after_label(tokens: list[str], start: int | None, pattern: re.Pattern[str], n: int) -> list[re.Match[str]]:
+    """Read ADJ/RA references when a PDF prints several references in one text span."""
+    if start is None:
+        return []
+    out: list[re.Match[str]] = []
+    for i in range(start, len(tokens)):
+        if i > start and norm(tokens[i]).startswith(("DUREE", "DATE D ECHEANCE", "VALEUR NOMINALE")):
+            break
+        text = tokens[i]
+        if i == start and ":" in text:
+            text = text.split(":", 1)[1]
+        out.extend(pattern.finditer(text))
+        if len(out) >= n:
+            return out[:n]
     return out
 
 
@@ -198,9 +232,9 @@ def _is_buyback_page(tokens: list[str], i_adj: int | None, n: int) -> bool:
     """Buyback page (securities bought back by the Treasury, never an issuance): RA-... references, or a
     "COMPTE RENDU (D'ADJUDICATION) (DE) RACHAT" title printed anywhere on the page (often at the bottom)
     when the page carries no ADJ-... issuance reference."""
-    if i_adj is not None and len(_collect(tokens, i_adj, BUYBACK_REF_RE, n, include_label=True)) == n:
+    if i_adj is not None and len(_references_after_label(tokens, i_adj, BUYBACK_REF_SCAN_RE, n)) == n:
         return True
-    has_issuance_ref = i_adj is not None and bool(_collect(tokens, i_adj, AUCTION_REF_RE, 1, include_label=True))
+    has_issuance_ref = bool(_references_after_label(tokens, i_adj, AUCTION_REF_SCAN_RE, 1))
     return not has_issuance_ref and any(norm(t).startswith(BUYBACK_TITLES) for t in tokens)
 
 
@@ -224,7 +258,7 @@ def parse_buyback_page(text: str, page_number: int) -> BuybackPage | None:
     i_adj = _label_index(tokens, "Adjudication n")
     if not n or not _is_buyback_page(tokens, i_adj, n):
         return None
-    refs = [m.group(0) for m in _collect(tokens, i_adj, BUYBACK_REF_RE, n, include_label=True)] \
+    refs = [m.group(0) for m in _references_after_label(tokens, i_adj, BUYBACK_REF_SCAN_RE, n)] \
         if i_adj is not None else []
     i_den = _label_index(tokens, "Dénomination de l'émission")
     dens = _collect(tokens, i_den, DENOMINATION_RE, n, include_label=True) if i_den is not None else []
@@ -270,7 +304,7 @@ def parse_compte_rendu_page(text: str, page_number: int) -> CompteRendu | None:
         raise LayoutError("denominations do not match the ISIN list")
     types = [m.group(2) for m in dens]
 
-    refs = _collect(tokens, i_adj, AUCTION_REF_RE, n, include_label=True) if i_adj is not None else []
+    refs = _references_after_label(tokens, i_adj, AUCTION_REF_SCAN_RE, n)
     if len(refs) != n:
         raise LayoutError("auction references do not match the ISIN list")
 
@@ -312,7 +346,7 @@ def parse_compte_rendu_page(text: str, page_number: int) -> CompteRendu | None:
     oat = [t for t in tranches if t.instrument_type == "OAT"]
     i_cpn = _label_index(tokens, "Taux d'intérêt fixe annoncé")
     if i_cpn is not None and oat:
-        coupons = _collect(tokens, i_cpn, PCT_OR_DASH_RE)
+        coupons = _collect(tokens, i_cpn, PCT_OR_DASH_RE, include_label=True)
         if len(coupons) == len(oat):
             for t, m in zip(oat, coupons, strict=True):
                 t.coupon = parse_amount(m.group(1)) if m.group(1) else None
@@ -335,14 +369,24 @@ def parse_compte_rendu_page(text: str, page_number: int) -> CompteRendu | None:
 
 
 def _tranche_amounts(tokens: list[str], n: int) -> list[str | None] | None:
-    """Per-security 'Soumissions retenues' (multi layout), or the single value (one security)."""
-    start = 0
-    while (i := _label_index(tokens, "Soumissions retenues", start)) is not None:
-        block = tokens[i + 1:i + 1 + n]
-        matches = [TRANCHE_AMOUNT_RE.match(t) for t in block]
-        if len(block) == n and all(matches):
-            return [m.group(1).strip() for m in matches]  # type: ignore[union-attr]
-        start = i + 1
+    """Per-security retained amounts, whether the PDF splits or joins the table columns."""
+    label_indices = [i for i, token in enumerate(tokens) if norm(token).startswith(norm("Soumissions retenues"))]
+    for i in label_indices:
+        row: list[str] = []
+        for j in range(i, min(len(tokens), i + 12)):
+            if j > i and norm(tokens[j]).startswith(("SOUMISSIONS REJETEES", "TAUX D ABSORPTION", "TAUX DE COUVERTURE")):
+                break
+            text = tokens[j].split(":", 1)[1] if j == i and ":" in tokens[j] else tokens[j]
+            row.extend(m.group(1).strip() for m in TRANCHE_AMOUNT_SCAN_RE.finditer(text))
+            if len(row) >= n:
+                return row[:n]
+        # Older one-security layouts publish a bare value with the unit on the next line.
+        if n == 1:
+            for tok in tokens[i:i + 4]:
+                rest = tok.split(":", 1)[1] if ":" in tok else tok
+                m = NUMBER_RE.match(rest.strip())
+                if m:
+                    return [m.group(1).strip()]
     if n == 1:  # single-security layout: "Soumissions retenues | : 15 000 | millions de FCFA"
         i = _label_index(tokens, "Soumissions retenues")
         if i is not None:
@@ -363,14 +407,28 @@ def _check_total(tokens: list[str], tranches: list[PdfTranche], n: int) -> str |
     """
     if n == 1:
         return None
-    i = _label_index(tokens, "Soumissions retenues")
     total_text = None
-    if i is not None:
-        for tok in tokens[i + 1:i + 3]:
-            m = GLOBAL_TOTAL_RE.match(tok.strip())
-            if m:
-                total_text = m.group(1).strip()
+    for i, token in enumerate(tokens):
+        if not norm(token).startswith(norm("Soumissions retenues")):
+            continue
+        values: list[str] = []
+        for j in range(i, min(len(tokens), i + 12)):
+            if j > i and norm(tokens[j]).startswith(("SOUMISSIONS REJETEES", "TAUX D ABSORPTION", "TAUX DE COUVERTURE")):
                 break
+            text = tokens[j].split(":", 1)[1] if j == i and ":" in tokens[j] else tokens[j]
+            values.extend(m.group(1).strip() for m in TRANCHE_AMOUNT_SCAN_RE.finditer(text))
+        if len(values) == 1:
+            total_text = values[0]
+            break
+        # Fallback for single-unit legacy layouts where the amount and unit occupy separate text rows.
+        if not values:
+            for tok in tokens[i + 1:i + 3]:
+                m = GLOBAL_TOTAL_RE.match(tok.strip())
+                if m:
+                    total_text = m.group(1).strip()
+                    break
+        if total_text:
+            break
     total = parse_amount(total_text) if total_text else None
     if total is None:
         raise LayoutError("global retained amount not found")
@@ -417,6 +475,7 @@ class PageResult:
     retained: Decimal | None
     yield_rate: Decimal | None
     maturity_date: date | None = None  # from the offer block, when it lists the securities in the same order
+    offer_instrument_type: str | None = None
 
 
 @dataclass
@@ -466,8 +525,10 @@ def parse_emission_page(page_html: str) -> EmissionPage:
             ))
     if len(maturities) == len(results):
         for r, (kind, mat) in zip(results, maturities, strict=True):
-            if kind == r.instrument_type:
-                r.maturity_date = mat
+            # The result heading occasionally carries the wrong instrument label. Its position in the
+            # official offer list still supplies a unique maturity anchor for pairing with the PDF.
+            r.maturity_date = mat
+            r.offer_instrument_type = kind
     return EmissionPage(
         operation_date=parse_date(op.group(1)) if op else None,
         value_date=parse_date(val.group(1)) if val else None,
@@ -524,10 +585,9 @@ def _pair_page_results(tranches: list[tuple[CompteRendu, PdfTranche]], page: Emi
                        buybacks: list[BuybackPage] | None = None) -> Pairing | None:
     """Pair the page results with the PDF tranches; None when it cannot be done unambiguously.
 
-    Same number of rows: paired on (type, maturity) when the page prints both, else on position.
+    Same number of rows: paired on unique maturity dates when printed, else on position.
     More rows on the page ('EC' emission + buyback): verified subset only — every PDF tranche has its
-    own row (unique (type, maturity) keys on both sides), and every extra row has no retained amount
-    AND its (type, maturity) is a security listed on a buyback page of the same PDF.
+    own row, and every extra row is non-positive and matches a security listed on a buyback page.
     """
     if not page.results:
         return Pairing([])
@@ -542,12 +602,12 @@ def _pair_page_results(tranches: list[tuple[CompteRendu, PdfTranche]], page: Emi
 def _pair_subset(tranches, page: EmissionPage, buybacks: list[BuybackPage]) -> Pairing | None:
     if not all(r.maturity_date is not None for r in page.results):
         return None
-    page_keys = [(r.instrument_type, r.maturity_date) for r in page.results]
-    pdf_keys = [(t.instrument_type, t.maturity_date) for _, t in tranches]
-    if len(set(page_keys)) != len(page_keys) or len(set(pdf_keys)) != len(pdf_keys):
-        return None  # duplicated (type, maturity) key: ambiguous
-    by_key = dict(zip(page_keys, page.results, strict=True))
-    matched = [by_key.get(k) for k in pdf_keys]
+    page_dates = [r.maturity_date for r in page.results]
+    pdf_dates = [t.maturity_date for _, t in tranches]
+    if len(set(page_dates)) != len(page_dates) or len(set(pdf_dates)) != len(pdf_dates):
+        return None  # duplicated maturity: ambiguous
+    by_date = {r.maturity_date: r for r in page.results}
+    matched = [by_date.get(t.maturity_date) for _, t in tranches]
     if any(m is None for m in matched):
         return None
     justified: dict[tuple, BuybackPage] = {}
@@ -555,11 +615,12 @@ def _pair_subset(tranches, page: EmissionPage, buybacks: list[BuybackPage]) -> P
         for sec in b.securities:
             justified.setdefault(sec, b)
     used: list[BuybackPage] = []
-    extra = [r for k, r in zip(page_keys, page.results, strict=True) if k not in set(pdf_keys)]
+    issued_dates = set(pdf_dates)
+    extra = [r for r in page.results if r.maturity_date not in issued_dates]
     for r in extra:
         if r.retained is not None and r.retained > 0:
             return None  # an extra row with an issued amount is not a buyback line
-        b = justified.get((r.instrument_type, r.maturity_date))
+        b = justified.get((r.offer_instrument_type or r.instrument_type, r.maturity_date))
         if b is None:
             return None  # not justified by the buyback page of the PDF
         if b not in used:
@@ -569,12 +630,16 @@ def _pair_subset(tranches, page: EmissionPage, buybacks: list[BuybackPage]) -> P
 
 def _pair_same_size(tranches, page: EmissionPage) -> list[PageResult] | None:
     if all(r.maturity_date is not None for r in page.results):
-        keys = [(r.instrument_type, r.maturity_date) for r in page.results]
-        if len(set(keys)) == len(keys):
-            by_key = dict(zip(keys, page.results, strict=True))
-            keyed = [by_key.get((t.instrument_type, t.maturity_date)) for _, t in tranches]
+        dates = [r.maturity_date for r in page.results]
+        tranche_dates = [t.maturity_date for _, t in tranches]
+        if len(set(dates)) == len(dates) and len(set(tranche_dates)) == len(tranche_dates):
+            by_date = {r.maturity_date: r for r in page.results}
+            keyed = [by_date.get(t.maturity_date) for _, t in tranches]
             if all(k is not None for k in keyed):
-                return keyed  # type: ignore[return-value]
+                # The offer type is a stronger pairing label than a malformed result heading.
+                if all((p.offer_instrument_type or p.instrument_type) == t.instrument_type
+                       for (_, t), p in zip(tranches, keyed, strict=True)):
+                    return keyed  # type: ignore[return-value]
     if [r.instrument_type for r in page.results] == [t.instrument_type for _, t in tranches]:
         return list(page.results)
     return None
@@ -617,6 +682,7 @@ def build_auction_deals(
         return AuctionDeals([], [], issue="inconsistent_pages")
 
     auction_flags: list[dict] = []
+    page_amount_conflicts: dict[str, PageResult] = {}
     issuer_key = norm(report.issuer_label)
     country = ISSUER_COUNTRIES.get(issuer_key)
     issuer_rule = "exact_label"
@@ -650,11 +716,28 @@ def build_auction_deals(
     paired = pairing.results
     if paired:
         for (_, t), p in zip(tranches, paired, strict=True):
+            offered_type = p.offer_instrument_type or p.instrument_type
+            if offered_type != t.instrument_type:
+                return _refused(
+                    f"instrument_type_differs_{t.isin}", field="instrument_type", isin=t.isin,
+                    html=offered_type, pdf=t.instrument_type,
+                )
+            if p.instrument_type != t.instrument_type:
+                auction_flags.append({
+                    "code": FLAG_PAGE_RESULT_TYPE_MISMATCH,
+                    "detail": f"ISIN {t.isin}: page result heading says {p.instrument_type}; the offer and compte "
+                              f"rendu both identify {t.instrument_type} at maturity {t.maturity_date}",
+                })
             pdf_issued = t.retained is not None and t.retained > 0
             page_issued = p.retained is not None and p.retained > 0
-            if pdf_issued != page_issued or (pdf_issued and abs(t.retained - p.retained) > Decimal("0.01")):
+            if pdf_issued != page_issued:
                 return _refused(f"retained_amount_differs_{t.isin}", field="amount", isin=t.isin,
                                 html=p.retained, pdf=t.retained)
+            if pdf_issued and abs(t.retained - p.retained) > Decimal("0.01"):
+                # parse_compte_rendu_page already proved that the tranche amounts reconcile to the PDF's
+                # global retained total. Keep that detailed signed report as the value source, and preserve
+                # the official page discrepancy as a visible validation flag instead of discarding the auction.
+                page_amount_conflicts[t.isin] = p
             if t.yield_rate is not None and p.yield_rate is not None and p.yield_rate > 0 and \
                     abs(t.yield_rate - p.yield_rate) > YIELD_TOLERANCE:
                 return _refused(f"yield_differs_{t.isin}", field="yield_rate", isin=t.isin,
@@ -687,6 +770,16 @@ def build_auction_deals(
             continue
         page_result = paired[k] if paired else None
         page_maturity = page_result.maturity_date if page_result else None
+        record_flags = [dict(f) for f in auction_flags]
+        page_amount_conflict = page_amount_conflicts.get(t.isin)
+        if page_amount_conflict is not None:
+            record_flags.append({
+                "code": FLAG_PAGE_AMOUNT_CONFLICT,
+                "detail": f"ISIN {t.isin}: compte rendu PDF says {t.retained} millions XOF; the emission page says "
+                          f"{page_amount_conflict.retained} millions XOF. The PDF's per-security amounts reconcile "
+                          "to its printed global retained total, so the PDF value is used and the page does not "
+                          "attest this amount.",
+            })
 
         rec = {
             "title": f"OAT {t.duration_text} — {report.issuer_label} — {t.isin} — adjudication du "
@@ -710,14 +803,19 @@ def build_auction_deals(
             "ingestion_key": f"umoa_titres:{country}:{t.auction_reference}:{t.isin}:{report.value_date}",
         }
         rec = {key: v for key, v in rec.items() if v is not None}
-        if auction_flags:
-            rec["validation_flags"] = [dict(f) for f in auction_flags]
+        if record_flags:
+            rec["validation_flags"] = record_flags
         pdf_fields = [f for f in (
             "title", "deal_type", "country_code", "amount_original", "amount", "currency", "unit", "interest_rate",
             "interest_rate_type", "maturity_months", "instrument_type", "isin", "auction_reference",
             "auction_date", "value_date", "maturity_date", "yield_rate",
         ) if f in rec]
-        page_fields = ["instrument_type", "amount", "currency", "unit"]
+        page_fields = []
+        if page_result is not None and (page_result.instrument_type == t.instrument_type or
+                                        page_result.offer_instrument_type == t.instrument_type):
+            page_fields.append("instrument_type")
+        if page_result is not None and page_amount_conflict is None:
+            page_fields.extend(("amount", "currency", "unit"))
         if page_result is not None and t.yield_rate is not None and page_result.yield_rate:
             page_fields.append("yield_rate")
         if page.value_date and "value_date" in rec:
@@ -726,10 +824,28 @@ def build_auction_deals(
             page_fields.append("auction_date")
         if page_maturity is not None and "maturity_date" in rec:
             page_fields.append("maturity_date")
+        # The words of the compte rendu that carry each value (migration 0020, field-level excerpts).
+        tranche_quote = f"{t.auction_reference} · ISIN {t.isin} · {t.instrument_type} {t.duration_text}"
+        field_excerpts = {
+            "isin": tranche_quote,
+            "instrument_type": tranche_quote,
+            "auction_reference": tranche_quote,
+            "maturity_months": f"{tranche_quote} · durée « {t.duration_text} »",
+            "amount": f"{tranche_quote} · Soumissions retenues {_fmt_amount(t.retained_text or '')}",
+            "amount_original": f"{tranche_quote} · Soumissions retenues {_fmt_amount(t.retained_text or '')}",
+            "interest_rate": f"{tranche_quote} · taux d'intérêt {t.coupon} %",
+            "interest_rate_type": f"{tranche_quote} · taux d'intérêt {t.coupon} % (coupon fixe imprimé)",
+            "yield_rate": f"{tranche_quote} · rendement moyen pondéré {t.yield_rate} %",
+            "maturity_date": f"{tranche_quote} · échéance {t.maturity_date.strftime('%d/%m/%Y') if t.maturity_date else ''}",
+            "auction_date": f"date de l'adjudication {report.auction_date.strftime('%d/%m/%Y') if report.auction_date else ''}",
+            "value_date": f"date de valeur {report.value_date.strftime('%d/%m/%Y') if report.value_date else ''}",
+            "country_code": f"émetteur « {report.issuer_label} » (règle {issuer_rule})",
+        }
         rec["sources"] = [
             {
                 "ref": "compte_rendu", "document_id": pdf_document_id, "source_id": source_id,
-                "page": rep.page_number, "fields": pdf_fields,
+                "page": rep.page_number, "fields": pdf_fields, "source_class": "primary_market",
+                "field_excerpts": {f: q for f, q in field_excerpts.items() if f in pdf_fields},
                 "excerpt": f"pdf_text · Compte rendu d'adjudication {compte_rendu_url} p.{rep.page_number} · "
                            f"{t.auction_reference} · ISIN {t.isin} · Soumissions retenues "
                            f"{_fmt_amount(t.retained_text or '')} · émetteur « {report.issuer_label} » "
@@ -739,7 +855,7 @@ def build_auction_deals(
         if page_result is not None:
             rec["sources"].append({
                 "ref": "emission_page", "document_id": page_document_id, "source_id": source_id, "page": 1,
-                "fields": page_fields,
+                "fields": page_fields, "source_class": "primary_market",
                 "excerpt": f"web_html · page d'émission {emission_url} · résultats (contrôle croisé)",
             })
         rec["participants"] = [{

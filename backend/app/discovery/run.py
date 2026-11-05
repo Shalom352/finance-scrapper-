@@ -29,6 +29,8 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Years searched for institution publications (current year + N)")
     parser.add_argument("--fascicle-editions", type=int, default=1,
                         help="Number of most recent BCEAO fascicle editions to process")
+    parser.add_argument("--reextract", action="store_true",
+                        help="Read again the institution documents that produced no value (after an extractor fix)")
     parser.add_argument("--retry-now", action="store_true",
                         help="Reopen NOT_FOUND gaps before their retry date (e.g. after an extractor change)")
     parser.add_argument("--reference-editions", type=int, default=1,
@@ -59,16 +61,23 @@ async def main_async() -> int:
     async with AsyncSessionLocal() as session:
         run_id = None
         if not args.report_only:
+            from app.deals.run_lock import DISCOVERY_LOCK, single_run_lock
+
             year = datetime.now(UTC).year
-            run = await DiscoveryEngine(max_rounds=args.max_rounds).run(
-                session,
-                universe_code=args.universe,
-                trigger_type=args.trigger_type,
-                country_codes=countries,
-                target_years=[year - i for i in range(args.historical_years + 1)],
-                options={"fascicle_editions": args.fascicle_editions,
-                         "reference_editions": args.reference_editions, "retry_now": args.retry_now},
-            )
+            async with single_run_lock(engine, DISCOVERY_LOCK) as lock:
+                if not lock.acquired:
+                    print(f"ABANDON: another discovery run is active (PostgreSQL PID {lock.holders})", file=sys.stderr)
+                    return 3
+                run = await DiscoveryEngine(max_rounds=args.max_rounds).run(
+                    session,
+                    universe_code=args.universe,
+                    trigger_type=args.trigger_type,
+                    country_codes=countries,
+                    target_years=[year - i for i in range(args.historical_years + 1)],
+                    options={"fascicle_editions": args.fascicle_editions,
+                             "reference_editions": args.reference_editions, "retry_now": args.retry_now,
+                             "reextract": args.reextract},
+                )
             run_id = run.id
             print(f"Run {run.id}: {run.stop_condition} — {run.stop_reason}")
         report = await build_report(session, args.universe, run_id)

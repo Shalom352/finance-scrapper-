@@ -17,14 +17,14 @@ export function SourcesList({ documents }: { documents: SourceDocument[] }) {
     );
   }
   return (
-    <ul className="divide-y divide-gray-800/60 rounded-2xl border border-gray-800 bg-gray-900/30 text-xs" data-testid="sources-list">
+    <ul className="divide-y divide-gray-100 rounded-2xl border border-gray-200 bg-white text-xs" data-testid="sources-list">
       {documents.map((d) => (
         <li key={d.document_id} className="px-4 py-3 flex flex-wrap items-center justify-between gap-2" data-testid="source-row">
           <span>
-            <span className="font-semibold text-gray-200">{d.title || MISSING}</span>
+            <span className="font-semibold text-gray-800">{d.title || MISSING}</span>
             <span className="block text-gray-500">{d.source_name || MISSING}</span>
           </span>
-          <span className="text-gray-400 text-right">
+          <span className="text-gray-500 text-right">
             {t("source_years", { years: d.period_years.join(", ") })}
             <span className="block">
               {d.pages.length > 0 ? t("source_pages", { pages: d.pages.join(", ") }) : t("source_pages_unknown")} ·{" "}

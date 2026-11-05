@@ -146,14 +146,14 @@ function ComparisonsContent() {
   return (
     <div className="space-y-6 animate-fade-in pb-12">
       <div>
-        <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">{t("title")}</h1>
-        <p className="text-xs text-gray-400 mt-1">{t("subtitle")}</p>
+        <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">{t("title")}</h1>
+        <p className="text-xs text-gray-500 mt-1">{t("subtitle")}</p>
       </div>
 
-      <div className="p-4 rounded-2xl border border-gray-800 bg-gray-900/40 space-y-3">
+      <div data-guide="comparisons" className="p-4 rounded-2xl border border-gray-200 bg-white space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {slots.map((value, i) => (
-            <label key={i} className="text-[11px] text-gray-400 font-medium">
+            <label key={i} className="text-[11px] text-gray-500 font-medium">
               {t("institution_n", { n: i + 1 })}
               <select value={value} onChange={(e) => setSlot(i, e.target.value)} className={selectCls}>
                 <option value="">{MISSING}</option>
@@ -174,7 +174,7 @@ function ComparisonsContent() {
               onChange={(metric) => set({ metric, period: supportsPeriodType(metric, p.period) ? p.period : "annual" })}
             />
           </div>
-          <label className="text-[11px] text-gray-400 font-medium">
+          <label className="text-[11px] text-gray-500 font-medium">
             {t("scope")}
             <select value={p.scope} onChange={(e) => set({ scope: e.target.value })} className={selectCls}>
               {DATA_SCOPES.map((s) => (
@@ -184,7 +184,7 @@ function ComparisonsContent() {
               ))}
             </select>
           </label>
-          <label className="text-[11px] text-gray-400 font-medium">
+          <label className="text-[11px] text-gray-500 font-medium">
             {t("period")}
             <select value={p.period} onChange={(e) => set({ period: e.target.value })} className={selectCls}>
               {PERIOD_TYPES.filter((pt) => supportsPeriodType(p.metric, pt)).map((pt) => (
@@ -207,7 +207,7 @@ function ComparisonsContent() {
         <ErrorState />
       ) : (
         <section className="space-y-3">
-          <h2 className="text-lg font-bold text-white">
+          <h2 className="text-lg font-bold text-gray-900">
             {indicatorLabel(result.data.metric_code)}
             {result.data.period_year !== null ? ` — ${result.data.period_year}` : ""}
             <span className="ml-2 text-[11px] font-normal text-gray-500">
@@ -215,7 +215,7 @@ function ComparisonsContent() {
             </span>
           </h2>
           {(result.data.status === "needs_review" || result.data.status === "unavailable") && (
-            <div role="alert" className="p-3 rounded-xl border border-amber-800/60 bg-amber-950/30 text-xs text-amber-200">
+            <div role="alert" className="p-3 rounded-xl border border-amber-200 bg-amber-50 text-xs text-amber-700">
               {reason(result.data.reason)}
             </div>
           )}
@@ -228,7 +228,7 @@ function ComparisonsContent() {
       <>
           {sector.length > 0 && (
             <section className="space-y-3">
-              <h2 className="text-lg font-bold text-white">{t("sector_title")}</h2>
+              <h2 className="text-lg font-bold text-gray-900">{t("sector_title")}</h2>
               <p className="text-[11px] text-gray-500">{t("sector_note")}</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {sector.map(({ id, result: s }) => (
@@ -241,10 +241,10 @@ function ComparisonsContent() {
           <section className="space-y-3">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <h2 className="text-lg font-bold text-white">{t("country_title")}</h2>
+                <h2 className="text-lg font-bold text-gray-900">{t("country_title")}</h2>
                 <p className="text-[11px] text-gray-500">{t("sector_note")}</p>
               </div>
-              <label className="text-[11px] text-gray-400 font-medium w-56">
+              <label className="text-[11px] text-gray-500 font-medium w-56">
                 {t("country_label")}
                 <select value={countryCode ?? ""} onChange={(e) => set({ country: e.target.value })} className={selectCls}>
                   <option value="">{MISSING}</option>

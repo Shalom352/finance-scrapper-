@@ -12,8 +12,8 @@ from app.constants.deals import DEAL_STATUSES, DEAL_TYPES, PARTICIPANT_ROLES
 from app.db.session import get_db_session
 from app.schemas.common import PaginatedResponse
 from app.schemas.data_quality import ReviewEventRead
-from app.schemas.deal import DealAnalytics, DealDetail, DealListItem
-from app.services.deal import deal_analytics, get_deal, get_deal_history, list_deals
+from app.schemas.deal import DealAnalytics, DealAnalyticsRow, DealDetail, DealListItem
+from app.services.deal import deal_analytics, deal_summary, get_deal, get_deal_history, list_deals
 
 router = APIRouter(prefix="/api/v1/deals", tags=["deals"])
 
@@ -22,10 +22,7 @@ StatusQ = Literal[DEAL_STATUSES]  # type: ignore[valid-type]
 RoleQ = Literal[PARTICIPANT_ROLES]  # type: ignore[valid-type]
 
 
-@router.get("", summary="Deal explorer (filters, pagination)", response_model=PaginatedResponse[DealListItem])
-async def deals(
-    page: int = Query(1, ge=1, le=10_000),
-    page_size: int = Query(20, ge=1, le=100),
+async def deal_filters(
     country: str | None = Query(None, pattern=r"^[A-Z]{2}$"),
     bank: str | None = Query(None, description="Institution id involved in any role (or in participant_role)"),
     deal_type: DealTypeQ | None = Query(None),
@@ -37,13 +34,34 @@ async def deals(
     borrower: str | None = Query(None, max_length=255, description="Institution id or name fragment"),
     arranger: str | None = Query(None, max_length=255, description="Institution id or name fragment"),
     include_merged: bool = Query(False, description="Include deals attached to another deal by a human decision"),
+) -> dict:
+    """Explorer filters, shared by the list and its summary (same deals counted)."""
+    return {
+        "country": country, "bank": bank, "deal_type": deal_type, "sector": sector, "year": year,
+        "currency": currency, "status": status, "participant_role": participant_role, "borrower": borrower,
+        "arranger": arranger, "include_merged": include_merged,
+    }
+
+
+@router.get("", summary="Deal explorer (filters, pagination)", response_model=PaginatedResponse[DealListItem])
+async def deals(
+    page: int = Query(1, ge=1, le=10_000),
+    page_size: int = Query(20, ge=1, le=100),
+    filters: dict = Depends(deal_filters),
     db: AsyncSession = Depends(get_db_session),
 ) -> PaginatedResponse[DealListItem]:
-    return await list_deals(
-        db, page=page, page_size=page_size, country=country, bank=bank, deal_type=deal_type, sector=sector,
-        year=year, currency=currency, status=status, participant_role=participant_role, borrower=borrower,
-        arranger=arranger, include_merged=include_merged,
-    )
+    return await list_deals(db, page=page, page_size=page_size, **filters)
+
+
+@router.get("/summary", summary="Counts and amount totals of ALL the deals matching the filters",
+            response_model=DealAnalyticsRow)
+async def summary(
+    filters: dict = Depends(deal_filters),
+    db: AsyncSession = Depends(get_db_session),
+) -> DealAnalyticsRow:
+    """Counts per status and amount totals per (currency, unit), reviewed / verified deals only.
+    ``amount x scale(unit)`` is the value; currencies and units are never summed together."""
+    return await deal_summary(db, **filters)
 
 
 @router.get("/analytics", summary="Descriptive deal counts; amounts per currency and unit",

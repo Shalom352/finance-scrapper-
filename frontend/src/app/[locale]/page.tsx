@@ -2,11 +2,12 @@ import React, { Suspense } from "react";
 import { Link } from "@/i18n/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import { formatCompactCurrency, formatNumber, MISSING } from "@/lib/formatters";
-import { parseYearParam } from "@/lib/url";
+import { getSelectableYears, parseYearParam } from "@/lib/url";
 import { UMOA_COUNTRY_CODES, COUNTRY_FLAGS } from "@/lib/countries";
 import { FinancialBarChart } from "@/components/charts/FinancialBarChart";
 import { CoverageIndicator } from "@/components/common/CoverageIndicator";
 import { YearSelect } from "@/components/common/YearSelect";
+import { YearDataNotice } from "@/components/common/YearDataNotice";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import {
   getAggregations,
@@ -14,7 +15,7 @@ import {
   getDocuments,
   getFinancialData,
   getInstitutions,
-  resolveSectorYear,
+  resolveSelectableSectorYear,
 } from "@/lib/api";
 import type { SectorAggregation } from "@/types";
 
@@ -56,20 +57,28 @@ export default async function DashboardPage({
   ]);
 
   const availableYears = years ?? [];
+  const selectableYears = getSelectableYears(availableYears);
   const requestedYear = parseYearParam(yearParam);
-  const year = await resolveSectorYear(requestedYear, availableYears);
+  // The overview opens on the current fiscal year even when its annual statements
+  // have not been published yet. A year in the URL remains selected until changed.
+  const year = await resolveSelectableSectorYear(requestedYear ?? new Date().getFullYear(), availableYears);
 
   // One aggregation per metric; a failed or absent aggregation stays null.
   const aggregations: Record<string, SectorAggregation | null> = {};
+  let aggregationLoadFailed = false;
   if (year !== null) {
     const results = await Promise.all(
-      REGIONAL_METRICS.map((m) =>
-        getAggregations({ year, metric_code: m.code, scope: "umoa" })
-          .then((res) => res.find((a) => a.metric_code === m.code && a.year === year) ?? null)
-          .catch(() => null),
-      ),
+      REGIONAL_METRICS.map(async (m) => {
+        try {
+          const res = await getAggregations({ year, metric_code: m.code, scope: "umoa" });
+          return { aggregation: res.find((a) => a.metric_code === m.code && a.year === year) ?? null, failed: false };
+        } catch {
+          return { aggregation: null, failed: true };
+        }
+      }),
     );
-    REGIONAL_METRICS.forEach((m, i) => (aggregations[m.code] = results[i]));
+    REGIONAL_METRICS.forEach((m, i) => (aggregations[m.code] = results[i].aggregation));
+    aggregationLoadFailed = results.some((result) => result.failed);
   }
 
   const assetsAgg = aggregations.total_actifs ?? null;
@@ -90,20 +99,20 @@ export default async function DashboardPage({
 
   return (
     <div className="space-y-8 animate-fade-in pb-12">
-      <div className="relative overflow-hidden rounded-3xl border border-gray-800 bg-gradient-to-br from-emerald-950/20 via-gray-900 to-gray-950 p-6 md:p-10">
+      <div className="relative overflow-hidden rounded-3xl border border-gray-200/90 bg-gradient-to-br from-emerald-50/70 via-white to-gray-50 p-6 md:p-10 shadow-xs">
         <div className="max-w-3xl">
-          <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight mb-4">{t("title")}</h1>
-          <p className="text-sm md:text-base text-gray-400 leading-relaxed mb-6">{t("subtitle")}</p>
+          <h1 className="text-3xl md:text-5xl font-black text-gray-900 tracking-tight mb-4">{t("title")}</h1>
+          <p className="text-sm md:text-base text-gray-600 leading-relaxed mb-6">{t("subtitle")}</p>
           <div className="flex flex-wrap gap-3">
             <Link
               href="/institutions"
-              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-950/40 transition-colors"
+              className="px-5 py-2.5 rounded-xl bg-[#0B6E4F] hover:bg-[#095940] text-white text-xs font-bold shadow-xs transition-colors"
             >
               {t("quick_links.explore_institutions")}
             </Link>
             <Link
               href="/analytics"
-              className="px-5 py-2.5 rounded-xl border border-gray-700 bg-gray-900/60 hover:border-gray-600 hover:text-white text-gray-300 text-xs font-semibold transition-colors"
+              className="px-5 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold shadow-xs transition-colors"
             >
               {t("quick_links.view_analytics")}
             </Link>
@@ -111,14 +120,14 @@ export default async function DashboardPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div data-guide="overview" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {kpis.map((k) => (
-          <div key={k.label} className="p-5 rounded-2xl border border-gray-800 bg-gray-900/40 flex flex-col justify-between">
-            <span className="text-xs text-gray-400 font-medium">{k.label}</span>
-            <span className="text-2xl font-black text-white mt-3">{k.value}</span>
+          <div key={k.label} className="p-5 rounded-2xl border border-gray-200/90 bg-white shadow-xs flex flex-col justify-between">
+            <span className="text-xs text-gray-500 font-medium">{k.label}</span>
+            <span className="text-2xl font-black text-gray-900 mt-3">{k.value}</span>
           </div>
         ))}
-        <div className="p-5 rounded-2xl border border-gray-800 bg-gray-900/40">
+        <div className="p-5 rounded-2xl border border-gray-200/90 bg-white shadow-xs">
           <CoverageIndicator
             label={t("kpi.coverage")}
             coverageRatio={assetsAgg?.coverage_ratio}
@@ -130,7 +139,7 @@ export default async function DashboardPage({
       </div>
 
       {years === null && (
-        <div role="alert" className="p-4 rounded-2xl border border-rose-800/60 bg-rose-950/30 text-sm text-rose-200">
+        <div role="alert" className="p-4 rounded-2xl border border-rose-200 bg-rose-50 text-sm text-rose-800 shadow-xs">
           {t("years_error")}
         </div>
       )}
@@ -139,32 +148,44 @@ export default async function DashboardPage({
         <div className="lg:col-span-2 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold text-white tracking-tight">{t("regional_aggregates.title")}</h2>
-              <p className="text-xs text-gray-400">{t("regional_aggregates.subtitle")}</p>
+              <h2 className="text-lg font-bold text-gray-900 tracking-tight">{t("regional_aggregates.title")}</h2>
+              <p className="text-xs text-gray-500">{t("regional_aggregates.subtitle")}</p>
             </div>
             <Suspense fallback={null}>
-              <YearSelect years={availableYears} value={year} />
+              <YearSelect years={selectableYears} value={year} />
             </Suspense>
           </div>
 
+          {year !== null && (
+            <YearDataNotice
+              year={year}
+              availableYears={years}
+              loadFailed={aggregationLoadFailed}
+              // The broad coverage endpoint may list a year even when the
+              // regional aggregation returned no row at all. In both cases,
+              // tell the user why the selected year's totals are unavailable.
+              hasData={assetsAgg?.total_value != null}
+            />
+          )}
+
           {year === null ? (
-            <p className="p-6 rounded-2xl border border-dashed border-gray-800 text-sm text-gray-400">{t("no_years")}</p>
+            <p className="p-6 rounded-2xl border border-dashed border-gray-200 bg-white text-sm text-gray-500">{t("no_years")}</p>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-3 gap-3">
               {REGIONAL_METRICS.map((m) => {
                 const agg = aggregations[m.code];
                 return (
-                  <div key={m.code} className="p-5 rounded-2xl border border-gray-800 bg-gray-900/40">
-                    <span className="text-xs text-gray-400 font-medium block mb-1">
+                  <div key={m.code} className="p-3 sm:p-5 rounded-2xl border border-gray-200/90 bg-white shadow-xs min-w-0">
+                    <span className="text-xs text-gray-500 font-medium block mb-1">
                       {t(`regional_aggregates.${m.key}`)} ({year})
                     </span>
-                    <span className="text-xl font-black text-white">
+                    <span className="block text-lg sm:text-xl font-black text-gray-900 whitespace-nowrap">
                       {formatCompactCurrency(agg?.total_value, agg?.currency, locale)}
                     </span>
                     {agg?.status === "needs_review" || agg?.status === "unavailable" ? (
                       <StatusBadge status={agg.status} size="sm" className="mt-1" />
                     ) : (
-                      agg?.is_partial && <span className="text-[11px] text-amber-400 block mt-1">{t("partial_badge")}</span>
+                      agg?.is_partial && <span className="text-[11px] text-amber-600 font-medium block mt-1">{t("partial_badge")}</span>
                     )}
                   </div>
                 );
@@ -184,8 +205,8 @@ export default async function DashboardPage({
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-white tracking-tight">{t("countries_title")}</h2>
-          <Link href="/countries" className="text-xs font-semibold text-emerald-400 hover:text-emerald-300">
+          <h2 className="text-lg font-bold text-gray-900 tracking-tight">{t("countries_title")}</h2>
+          <Link href="/countries" className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 hover:underline">
             {t("countries_link")}
           </Link>
         </div>
@@ -195,10 +216,10 @@ export default async function DashboardPage({
             <Link
               key={code}
               href={`/countries/${code}`}
-              className="group p-4 rounded-2xl border border-gray-800 bg-gray-900/40 hover:border-emerald-600/50 hover:bg-gray-900 transition-all flex flex-col items-center text-center"
+              className="group p-4 rounded-2xl border border-gray-200/90 bg-white hover:border-emerald-200 hover:shadow-xs transition-all flex flex-col items-center text-center"
             >
               <span className="text-3xl mb-2 group-hover:scale-110 transition-transform">{COUNTRY_FLAGS[code]}</span>
-              <span className="text-xs font-bold text-gray-200 group-hover:text-emerald-300">{tCountries(code)}</span>
+              <span className="text-xs font-bold text-gray-800 group-hover:text-emerald-800">{tCountries(code)}</span>
             </Link>
           ))}
         </div>

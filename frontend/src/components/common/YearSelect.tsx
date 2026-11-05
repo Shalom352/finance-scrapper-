@@ -7,16 +7,18 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { buildLocaleHref } from "@/lib/url";
 
 interface YearSelectProps {
-  /** Years that actually hold data (from the API), newest first. */
+  /** Years offered to the user, newest first, including the current and previous calendar years. */
   years: number[];
   value: number | null;
   /** Query parameter holding the year (kept in the URL so it survives a locale switch). */
   param?: string;
+  /** Optional anchor used by the interactive platform tour. */
+  guideId?: string;
   className?: string;
 }
 
-/** Explicit fiscal-year selector restricted to years returned by the backend. */
-export function YearSelect({ years, value, param = "year", className = "" }: YearSelectProps) {
+/** Fiscal-year selector that can also show years whose data has not arrived yet. */
+export function YearSelect({ years, value, param = "year", guideId, className = "" }: YearSelectProps) {
   const t = useTranslations("common");
   const router = useRouter();
   const pathname = usePathname();
@@ -32,13 +34,14 @@ export function YearSelect({ years, value, param = "year", className = "" }: Yea
   };
 
   return (
-    <label className={`flex items-center gap-2 text-xs text-gray-400 ${className}`}>
+    <label data-guide={guideId} className={`flex items-center gap-2 text-xs text-gray-500 ${className}`}>
       <span className="font-medium">{t("fiscal_year")}</span>
       <select
         value={value ?? ""}
         onChange={onChange}
-        className="px-3 py-1.5 rounded-xl border border-gray-800 bg-gray-950 text-xs text-gray-200 focus:border-emerald-500 focus:outline-none"
+        className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 focus:border-emerald-500 focus:outline-none"
       >
+        {value === null && <option value="" disabled>{t("choose_fiscal_year")}</option>}
         {years.map((y) => (
           <option key={y} value={y}>
             {y}

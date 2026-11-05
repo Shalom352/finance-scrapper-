@@ -31,7 +31,7 @@ async def test_runner_refuses_to_start_when_another_run_holds_the_lock(monkeypat
     import scraping.universe.http as http
     from app.deals import umoa_titres_run
 
-    async def accept(db, *, expect_db, url_source, expect_application_name=None):
+    async def accept(db, *, expect_db, url_source, expect_application_name=None, min_revision=None):
         return VerifiedDatabase(name=E2E, alembic_version="0015_deal_validation_flags")
 
     @asynccontextmanager

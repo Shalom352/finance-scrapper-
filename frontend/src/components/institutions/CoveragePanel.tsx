@@ -31,9 +31,9 @@ export function CoveragePanel({ coverage }: { coverage: InstitutionProfileCovera
 
   return (
     <section className="grid grid-cols-1 lg:grid-cols-2 gap-4" data-testid="coverage-panel">
-      <div className="p-4 rounded-2xl border border-gray-800 bg-gray-900/30 space-y-2">
-        <h3 className="text-sm font-semibold text-gray-200">{t("coverage_title")}</h3>
-        <p className="text-2xl font-black text-white" data-testid="coverage-years">
+      <div className="p-4 rounded-2xl border border-gray-200 bg-white space-y-2">
+        <h3 className="text-sm font-semibold text-gray-800">{t("coverage_title")}</h3>
+        <p className="text-2xl font-black text-gray-900" data-testid="coverage-years">
           {known
             ? t("years_available", {
                 available: coverage.available_years_count,
@@ -43,7 +43,7 @@ export function CoveragePanel({ coverage }: { coverage: InstitutionProfileCovera
               })
             : MISSING}
         </p>
-        <p className="text-xs text-gray-400" data-testid="coverage-ratio">
+        <p className="text-xs text-gray-500" data-testid="coverage-ratio">
           {known ? fmt.percent(ratio * 100, 0) : `${t("coverage_unavailable")} — ${reason(coverage.reason)}`}
         </p>
         {coverage.missing_years.length > 0 && (
@@ -51,14 +51,14 @@ export function CoveragePanel({ coverage }: { coverage: InstitutionProfileCovera
         )}
       </div>
 
-      <div className="p-4 rounded-2xl border border-gray-800 bg-gray-900/30 space-y-2">
-        <h3 className="text-sm font-semibold text-gray-200">{t("quality_title")}</h3>
+      <div className="p-4 rounded-2xl border border-gray-200 bg-white space-y-2">
+        <h3 className="text-sm font-semibold text-gray-800">{t("quality_title")}</h3>
         <p className="text-[11px] text-gray-500">{t("quality_note")}</p>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
           {counters.map(([key, n]) => (
             <React.Fragment key={key}>
-              <dt className="text-gray-400">{t(key)}</dt>
-              <dd className="text-right font-semibold text-gray-200" data-testid={`quality-${key}`}>
+              <dt className="text-gray-500">{t(key)}</dt>
+              <dd className="text-right font-semibold text-gray-800" data-testid={`quality-${key}`}>
                 {n}
               </dd>
             </React.Fragment>

@@ -99,6 +99,7 @@ class _Ln:
     y1: float
     text: str
     bold: bool
+    confidence: float | None = None
 
     @property
     def ymid(self) -> float:

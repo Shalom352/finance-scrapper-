@@ -6,7 +6,7 @@ emission calendars, and statistical bulletins from the Agence UMOA-Titres.
 """
 import asyncio
 import re
-from typing import ClassVar
+from typing import Awaitable, Callable, ClassVar
 from urllib.parse import urljoin
 
 import httpx
@@ -14,7 +14,7 @@ import httpx
 from app.core.logging import get_logger
 from scraping.common.models import DiscoveredDocument
 from scraping.connectors.base import BaseSourceConnector
-from scraping.discovery.html_parser import LinkExtractor, parse_html_documents
+from scraping.discovery.html_parser import LinkExtractor, extract_year_from_text, parse_html_documents
 
 logger = get_logger(__name__)
 
@@ -82,6 +82,8 @@ class UMOATitresConnector(BaseSourceConnector):
         self,
         client: httpx.AsyncClient,
         limit: int | None = None,
+        years: list[int] | None = None,
+        on_progress: Callable[[int, int], Awaitable[None]] | None = None,
     ) -> list[DiscoveredDocument]:
         """
         Discover official documents across UMOA-Titres portal sections.
@@ -89,6 +91,8 @@ class UMOATitresConnector(BaseSourceConnector):
         Args:
             client: Async HTTP client.
             limit: Maximum number of discovered documents to collect.
+            years: Optional calendar years used to skip out-of-scope emission pages before fetching them.
+            on_progress: Optional callback with (pages visited, pages selected).
 
         Returns:
             List of DiscoveredDocument objects.
@@ -118,6 +122,8 @@ class UMOATitresConnector(BaseSourceConnector):
                         document_type=doc_type,
                     )
                     for doc in direct_docs:
+                        if not self.matches_requested_years(doc, years):
+                            continue
                         if doc.url not in seen_urls:
                             seen_urls.add(doc.url)
                             doc.metadata["section_description"] = section["description"]
@@ -133,13 +139,36 @@ class UMOATitresConnector(BaseSourceConnector):
                     if is_emissions:
                         extractor = LinkExtractor()
                         extractor.feed(resp.text)
-                        emission_links = [
-                            urljoin(str(resp.url), href)
-                            for href, _ in extractor.links
-                            if "/emission/" in href
-                        ]
+                        target_years = set(years or [])
+                        emission_links: list[str] = []
+                        seen_emission_links: set[str] = set()
+                        skipped_out_of_year = 0
+                        for href, anchor in extractor.links:
+                            if "/emission/" not in href:
+                                continue
+                            em_url = urljoin(str(resp.url), href)
+                            if em_url in seen_emission_links:
+                                continue
+                            seen_emission_links.add(em_url)
+                            hinted_year = extract_year_from_text(f"{em_url} {anchor}")
+                            if target_years and hinted_year is not None and hinted_year not in target_years:
+                                skipped_out_of_year += 1
+                                continue
+                            emission_links.append(em_url)
 
-                        for em_url in emission_links:
+                        if years:
+                            logger.info(
+                                "umoa_titres_emission_year_filter",
+                                years=sorted(target_years),
+                                pages_seen=len(seen_emission_links),
+                                pages_selected=len(emission_links),
+                                pages_skipped=skipped_out_of_year,
+                            )
+                        if on_progress:
+                            await on_progress(0, len(emission_links))
+
+                        pages_visited = 0
+                        for page_number, em_url in enumerate(emission_links, start=1):
                             if limit and len(all_discovered) >= limit:
                                 break
 
@@ -159,6 +188,8 @@ class UMOATitresConnector(BaseSourceConnector):
                                         document_type="regulatory_report",
                                     )
                                     for doc in em_docs:
+                                        if not self.matches_requested_years(doc, years):
+                                            continue
                                         if doc.url not in seen_urls:
                                             seen_urls.add(doc.url)
                                             doc.metadata["section_description"] = "Résultats d'adjudications"
@@ -172,6 +203,11 @@ class UMOATitresConnector(BaseSourceConnector):
                                                 return all_discovered
                             except Exception as em_err:
                                 logger.warning("umoa_titres_emission_detail_failed", url=em_url, error=str(em_err))
+                            pages_visited = page_number
+                            if on_progress and (page_number % 5 == 0 or page_number == len(emission_links)):
+                                await on_progress(pages_visited, len(emission_links))
+                        if on_progress and pages_visited < len(emission_links):
+                            await on_progress(pages_visited, len(emission_links))
 
                 else:
                     logger.warning("umoa_titres_section_non_200", url=target_url, status_code=resp.status_code)

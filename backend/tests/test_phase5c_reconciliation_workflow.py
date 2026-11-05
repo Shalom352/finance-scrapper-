@@ -255,6 +255,7 @@ def make_mock_financial_data(
     src.id = "src-1"
     src.name = "Banque Centrale"
     src.short_name = "BCEAO"
+    src.url = None
     src.source_type = "central_bank"
     src.priority = 1
     src.country_code = "UMOA"

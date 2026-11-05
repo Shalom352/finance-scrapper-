@@ -132,12 +132,22 @@ class IngestionScheduler:
             historical_years=settings.ingestion_historical_years,
         )
 
-    def stop(self) -> None:
-        """Stop the background scheduler task."""
+    async def stop(self) -> None:
+        """Cancel the background scheduler and wait for its async cleanup."""
         self._running = False
-        if self._task and not self._task.done():
-            self._task.cancel()
-            logger.info("ingestion_scheduler_stopped")
+        task = self._task
+        if task is None:
+            return
+        if not task.done():
+            task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+        finally:
+            if self._task is task:
+                self._task = None
+        logger.info("ingestion_scheduler_stopped")
 
     async def _run_loop(self) -> None:
         """Main evaluation loop."""

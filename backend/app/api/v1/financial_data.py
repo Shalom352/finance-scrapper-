@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.internal_auth import actor_of, write_access
 from app.db.session import get_db_session
 from app.schemas.common import PaginatedResponse
 from app.schemas.financial_data import (
@@ -148,12 +149,13 @@ async def historical_quality(
 async def bulk_review(
     payload: FinancialDataBulkReviewRequest,
     db: AsyncSession = Depends(get_db_session),
+    user: str | None = Depends(write_access),
 ) -> list[str]:
     """Bulk transition data points to reviewed status (locked, audited, no partial write)."""
     expected = {e.data_id: (e.expected_status, e.expected_updated_at) for e in payload.expected}
     return await _legacy_decide(
         lambda: bulk_review_financial_data(
-            db, payload.data_ids, actor=payload.actor, reviewer_notes=payload.reviewer_notes, expected=expected
+            db, payload.data_ids, actor=actor_of(payload.actor, user), reviewer_notes=payload.reviewer_notes, expected=expected
         ),
         db,
     )
@@ -296,6 +298,7 @@ async def review_datum(
     data_id: str,
     payload: FinancialDataReviewRequest,
     db: AsyncSession = Depends(get_db_session),
+    user: str | None = Depends(write_access),
 ) -> FinancialDataRead:
     """Transition financial data point to 'reviewed' status (value override audited)."""
     return await _legacy_decide(
@@ -304,7 +307,7 @@ async def review_datum(
             data_id,
             reviewer_notes=payload.reviewer_notes,
             value_normalized_override=payload.value_normalized_override,
-            actor=payload.actor,
+            actor=actor_of(payload.actor, user),
             expected_status=payload.expected_status,
             expected_updated_at=payload.expected_updated_at,
         ),
@@ -317,13 +320,14 @@ async def verify_datum(
     data_id: str,
     payload: FinancialDataVerifyRequest,
     db: AsyncSession = Depends(get_db_session),
+    user: str | None = Depends(write_access),
 ) -> FinancialDataRead:
     """Transition financial data point from 'reviewed' to 'verified' status."""
     return await _legacy_decide(
         lambda: verify_financial_data(
             db,
             data_id,
-            verified_by=payload.verified_by,
+            verified_by=actor_of(payload.verified_by, user),
             verification_notes=payload.verification_notes,
             expected_status=payload.expected_status,
             expected_updated_at=payload.expected_updated_at,
@@ -337,6 +341,7 @@ async def reject_datum(
     data_id: str,
     payload: FinancialDataRejectRequest,
     db: AsyncSession = Depends(get_db_session),
+    user: str | None = Depends(write_access),
 ) -> FinancialDataRead:
     """Transition financial data point to 'rejected' status."""
     return await _legacy_decide(
@@ -344,7 +349,7 @@ async def reject_datum(
             db,
             data_id,
             reason=payload.reason,
-            actor=payload.actor,
+            actor=actor_of(payload.actor, user),
             expected_status=payload.expected_status,
             expected_updated_at=payload.expected_updated_at,
         ),

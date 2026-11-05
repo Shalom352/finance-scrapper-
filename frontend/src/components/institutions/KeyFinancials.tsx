@@ -33,7 +33,7 @@ export function KeyFinancials({
 
   return (
     <section className="space-y-2" data-testid="key-financials">
-      <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+      <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
         {financials.period_year === null ? t("key_title_none") : t("key_title", { year: financials.period_year })}
       </h2>
       {financials.period_year === null && (
@@ -46,16 +46,16 @@ export function KeyFinancials({
           const v = financials.values.find((x) => x.metric_code === code);
           const u = financials.unavailable.find((x) => x.metric_code === code);
           return (
-            <div key={code} className="p-4 rounded-2xl border border-gray-800 bg-gray-900/30" data-testid={`key-${code}`}>
-              <span className="text-[11px] text-gray-400 font-medium block mb-1">{labels.metric(code)}</span>
+            <div key={code} className="p-4 rounded-2xl border border-gray-200 bg-white" data-testid={`key-${code}`}>
+              <span className="text-[11px] text-gray-500 font-medium block mb-1">{labels.metric(code)}</span>
               {v ? (
                 <>
-                  <span className="text-lg font-black text-white block">{fmt.compact(v.value_normalized, v.currency)}</span>
+                  <span className="text-lg font-black text-gray-900 block">{fmt.compact(v.value_normalized, v.currency)}</span>
                   <span className="flex items-center justify-between mt-1 text-[11px] text-gray-500">
                     <span>{displayCurrency(v.currency) || MISSING}</span>
                     <button
                       onClick={() => onProvenance(v.data_id)}
-                      className="text-emerald-400 hover:text-emerald-300"
+                      className="text-emerald-700 hover:text-emerald-700"
                       title={t("open_provenance")}
                       data-testid="key-provenance"
                     >

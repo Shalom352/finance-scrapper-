@@ -7,7 +7,7 @@ UMOA-Titres auction results -> sovereign_bond deals (OAT), through the Phase 13 
 
 Every created deal is needs_review. Re-running is idempotent (ingestion_key).
 The database is the one configured by DATABASE_URL / POSTGRES_* (see app.core.config). Before any
-request, app.deals.db_guard checks current_database(), the Alembic revision and the connection's
+request, app.deals.db_guard checks current_database(), the Alembic revision (0020 at least) and the connection's
 application_name ("umoa_titres_run"; the lock connection is "umoa_titres_run:lock") (exit code 2 if refused),
 then app.deals.run_lock takes an advisory lock: only one runner per database (exit code 3 if another
 umoa_titres_run is already active).
@@ -62,6 +62,7 @@ async def main_async() -> int:
                 expect_db=args.expect_db,
                 url_source=database_url_source(get_settings()),
                 expect_application_name=RUNNER_APPLICATION_NAME,
+                min_revision=20,  # deals now carry field-level excerpts (migration 0020)
             )
     except TargetDatabaseError as err:
         print(err, flush=True)

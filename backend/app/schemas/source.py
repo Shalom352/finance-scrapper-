@@ -30,6 +30,7 @@ class SourceList(BaseModel):
 
     id: str
     name: str
+    url: str | None = None
     short_name: str | None = None
     source_type: str
     priority: int

@@ -101,6 +101,34 @@ class Settings(BaseSettings):
     ingestion_timezone: str = "Africa/Abidjan"
     ingestion_historical_years: int = 5
     ingestion_concurrency_limit: int = 1
+    # A run still "running" after this many hours was interrupted (process restart, crash): it is
+    # marked failed at start-up and before every run, so it never blocks the next ones.
+    ingestion_stale_run_hours: int = 6
+
+    # ------------------------------------------------------------------
+    # Automated deal collection (migration 0020) — runs as the "deals" phase of every ingestion run
+    # (scheduled and manual) and on demand per source; every deal is created needs_review.
+    # ------------------------------------------------------------------
+    deal_collection_enabled: bool = True
+    # Sources collected by the scheduled run (comma-separated keys of app.services.deal_collection).
+    # BIDC (official financing announcements) is collected with the DFI sources. "press" remains
+    # available on demand; its publishers' terms are documented in deal-intelligence.md §12.
+    deal_collection_sources: str = "umoa-titres,brvm,amf-umoa,ifc,boad,proparco,bidc"
+    # Window of the scheduled run: pages published / modified in the last N days.
+    deal_collection_lookback_days: int = 120
+    # Minimum seconds between two requests to the same host (a robots.txt Crawl-delay may raise it).
+    deal_collection_delay_seconds: float = 2.0
+    # Pages read per source and per run at most (the rest is read by the next runs; 0 = no limit).
+    deal_collection_max_pages: int = 200
+
+    # ------------------------------------------------------------------
+    # Internal routes (migration 0022): syndication tracker, contacts, mandates. The Next.js proxy
+    # sends this token after its Basic Auth check. Required in production (else those routes answer
+    # 503); when empty in development / tests, the routes are open locally.
+    # ------------------------------------------------------------------
+    internal_api_token: str | None = None
+    # Largest syndication workbook accepted by the upload route (bytes).
+    syndication_max_upload_bytes: int = 15_000_000
 
     # ------------------------------------------------------------------
     # Automatic validation (Phase 21) — reversible by a human, see docs/data-quality.md §9
@@ -118,6 +146,22 @@ class Settings(BaseSettings):
     discovery_universe: str = "UMOA.BANKING"
     discovery_historical_years: int = 5
     discovery_fascicle_editions: int = 1
+    # Same options as the CLI (audit 22/10/2026): the scheduled run is no longer a reduced one.
+    discovery_reference_editions: int = 1
+    discovery_max_rounds: int = 30
+    # Optional web search produces candidate URLs only; rights must be confirmed before persistence.
+    discovery_search_provider: Literal["none", "brave"] = "none"
+    brave_search_api_key: str | None = None
+    discovery_search_storage_rights_confirmed: bool = False
+    discovery_search_results_per_entity: int = Field(default=5, ge=1, le=10)
+    discovery_search_max_entities_per_run: int = Field(default=20, ge=1, le=100)
+
+    # Optional OCR runs only on scanned/corrupted institution-specific PDF pages.
+    document_ocr_enabled: bool = False
+    document_ocr_language: str = "fra+eng"
+    document_ocr_dpi: int = Field(default=200, ge=120, le=300)
+    document_ocr_max_pages: int = Field(default=40, ge=1, le=200)
+    document_ocr_timeout_seconds: int = Field(default=45, ge=5, le=180)
 
     # ------------------------------------------------------------------
     # Computed helpers

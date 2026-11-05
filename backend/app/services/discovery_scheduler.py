@@ -42,15 +42,27 @@ class DiscoveryScheduler:
         self._task = asyncio.create_task(self._run_loop(), name="umoa_discovery_scheduler")
         logger.info("discovery_scheduler_started", schedule=settings.discovery_schedule)
 
-    def stop(self) -> None:
+    async def stop(self) -> None:
         self._running = False
-        if self._task and not self._task.done():
-            self._task.cancel()
-            logger.info("discovery_scheduler_stopped")
+        task = self._task
+        if task is None:
+            return
+        if not task.done():
+            task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+        finally:
+            if self._task is task:
+                self._task = None
+        logger.info("discovery_scheduler_stopped")
 
     async def _run_loop(self) -> None:
         from datetime import UTC, datetime
 
+        from app.db.engine import engine
+        from app.deals.run_lock import DISCOVERY_LOCK, single_run_lock
         from scraping.universe.engine import DiscoveryEngine
 
         settings = get_settings()
@@ -66,14 +78,19 @@ class DiscoveryScheduler:
                 if not self._running:
                     break
                 year = datetime.now(UTC).year
-                async with AsyncSessionLocal() as session:
-                    await DiscoveryEngine().run(
-                        session,
-                        universe_code=settings.discovery_universe,
-                        trigger_type="scheduled",
-                        target_years=[year - i for i in range(settings.discovery_historical_years + 1)],
-                        options={"fascicle_editions": settings.discovery_fascicle_editions},
-                    )
+                async with single_run_lock(engine, DISCOVERY_LOCK) as lock:
+                    if not lock.acquired:  # a CLI run is active: this occurrence is skipped, not doubled
+                        logger.warning("discovery_scheduled_run_skipped_lock", holders=lock.holders)
+                        continue
+                    async with AsyncSessionLocal() as session:
+                        await DiscoveryEngine(max_rounds=settings.discovery_max_rounds).run(
+                            session,
+                            universe_code=settings.discovery_universe,
+                            trigger_type="scheduled",
+                            target_years=[year - i for i in range(settings.discovery_historical_years + 1)],
+                            options={"fascicle_editions": settings.discovery_fascicle_editions,
+                                     "reference_editions": settings.discovery_reference_editions},
+                        )
             except asyncio.CancelledError:
                 break
             except Exception as err:

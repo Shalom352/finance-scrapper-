@@ -31,6 +31,7 @@ function DocumentsContent() {
   const page = Math.max(Number(get("page")) || 1, 1);
   const type = get("type");
   const year = parseYearParam(get("year"));
+  const source = get("source"); // set by a search result ("documents of this source")
 
   const [result, setResult] = useState<PaginatedResponse<Document> | null>(null);
   const [error, setError] = useState(false);
@@ -48,35 +49,35 @@ function DocumentsContent() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset before refetch
     setResult(null);
     setError(false);
-    getDocuments({ page, page_size: PAGE_SIZE, document_type: type || undefined, period_year: year ?? undefined })
+    getDocuments({ page, page_size: PAGE_SIZE, document_type: type || undefined, period_year: year ?? undefined, source_id: source || undefined })
       .then((res) => !cancelled && setResult(res))
       .catch(() => !cancelled && setError(true));
     return () => {
       cancelled = true;
     };
-  }, [page, type, year, attempt]);
+  }, [page, type, year, source, attempt]);
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">{t("title")}</h1>
-          <p className="text-xs text-gray-400 mt-1">{t("subtitle")}</p>
+          <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">{t("title")}</h1>
+          <p className="text-xs text-gray-500 mt-1">{t("subtitle")}</p>
         </div>
         {result && (
-          <span className="px-3 py-1.5 rounded-xl border border-gray-800 bg-gray-900/60 text-xs font-semibold text-gray-300">
+          <span className="px-3 py-1.5 rounded-xl border border-gray-200 bg-gray-50/80 text-xs font-semibold text-gray-700">
             {t("count", { count: result.total })}
           </span>
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-2xl border border-gray-800 bg-gray-900/40">
-        <label className="text-[11px] text-gray-400 font-medium">
+      <div data-guide="documents" className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-2xl border border-gray-200 bg-white">
+        <label className="text-[11px] text-gray-500 font-medium">
           {t("filter_type")}
           <select
             value={type}
             onChange={(e) => set({ type: e.target.value, page: null })}
-            className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-800 bg-gray-950 text-xs text-gray-200 focus:border-emerald-500 focus:outline-none"
+            className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 focus:border-emerald-500 focus:outline-none"
           >
             <option value="">{t("all_types")}</option>
             {DOCUMENT_TYPES.map((d) => (
@@ -87,12 +88,12 @@ function DocumentsContent() {
           </select>
         </label>
 
-        <label className="text-[11px] text-gray-400 font-medium">
+        <label className="text-[11px] text-gray-500 font-medium">
           {t("filter_year")}
           <select
             value={year ?? ""}
             onChange={(e) => set({ year: e.target.value, page: null })}
-            className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-800 bg-gray-950 text-xs text-gray-200 focus:border-emerald-500 focus:outline-none"
+            className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 focus:border-emerald-500 focus:outline-none"
           >
             <option value="">{t("all_years")}</option>
             {years.map((y) => (
@@ -116,7 +117,7 @@ function DocumentsContent() {
           onAction={() => set({ type: null, year: null, page: null })}
         />
       ) : (
-        <div className="rounded-2xl border border-gray-800 bg-gray-900/30 overflow-hidden">
+        <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
           <DocumentsTable documents={result.items} emptyText={t("empty")} showInstitution />
           <Pagination currentPage={page} pageSize={PAGE_SIZE} total={result.total} onPageChange={(p) => set({ page: p })} />
         </div>

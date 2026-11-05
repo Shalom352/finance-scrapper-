@@ -29,8 +29,10 @@ def utcnow() -> datetime:
 
 
 async def get_source(ctx: DiscoveryContext, short_name: str) -> Source | None:
+    # short_name is not unique in the schema: the oldest row wins, never a crash (audit 22/10/2026, D5).
     return (await ctx.db.execute(
-        select(Source).where(Source.short_name == short_name, Source.deleted_at.is_(None)))).scalar_one_or_none()
+        select(Source).where(Source.short_name == short_name, Source.deleted_at.is_(None))
+        .order_by(Source.created_at, Source.id).limit(1))).scalars().first()
 
 
 class ReferenceListStrategy(DiscoveryStrategy):

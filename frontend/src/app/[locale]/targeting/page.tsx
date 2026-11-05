@@ -46,10 +46,10 @@ function TargetingContent() {
   }, [key, reload, ready]);
 
   const select = (name: string, value: string | undefined, options: { value: string; label: string }[]) => (
-    <label className="flex flex-col gap-1 text-xs text-gray-400">
+    <label className="flex flex-col gap-1 text-xs text-gray-500">
       {t(`form.${name}`)}
       <select
-        className="bg-gray-900 border border-gray-800 rounded-lg px-2 py-1.5 text-gray-100"
+        className="min-h-10 bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-gray-900"
         value={value ?? ""}
         onChange={(e) => set({ [name]: e.target.value || null })}
         data-testid={`targeting-${name}`}
@@ -65,20 +65,20 @@ function TargetingContent() {
   return (
     <div className="space-y-6 animate-fade-in pb-12">
       <div>
-        <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">{t("title")}</h1>
-        <p className="text-xs text-gray-400 mt-1">{t("subtitle")}</p>
+        <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">{t("title")}</h1>
+        <p className="text-xs text-gray-500 mt-1">{t("subtitle")}</p>
       </div>
 
-      <section className="p-4 rounded-2xl border border-gray-800 bg-gray-900/40 grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <section data-guide="targeting" className="p-4 rounded-2xl border border-gray-200 bg-white grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {select("country", query.country, UMOA_COUNTRY_CODES.map((c) => ({ value: c, label: tCountries(c) })))}
         {select("sector", query.sector, SECTORS.map((s) => ({ value: s, label: t(`sectors.${s}`) })))}
         {select("deal_type", query.deal_type, DEAL_TYPES.map((d) => ({ value: d, label: tTypes(d) })))}
-        <label className="flex flex-col gap-1 text-xs text-gray-400">
+        <label className="flex flex-col gap-1 text-xs text-gray-500">
           {t("form.amount")}
           <input
             type="number"
             min={0}
-            className="bg-gray-900 border border-gray-800 rounded-lg px-2 py-1.5 text-gray-100"
+            className="min-h-10 bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-gray-900"
             defaultValue={query.amount ?? ""}
             onBlur={(e) => set({ amount: e.target.value || null })}
             data-testid="targeting-amount"
@@ -99,7 +99,7 @@ function TargetingContent() {
       ) : (
         <section className="space-y-3">
           <p className="text-[11px] text-gray-500" data-testid="targeting-method">{t("method")}</p>
-          <p className="text-xs text-gray-400" data-testid="targeting-count">{t("count", { total: result.data.total })}</p>
+          <p className="text-xs text-gray-500" data-testid="targeting-count">{t("count", { total: result.data.total })}</p>
           <TargetingResults items={result.data.items} />
         </section>
       )}

@@ -25,7 +25,7 @@ import { MISSING } from "@/lib/formatters";
 import { useLabels } from "@/lib/useLabels";
 import { useQueryParams } from "@/lib/useQueryParams";
 import { DATA_SCOPES, PERIOD_TYPES, pick } from "@/lib/rankings";
-import { parseYearParam } from "@/lib/url";
+import { parseYearParam, externalHref } from "@/lib/url";
 import { StateBadge } from "@/components/common/StatusBadge";
 import { CardSkeleton, TableSkeleton } from "@/components/common/LoadingSkeleton";
 import { EmptyState, ErrorState } from "@/components/common/EmptyState";
@@ -55,7 +55,7 @@ interface Profile {
 }
 
 const selectCls =
-  "mt-1 w-full px-3 py-2 rounded-xl border border-gray-800 bg-gray-950 text-xs text-gray-200 focus:border-emerald-500 focus:outline-none";
+  "mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 focus:border-emerald-500 focus:outline-none";
 
 export default function InstitutionDetailPage({ params }: PageProps) {
   const { id } = use(params);
@@ -69,7 +69,7 @@ export default function InstitutionDetailPage({ params }: PageProps) {
 function Section({ title, children, testId }: { title: string; children: React.ReactNode; testId?: string }) {
   return (
     <section className="space-y-3" data-testid={testId}>
-      <h2 className="text-lg font-bold text-white tracking-tight">{title}</h2>
+      <h2 className="text-lg font-bold text-gray-900 tracking-tight">{title}</h2>
       {children}
     </section>
   );
@@ -82,6 +82,7 @@ function Section({ title, children, testId }: { title: string; children: React.R
  */
 function InstitutionExplorer({ id }: { id: string }) {
   const t = useTranslations("explorer");
+  const tNav = useTranslations("nav");
   const tInst = useTranslations("institution_status");
   const labels = useLabels();
   const reason = useReasonLabel();
@@ -150,7 +151,7 @@ function InstitutionExplorer({ id }: { id: string }) {
   }
   const inst = institution.status === "ready" ? institution.data : null;
   if (!inst) {
-    return <EmptyState title={t("not_found_title")} description={t("not_found")} />;
+    return <EmptyState title={t("not_found_title")} description={t("not_found")} backHref="/institutions" backText={tNav("institutions")} />;
   }
 
   const data = profile.status === "ready" ? profile.data : null;
@@ -159,40 +160,40 @@ function InstitutionExplorer({ id }: { id: string }) {
 
   return (
     <div className="space-y-8 animate-fade-in pb-12">
-      <Link href="/institutions" className="inline-flex text-xs font-semibold text-gray-400 hover:text-emerald-400 transition-colors">
+      <Link href="/institutions" className="inline-flex items-center min-h-10 text-xs font-semibold text-gray-500 hover:text-emerald-700 transition-colors">
         ← {t("back")}
       </Link>
 
       {/* Institution header */}
-      <header className="p-6 md:p-8 rounded-3xl border border-gray-800 bg-gray-900/40" data-testid="institution-header">
+      <header className="p-6 md:p-8 rounded-3xl border border-gray-200 bg-white" data-testid="institution-header">
         <div className="flex flex-wrap items-center gap-2 mb-2">
           <span
             data-testid="country-badge"
-            className="px-2.5 py-0.5 rounded-lg border border-emerald-800/60 bg-emerald-950/40 text-emerald-400 text-xs font-bold uppercase"
+            className="px-2.5 py-0.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-bold uppercase"
           >
             {inst.country?.code ?? MISSING}
           </span>
-          <span className="text-xs text-gray-400 font-medium">{labels.country(inst.country, inst.country?.code)}</span>
+          <span className="text-xs text-gray-500 font-medium">{labels.country(inst.country, inst.country?.code)}</span>
           <span className="text-xs text-gray-500">· {labels.institutionType(inst.institution_type) || MISSING}</span>
           <StateBadge label={tInst.has(inst.status) ? tInst(inst.status) : inst.status} tone={inst.status === "active" ? "ok" : "warn"} />
         </div>
-        <h1 className="text-2xl md:text-4xl font-black text-white tracking-tight">{inst.name_official}</h1>
-        {inst.name_commercial && <p className="text-sm text-emerald-400 font-medium mt-1">{inst.name_commercial}</p>}
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-4 text-xs text-gray-400">
+        <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight">{inst.name_official}</h1>
+        {inst.name_commercial && <p className="text-sm text-emerald-700 font-medium mt-1">{inst.name_commercial}</p>}
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-4 text-xs text-gray-500">
           <span>
-            {t("group")}{t("label_sep")} <span className="text-gray-200 font-semibold">{inst.banking_group?.name ?? MISSING}</span>
+            {t("group")}{t("label_sep")} <span className="text-gray-800 font-semibold">{inst.banking_group?.name ?? MISSING}</span>
           </span>
           <span>
-            {t("regulatory_id")}{t("label_sep")} <span className="text-gray-200 font-mono">{inst.regulatory_id ?? MISSING}</span>
+            {t("regulatory_id")}{t("label_sep")} <span className="text-gray-800 font-mono">{inst.regulatory_id ?? MISSING}</span>
           </span>
-          <Link href={`/financial-data?inst=${encodeURIComponent(inst.id)}`} className="text-emerald-400 hover:underline" data-testid="institution-financial-data-link">
+          <Link href={`/financial-data?inst=${encodeURIComponent(inst.id)}`} className="text-emerald-700 hover:underline" data-testid="institution-financial-data-link">
             {t("financial_data_link")} →
           </Link>
-          <Link href={`/deals?bank=${encodeURIComponent(inst.id)}`} className="text-emerald-400 hover:underline" data-testid="institution-deals-link">
+          <Link href={`/deals?bank=${encodeURIComponent(inst.id)}`} className="text-emerald-700 hover:underline" data-testid="institution-deals-link">
             {t("deals_link")} →
           </Link>
           {inst.website_url && (
-            <a href={inst.website_url} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline">
+            <a href={externalHref(inst.website_url)} target="_blank" rel="noreferrer" className="text-emerald-700 hover:underline">
               {t("website")} ↗
             </a>
           )}
@@ -200,8 +201,8 @@ function InstitutionExplorer({ id }: { id: string }) {
       </header>
 
       {/* Selection: explicit scope, period type and year — never mixed, never a fallback */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-2xl border border-gray-800 bg-gray-900/40" data-testid="selectors">
-        <label className="text-[11px] text-gray-400 font-medium">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-2xl border border-gray-200 bg-white" data-testid="selectors">
+        <label className="text-[11px] text-gray-500 font-medium">
           {t("scope")}
           <select value={scope} onChange={(e) => set({ scope: e.target.value, year: null })} className={selectCls} data-testid="scope-select">
             {DATA_SCOPES.map((s) => (
@@ -212,7 +213,7 @@ function InstitutionExplorer({ id }: { id: string }) {
             ))}
           </select>
         </label>
-        <label className="text-[11px] text-gray-400 font-medium">
+        <label className="text-[11px] text-gray-500 font-medium">
           {t("period_type")}
           <select value={period} onChange={(e) => set({ period: e.target.value, year: null })} className={selectCls} data-testid="period-select">
             {PERIOD_TYPES.map((p) => (
@@ -223,7 +224,7 @@ function InstitutionExplorer({ id }: { id: string }) {
             ))}
           </select>
         </label>
-        <label className="text-[11px] text-gray-400 font-medium">
+        <label className="text-[11px] text-gray-500 font-medium">
           {t("fiscal_year")}
           <select value={year ?? ""} onChange={(e) => set({ year: e.target.value })} className={selectCls} data-testid="year-select">
             <option value="">{t("latest_year")}</option>
@@ -244,7 +245,7 @@ function InstitutionExplorer({ id }: { id: string }) {
       ) : (
         <>
           {data.financials.status === "unavailable" && (
-            <div role="alert" className="p-4 rounded-2xl border border-amber-800/60 bg-amber-950/30 text-sm text-amber-200" data-testid="profile-unavailable">
+            <div role="alert" className="p-4 rounded-2xl border border-amber-200 bg-amber-50 text-sm text-amber-700" data-testid="profile-unavailable">
               {t("selection_unavailable", { scope: labels.scope(scope), period: labels.periodType(period) })} — {reason(data.financials.reason)}
             </div>
           )}

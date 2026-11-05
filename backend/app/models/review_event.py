@@ -27,6 +27,8 @@ REVIEW_EVENT_ACTIONS = (
     # Phase 21 — automatic validation and its withdrawal by a human.
     "auto_validate",
     "revoke_automatic",
+    "source_enrichment",
+    "auto_deduplicate",
 )
 
 

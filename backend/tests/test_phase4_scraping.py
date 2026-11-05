@@ -348,17 +348,17 @@ class TestScrapingPipeline:
             source_row = MagicMock(spec=Source)
             source_row.id = "src-bceao-1"
             res_source = MagicMock()
-            res_source.scalar_one_or_none.return_value = source_row
+            res_source.scalars.return_value.first.return_value = source_row
 
             # First doc does not exist, second doc already exists
             existing_doc = MagicMock(spec=Document)
             existing_doc.id = "doc-existing-id"
 
             res_empty = MagicMock()
-            res_empty.scalar_one_or_none.return_value = None
+            res_empty.scalars.return_value.first.return_value = None
 
             res_exists = MagicMock()
-            res_exists.scalar_one_or_none.return_value = existing_doc
+            res_exists.scalars.return_value.first.return_value = existing_doc
 
             mock_db.execute.side_effect = [res_source, res_empty, res_exists]
 

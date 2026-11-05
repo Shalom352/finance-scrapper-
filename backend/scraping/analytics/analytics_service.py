@@ -6,7 +6,7 @@ for ratios, growth rates, sector aggregations, and entity comparisons.
 """
 from collections import defaultdict
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -99,6 +99,8 @@ class AnalyticsService:
                 FinancialData.institution_id.in_(inst_ids),
                 FinancialData.period_type == ANNUAL,
                 FinancialData.scope == data_scope,
+                or_(FinancialData.scope_evidence_class.is_(None),
+                    FinancialData.scope_evidence_class.in_(("A", "B", "C"))),
                 FinancialData.deleted_at.is_(None),
             )
         )
@@ -188,6 +190,8 @@ class AnalyticsService:
                 FinancialData.metric_code.in_(target_metrics),
                 FinancialData.period_type == ANNUAL,
                 FinancialData.scope == data_scope,
+                or_(FinancialData.scope_evidence_class.is_(None),
+                    FinancialData.scope_evidence_class.in_(("A", "B", "C"))),
                 FinancialData.deleted_at.is_(None),
             )
         )
@@ -281,6 +285,8 @@ class AnalyticsService:
                     FinancialData.period_year == year,
                     FinancialData.period_type == ANNUAL,
                     FinancialData.scope == data_scope,
+                    or_(FinancialData.scope_evidence_class.is_(None),
+                        FinancialData.scope_evidence_class.in_(("A", "B", "C"))),
                     FinancialData.deleted_at.is_(None),
                 )
             )
@@ -354,6 +360,8 @@ class AnalyticsService:
                 FinancialData.period_year == year,
                 FinancialData.period_type == ANNUAL,
                 FinancialData.scope == data_scope,
+                or_(FinancialData.scope_evidence_class.is_(None),
+                    FinancialData.scope_evidence_class.in_(("A", "B", "C"))),
                 FinancialData.deleted_at.is_(None),
             )
         )
@@ -410,6 +418,8 @@ class AnalyticsService:
                 FinancialData.period_year == year,
                 FinancialData.period_type == ANNUAL,
                 FinancialData.scope == data_scope,
+                or_(FinancialData.scope_evidence_class.is_(None),
+                    FinancialData.scope_evidence_class.in_(("A", "B", "C"))),
                 FinancialData.deleted_at.is_(None),
             )
         )

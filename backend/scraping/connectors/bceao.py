@@ -12,6 +12,7 @@ import httpx
 from app.core.logging import get_logger
 from scraping.common.models import DiscoveredDocument
 from scraping.connectors.base import BaseSourceConnector
+from scraping.discovery.html_parser import extract_year_from_text
 
 logger = get_logger(__name__)
 
@@ -81,6 +82,7 @@ class BCEAOConnector(BaseSourceConnector):
         self,
         client: httpx.AsyncClient,
         limit: int | None = None,
+        years: list[int] | None = None,
     ) -> list[DiscoveredDocument]:
         """
         Discover official documents across BCEAO publication sections.
@@ -94,10 +96,19 @@ class BCEAOConnector(BaseSourceConnector):
         """
         all_discovered: list[DiscoveredDocument] = []
         seen_urls: set[str] = set()
+        target_years = set(years or [])
 
         for section in self.TARGET_SECTIONS:
             target_url = f"{self.base_url}{section['path']}"
             doc_type = section["document_type"]
+            section_year = extract_year_from_text(f"{target_url} {section['description']}")
+            if target_years and section_year is not None and section_year not in target_years:
+                logger.info(
+                    "bceao_section_skipped_year",
+                    year=section_year,
+                    requested_years=sorted(target_years),
+                )
+                continue
 
             try:
                 docs = await self.fetch_and_parse_page(
@@ -106,6 +117,8 @@ class BCEAOConnector(BaseSourceConnector):
                     document_type=doc_type,
                 )
                 for doc in docs:
+                    if not self.matches_requested_years(doc, years):
+                        continue
                     if doc.url not in seen_urls:
                         seen_urls.add(doc.url)
                         doc.metadata["section_description"] = section["description"]

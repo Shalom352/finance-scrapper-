@@ -39,17 +39,17 @@ export function ExportButton({ query, total }: { query: FinancialDataExplorerQue
         type="button"
         onClick={run}
         disabled={tooLarge || total === 0 || state === "running"}
-        className="px-3 py-2 rounded-xl border border-gray-700 bg-gray-900 text-xs font-semibold text-gray-200 hover:border-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed"
+        className="px-3 py-2 rounded-xl border border-gray-300 bg-white text-xs font-semibold text-gray-800 hover:border-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed"
         data-testid="export-csv"
       >
         {state === "running" ? t("running") : t("button")}
       </button>
       {tooLarge && (
-        <p className="text-[11px] text-amber-300" data-testid="export-too-large">
+        <p className="text-[11px] text-amber-700" data-testid="export-too-large">
           {t("too_large", { max: EXPORT_MAX_ROWS })}
         </p>
       )}
-      {state === "error" && <p className="text-[11px] text-rose-300">{t("error")}</p>}
+      {state === "error" && <p className="text-[11px] text-rose-700">{t("error")}</p>}
     </div>
   );
 }

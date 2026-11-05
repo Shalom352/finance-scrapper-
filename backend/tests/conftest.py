@@ -16,6 +16,14 @@ from httpx import ASGITransport, AsyncClient
 # only applied when no .env defines it, so DB-free tests can import the settings.
 # (A process variable would take priority over .env, hence the check.)
 os.environ.setdefault("APP_ENV", "development")
+# The deals phase of an ingestion run fetches official websites: never from a test, unless the test
+# enables it explicitly with an offline fetcher (tests/test_deal_collection_postgres.py).
+os.environ.setdefault("DEAL_COLLECTION_ENABLED", "false")
+# The local .env carries the deployment's internal token and schedulers: tests never depend on them.
+# Tests of the token itself configure it explicitly (tests/test_write_routes_auth_unit.py).
+os.environ.setdefault("INTERNAL_API_TOKEN", "")
+os.environ.setdefault("INGESTION_ENABLED", "false")
+os.environ.setdefault("DISCOVERY_ENABLED", "false")
 
 
 def _env_file_defines(key: str) -> bool:
@@ -52,3 +60,15 @@ async def client(app):
         base_url="http://test",
     ) as ac:
         yield ac
+
+
+# Audit 22/10/2026: without a database the PostgreSQL tests skip themselves, so a CI without PostgreSQL
+# looked green. REQUIRE_POSTGRES=1 (CI) turns those skips into failures.
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    outcome = yield
+    report = outcome.get_result()
+    if (os.environ.get("REQUIRE_POSTGRES") == "1" and report.skipped and isinstance(report.longrepr, tuple)
+            and "PostgreSQL" in str(report.longrepr[2])):
+        report.outcome = "failed"
+        report.longrepr = f"REQUIRE_POSTGRES=1 but the test was skipped: {report.longrepr[2]}"

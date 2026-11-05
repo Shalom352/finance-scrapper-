@@ -65,7 +65,7 @@ function ReviewDetailContent({ dataId }: { dataId: string }) {
   }, [dataId, reload]);
 
   const back = (
-    <Link href={`/data-quality${suffix}`} className="text-xs text-emerald-300 hover:underline" data-testid="dq-back">
+    <Link href={`/data-quality${suffix}`} className="inline-flex items-center min-h-10 text-xs text-emerald-700 hover:underline" data-testid="dq-back">
       ← {t("back")}
     </Link>
   );
@@ -92,7 +92,7 @@ function ReviewDetailContent({ dataId }: { dataId: string }) {
   const facts: [string, React.ReactNode][] = [
     [td("id"), <span key="id" className="font-mono">{o.id}</span>],
     [td("institution"), (
-      <Link key="inst" href={`/institutions/${o.institution_id}`} className="hover:text-emerald-300 hover:underline">
+      <Link key="inst" href={`/institutions/${o.institution_id}`} className="hover:text-emerald-700 hover:underline">
         {o.institution?.name_official ?? MISSING}
       </Link>
     )],
@@ -124,34 +124,34 @@ function ReviewDetailContent({ dataId }: { dataId: string }) {
     <div className="space-y-6 animate-fade-in pb-12">
       {back}
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-2xl font-black text-white tracking-tight">
+        <h1 className="text-2xl font-black text-gray-900 tracking-tight">
           {td("title")} — {labels.metric(o.metric_code)} {o.period_year}
         </h1>
         <button type="button" onClick={() => setProvenance(true)} data-testid="dq-provenance"
-          className="px-3 py-2 rounded-xl border border-gray-700 bg-gray-900 text-xs font-semibold text-gray-200 hover:border-emerald-500">
+          className="px-3 py-2 rounded-xl border border-gray-300 bg-white text-xs font-semibold text-gray-800 hover:border-emerald-500">
           {td("provenance")}
         </button>
       </div>
 
       {scopeNotDetected && (
-        <p role="note" className="p-3 rounded-xl border border-amber-800/60 bg-amber-950/30 text-xs text-amber-200" data-testid="dq-scope-not-detected">
+        <p role="note" className="p-3 rounded-xl border border-amber-200 bg-amber-50 text-xs text-amber-700" data-testid="dq-scope-not-detected">
           {td("scope_not_detected")}
         </p>
       )}
 
-      <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3 p-4 rounded-2xl border border-gray-800 bg-gray-900/40 text-xs" data-testid="dq-facts">
+      <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3 p-4 rounded-2xl border border-gray-200 bg-white text-xs" data-testid="dq-facts">
         {facts.map(([label, value]) => (
           <div key={label}>
             <dt className="text-gray-500">{label}</dt>
-            <dd className="text-gray-100 font-medium break-all">{value}</dd>
+            <dd className="text-gray-900 font-medium break-all">{value}</dd>
           </div>
         ))}
       </dl>
 
       <section className="space-y-2">
-        <h2 className="text-sm font-bold text-white">{tc("title")}</h2>
+        <h2 className="text-sm font-bold text-gray-900">{tc("title")}</h2>
         {detail.qualification === "conflict" && (
-          <p role="note" className="p-3 rounded-xl border border-amber-800/60 bg-amber-950/30 text-xs text-amber-200" data-testid="dq-conflict-guide">
+          <p role="note" className="p-3 rounded-xl border border-amber-200 bg-amber-50 text-xs text-amber-700" data-testid="dq-conflict-guide">
             {tc("conflict_guide")}
           </p>
         )}
@@ -164,13 +164,13 @@ function ReviewDetailContent({ dataId }: { dataId: string }) {
 
       {detail.not_comparable.length > 0 && (
         <section className="space-y-2">
-          <h2 className="text-sm font-bold text-white">{tc("not_comparable_title")}</h2>
+          <h2 className="text-sm font-bold text-gray-900">{tc("not_comparable_title")}</h2>
           <CompetingObservations currentId={o.id} rows={detail.not_comparable} comparable={false} hrefFor={hrefFor} />
         </section>
       )}
 
       <section className="space-y-2">
-        <h2 className="text-sm font-bold text-white">{t("history.title")}</h2>
+        <h2 className="text-sm font-bold text-gray-900">{t("history.title")}</h2>
         <ReviewHistory events={history} />
       </section>
 

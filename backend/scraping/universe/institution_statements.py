@@ -23,6 +23,7 @@ from decimal import Decimal
 
 import pymupdf
 
+from scraping.quality.ocr import OCRPage, recognize_page
 from scraping.quality.text_layer import assess_page
 from scraping.universe.fascicle import CHECK_LINES, LINE_TO_METRIC, _lines, parse_amount
 from scraping.universe.normalize import normalize_name
@@ -57,6 +58,8 @@ class StatementValue:
     unit: str | None  # 'unit' | 'millions' | None (not stated)
     currency: str | None  # 'XOF' | None (not stated)
     multiplier: Decimal | None
+    extraction_method: str = "pdf_text"
+    confidence_score: Decimal = Decimal("0.900")
 
 
 @dataclass
@@ -66,6 +69,8 @@ class StatementParseResult:
     statement_pages: list[int] = field(default_factory=list)
     skipped_pages: dict[int, str] = field(default_factory=dict)
     skipped_cells: list[str] = field(default_factory=list)
+    ocr_pages: dict[int, dict[str, object]] = field(default_factory=dict)
+    ocr_text: dict[int, str] = field(default_factory=dict)
 
 
 def page_unit(text: str) -> tuple[str | None, str | None, Decimal | None]:
@@ -79,7 +84,11 @@ def page_unit(text: str) -> tuple[str | None, str | None, Decimal | None]:
 
 
 class InstitutionStatementParser:
-    def parse_bytes(self, content: bytes, title: str = "") -> StatementParseResult:
+    def parse_bytes(
+        self, content: bytes, title: str = "", *, ocr_enabled: bool = False,
+        ocr_language: str = "fra+eng", ocr_dpi: int = 200,
+        ocr_max_pages: int = 40, ocr_timeout_seconds: int = 45,
+    ) -> StatementParseResult:
         result = StatementParseResult()
         if _INTERIM.search(normalize_name(title)):
             result.skipped_pages[0] = "interim statement (semester / quarter) not handled"
@@ -89,26 +98,57 @@ class InstitutionStatementParser:
                 page = pdf[pno]
                 text = page.get_text()
                 quality = assess_page(text, pno + 1)
-                if quality.status != "ok":
+                ocr_page = None
+                if quality.status != "ok" and ocr_enabled and pno < ocr_max_pages:
+                    try:
+                        candidate = recognize_page(page, language=ocr_language, dpi=ocr_dpi,
+                                                   timeout_seconds=ocr_timeout_seconds)
+                        ocr_quality = assess_page(candidate.text, pno + 1)
+                        if ocr_quality.status == "ok" and candidate.mean_confidence is not None:
+                            ocr_page = candidate
+                            text = candidate.text
+                            result.ocr_text[pno + 1] = candidate.text
+                            result.ocr_pages[pno + 1] = {
+                                "status": "text_recognized", "mean_confidence": round(candidate.mean_confidence, 4),
+                                "words": len(candidate.words),
+                            }
+                        else:
+                            result.skipped_pages[pno + 1] = (
+                                f"OCR output {ocr_quality.status}; mean confidence "
+                                f"{candidate.mean_confidence if candidate.mean_confidence is not None else 'unknown'}"
+                            )
+                            result.ocr_pages[pno + 1] = {"status": "unusable_output",
+                                                         "mean_confidence": candidate.mean_confidence,
+                                                         "words": len(candidate.words)}
+                    except Exception as err:
+                        result.skipped_pages[pno + 1] = f"OCR failed: {type(err).__name__}: {str(err)[:300]}"
+                        result.ocr_pages[pno + 1] = {"status": "failed", "reason": str(err)[:300]}
+                elif quality.status != "ok" and ocr_enabled and pno >= ocr_max_pages:
+                    result.skipped_pages[pno + 1] = f"text layer {quality.status}; OCR page limit reached"
+                    result.ocr_pages[pno + 1] = {"status": "page_limit_reached"}
+                elif quality.status != "ok":
                     result.skipped_pages[pno + 1] = f"text layer {quality.status}"
-                    continue
-                self._parse_page(page, pno + 1, text, result)
+                if quality.status == "ok" or ocr_page is not None:
+                    self._parse_page(page, pno + 1, text, result, ocr_page=ocr_page)
         return result
 
     @staticmethod
-    def _year_headers(page: pymupdf.Page) -> list[tuple[float, float, float, int]]:
+    def _year_headers(page: pymupdf.Page, ocr_page: OCRPage | None = None) -> list[tuple[float, float, float, int]]:
         """Year column headers read at WORD level (x0, y0, xmid, year): "2021 VARIATION" printed as one
         line still yields a precise position for 2021. Only full-year (31/12) dates are accepted."""
         out = []
-        for x0, y0, x1, _y1, word, *_ in page.get_text("words"):
+        words = ([(w.x0, w.y0, w.x1, w.y1, w.text) for w in ocr_page.words] if ocr_page else
+                 [(w[0], w[1], w[2], w[3], w[4]) for w in page.get_text("words")])
+        for x0, y0, x1, _y1, word in words:
             m = _YEAR_HEADER.match(word.strip())
             if m and (m.group(1) is None or (m.group(1), m.group(2)) == ("31", "12")):
                 out.append((x0, y0, (x0 + x1) / 2, int(m.group(3))))
         return out
 
-    def _parse_page(self, page: pymupdf.Page, page_number: int, text: str, result: StatementParseResult) -> None:
-        lines = _lines(page)
-        headers = self._year_headers(page)
+    def _parse_page(self, page: pymupdf.Page, page_number: int, text: str, result: StatementParseResult,
+                    *, ocr_page: OCRPage | None = None) -> None:
+        lines = _ocr_lines(ocr_page) if ocr_page else _lines(page)
+        headers = self._year_headers(page, ocr_page)
         labels = [ln for ln in lines
                   if normalize_name(ln.text) in INSTITUTION_LINE_TO_METRIC or normalize_name(ln.text) in CHECK_LINES]
         if len({h[3] for h in headers}) < 2 or len(labels) < 3:
@@ -137,10 +177,86 @@ class InstitutionStatementParser:
                     result.skipped_cells.append(f"p.{page_number} {label.text} {year}: {len(cell)} cell(s)")
                     continue
                 value = parse_amount(cell[0].text)
+                confidence = cell[0].confidence if ocr_page is not None else None
+                if ocr_page is not None and (confidence is None or confidence < 0.65):
+                    result.skipped_cells.append(
+                        f"p.{page_number} {label.text} {year}: OCR confidence "
+                        f"{confidence if confidence is not None else 'unknown'} below 0.65"
+                    )
+                    continue
                 if key in CHECK_LINES:
                     result.check_values[(CHECK_LINES[key], year)] = (value, multiplier)
                     continue
                 result.values.append(StatementValue(
                     INSTITUTION_LINE_TO_METRIC[key], label.text.strip(), year, cell[0].text.strip(), value,
                     page_number, unit, currency, multiplier,
+                    "ocr" if ocr_page is not None else "pdf_text",
+                    Decimal(str(min(confidence, ocr_page.mean_confidence))) if ocr_page is not None
+                    and confidence is not None and ocr_page.mean_confidence is not None else Decimal("0.900"),
                 ))
+
+
+def _ocr_lines(page: OCRPage) -> list:
+    """Build OCR word runs, full labels, and numeric groups in the PDF coordinate model.
+
+    Tesseract returns whole table rows as lines, while the statement parser needs separate label
+    and value boxes. Reconstruct those spans from the word boxes, keeping confidence per span.
+    """
+    from scraping.universe.fascicle import _Ln
+
+    grouped = {}
+    for word in page.words:
+        grouped.setdefault((word.block, word.paragraph, word.line), []).append(word)
+    out = []
+    for words in grouped.values():
+        words.sort(key=lambda word: word.x0)
+        confidence = min(word.confidence for word in words)
+        out.append(_Ln(
+            min(word.x0 for word in words), max(word.x1 for word in words),
+            min(word.y0 for word in words), max(word.y1 for word in words),
+            " ".join(word.text for word in words), False, confidence,
+        ))
+
+        # Reconstruct exact catalogue labels from adjacent OCR words.
+        label_keys = set(INSTITUTION_LINE_TO_METRIC) | set(CHECK_LINES)
+        for start in range(len(words)):
+            for end in range(start + 1, min(len(words), start + 9) + 1):
+                phrase = words[start:end]
+                text = " ".join(word.text for word in phrase)
+                if normalize_name(text) not in label_keys:
+                    continue
+                out.append(_Ln(
+                    min(word.x0 for word in phrase), max(word.x1 for word in phrase),
+                    min(word.y0 for word in phrase), max(word.y1 for word in phrase),
+                    text, False, min(word.confidence for word in phrase),
+                ))
+
+        # Join digits separated by OCR spaces into a value only when their boxes are adjacent.
+        run = []
+        for word in words + [None]:
+            token = word.text.strip().replace("−", "-") if word is not None else ""
+            if word is not None and re.fullmatch(r"-?\d+", token):
+                if run and word.x0 - run[-1].x1 <= 12.0:
+                    run.append(word)
+                else:
+                    if run:
+                        _append_ocr_number(out, run)
+                    run = [word]
+            else:
+                if run:
+                    _append_ocr_number(out, run)
+                    run = []
+    return out
+
+
+def _append_ocr_number(out: list, words: list) -> None:
+    from scraping.universe.fascicle import _Ln
+
+    text = " ".join(word.text for word in words)
+    if parse_amount(text) is None:
+        return
+    out.append(_Ln(
+        min(word.x0 for word in words), max(word.x1 for word in words),
+        min(word.y0 for word in words), max(word.y1 for word in words),
+        text, False, min(word.confidence for word in words),
+    ))

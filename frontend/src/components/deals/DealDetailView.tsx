@@ -1,8 +1,9 @@
 "use client";
 
+import { externalHref } from "@/lib/url";
 import React from "react";
 import { useLocale, useTranslations } from "next-intl";
-import type { DealDetail, DealSource, ReviewEvent } from "@/types";
+import type { DealDetail, DealSource, FieldExcerpt, ReviewEvent } from "@/types";
 import { Link } from "@/i18n/navigation";
 import { MISSING } from "@/lib/formatters";
 import { useFormatters } from "@/lib/useFormatters";
@@ -14,28 +15,35 @@ import { useDealAmount } from "@/components/deals/DealAmount";
 
 function Section({ title, children, testId }: { title: string; children: React.ReactNode; testId: string }) {
   return (
-    <section className="p-4 rounded-2xl border border-gray-800 bg-gray-900/40 space-y-3" data-testid={testId}>
-      <h2 className="text-sm font-bold text-white">{title}</h2>
+    <section className="p-4 rounded-2xl border border-gray-200 bg-white space-y-3" data-testid={testId}>
+      <h2 className="text-sm font-bold text-gray-900">{title}</h2>
       {children}
     </section>
   );
 }
 
-/** Pages of the sources attesting one field (field-level provenance). Nothing shown = no source claims it. */
-function FieldSources({ ids, byId }: { ids: string[] | undefined; byId: Map<string, DealSource> }) {
+/** Pages of the sources attesting one field (field-level provenance), with the quotation that carries
+ *  the value when it was recorded. Nothing shown = no source claims it. */
+function FieldSources({ ids, byId, quotes }: {
+  ids: string[] | undefined; byId: Map<string, DealSource>; quotes?: FieldExcerpt[];
+}) {
   const t = useTranslations("deals.detail");
   if (!ids || ids.length === 0) return null;
   return (
     <span className="ml-1 text-[10px] text-gray-500">
       {ids.map((id) => {
         const s = byId.get(id);
+        const quote = quotes?.find((q) => q.deal_source_id === id)?.excerpt;
         return s ? (
-          <a key={id} href={`#deal-source-${id}`} className="mr-1 hover:text-emerald-300"
-            title={`${s.source_name ?? ""} — ${s.document_title ?? ""}`}>
+          <a key={id} href={`#deal-source-${id}`} className="mr-1 hover:text-emerald-700"
+            title={`${s.source_name ?? ""} — ${s.document_title ?? ""}${quote ? ` · « ${quote} »` : ""}`}>
             [{t("page", { page: s.page_number })}]
           </a>
         ) : null;
       })}
+      {quotes && quotes.length > 0 && (
+        <span className="block font-normal italic text-gray-500" data-testid="deal-field-excerpt">« {quotes[0].excerpt} »</span>
+      )}
     </span>
   );
 }
@@ -44,31 +52,31 @@ function SourceCard({ s, fieldLabel }: { s: DealSource; fieldLabel: (f: string) 
   const t = useTranslations("deals.detail");
   const locale = useLocale();
   return (
-    <li id={`deal-source-${s.id}`} className="p-3 rounded-xl border border-gray-800 bg-gray-950/40 text-xs space-y-1" data-testid="deal-source">
-      <div className="text-gray-200 font-semibold">
+    <li id={`deal-source-${s.id}`} className="p-3 rounded-xl border border-gray-200 bg-gray-50 text-xs space-y-1" data-testid="deal-source">
+      <div className="text-gray-800 font-semibold">
         {s.source_class && (
-          <span className="px-1.5 py-0.5 mr-2 rounded bg-gray-800 text-[10px] text-gray-300" data-testid="deal-source-class">
+          <span className="px-1.5 py-0.5 mr-2 rounded bg-gray-100 text-[10px] text-gray-700" data-testid="deal-source-class">
             {t(`source_classes.${s.source_class}`)}
           </span>
         )}
         {s.title ?? s.document_title ?? MISSING} · {t("page", { page: s.page_number })}
       </div>
-      <div className="text-gray-400">
+      <div className="text-gray-500">
         {s.publisher ?? s.source_name ?? MISSING}
         {s.published_at && <> · {t("published_on", { date: formatDay(s.published_at, locale) })}</>}
       </div>
-      {s.paywalled && <div className="text-amber-300">{t("paywalled")}</div>}
+      {s.paywalled && <div className="text-amber-700">{t("paywalled")}</div>}
       {s.url && (
-        <a href={s.url} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline">
+        <a href={externalHref(s.url)} target="_blank" rel="noreferrer" className="text-emerald-700 hover:underline">
           {t("open_article")} ↗
         </a>
       )}
-      {s.excerpt && <blockquote className="text-gray-300 italic border-l-2 border-gray-700 pl-2">{s.excerpt}</blockquote>}
+      {s.excerpt && <blockquote className="text-gray-700 italic border-l-2 border-gray-300 pl-2">{s.excerpt}</blockquote>}
       {s.fields.length > 0 && (
         <div className="text-gray-500">{t("attests")} {s.fields.map(fieldLabel).join(", ")}</div>
       )}
       {s.document_url && (
-        <a href={s.document_url} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline">
+        <a href={externalHref(s.document_url)} target="_blank" rel="noreferrer" className="text-emerald-700 hover:underline">
           {t("open_document")} ↗
         </a>
       )}
@@ -88,15 +96,17 @@ export function DealDetailView({ deal, history, reviewHref }: { deal: DealDetail
   const amount = useDealAmount();
   const byId = new Map(deal.sources.map((s) => [s.id, s]));
   const prov = deal.field_provenance;
-  const unavailable = <span className="text-gray-500">{t("unavailable")}</span>;
+  const quotes = deal.field_excerpts ?? {};
+  // An unpublished value is said so — never replaced by 0, an average or an estimate.
+  const unavailable = <span className="text-gray-500">{t("not_published")}</span>;
   const text = (v: string | null) => (v ? v : unavailable);
 
   const row = (field: string, value: React.ReactNode, hasValue: boolean) => (
     <div key={field}>
       <dt className="text-gray-500">{tf(field)}</dt>
-      <dd className="text-gray-100 font-medium break-words" data-testid={`deal-field-${field}`}>
+      <dd className="text-gray-900 font-medium break-words" data-testid={`deal-field-${field}`}>
         {hasValue ? value : unavailable}
-        {hasValue && <FieldSources ids={prov[field]} byId={byId} />}
+        {hasValue && <FieldSources ids={prov[field]} byId={byId} quotes={quotes[field]} />}
       </dd>
     </div>
   );
@@ -108,11 +118,21 @@ export function DealDetailView({ deal, history, reviewHref }: { deal: DealDetail
   const dates = ["announcement_date", "signing_date", "financial_close_date", "closing_date"] as const;
   const instrumentDates = ["auction_date", "value_date", "maturity_date"] as const;
   const isInstrument = Boolean(deal.instrument_type || deal.isin);
+  const flags = deal.validation_flags && deal.validation_flags.length > 0 && (
+    <ul className="space-y-1 text-xs" data-testid="deal-validation-flags">
+      {deal.validation_flags.map((f) => (
+        <li key={f.code} className="p-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-700">
+          <span className="font-semibold">{tFlag.has(f.code) ? tFlag(f.code) : f.code}</span>
+          <span className="block text-amber-700">{f.detail}</span>
+        </li>
+      ))}
+    </ul>
+  );
 
   return (
     <div className="space-y-4">
       {deal.merged_into_deal_id && (
-        <p role="note" className="p-3 rounded-xl border border-amber-800/60 bg-amber-950/30 text-xs text-amber-200" data-testid="deal-merged-note">
+        <p role="note" className="p-3 rounded-xl border border-amber-200 bg-amber-50 text-xs text-amber-700" data-testid="deal-merged-note">
           {t("merged_into")}{" "}
           <Link href={`/deals/${deal.merged_into_deal_id}`} className="underline">{t("open_primary")}</Link>
         </p>
@@ -128,12 +148,18 @@ export function DealDetailView({ deal, history, reviewHref }: { deal: DealDetail
             <dt className="text-gray-500">{tf("status")}</dt>
             <dd className="flex flex-wrap items-center gap-2">
               <StatusBadge status={deal.status} size="sm" />
-              {deal.verified_by && <span className="text-gray-400">{t("verified_by", { actor: deal.verified_by })}</span>}
+              {deal.verified_by && <span className="text-gray-500">{t("verified_by", { actor: deal.verified_by })}</span>}
+              {new Set(deal.sources.map((s) => s.source_id ?? s.publisher ?? s.id)).size === 1 && (
+                <span className="px-2 py-0.5 rounded-full border border-amber-200 bg-amber-50 text-[11px] text-amber-800"
+                  title={t("single_source_hint")} data-testid="deal-single-source">
+                  {t("single_source")}
+                </span>
+              )}
             </dd>
           </div>
         </dl>
         {reviewHref && (
-          <Link href={reviewHref} className="inline-block text-xs text-emerald-300 hover:underline" data-testid="deal-review-link">
+          <Link href={reviewHref} className="inline-flex items-center min-h-10 text-xs text-emerald-700 hover:underline" data-testid="deal-review-link">
             {t("review_link")} →
           </Link>
         )}
@@ -150,7 +176,22 @@ export function DealDetailView({ deal, history, reviewHref }: { deal: DealDetail
           {row("maturity_months", deal.maturity_months !== null ? t("months", { count: deal.maturity_months }) : null, deal.maturity_months !== null)}
           {row("grace_period_months", deal.grace_period_months !== null ? t("months", { count: deal.grace_period_months }) : null, deal.grace_period_months !== null)}
           {row("fees", deal.fees, deal.fees !== null)}
+          {row("debt_amount", amount(deal.debt_amount ?? null, deal.currency, deal.unit), deal.debt_amount != null)}
+          {row("equity_amount", amount(deal.equity_amount ?? null, deal.currency, deal.unit), deal.equity_amount != null)}
+          {row("debt_type", deal.debt_type ? t(`debt_types.${deal.debt_type}`) : null, Boolean(deal.debt_type))}
+          <div>
+            <dt className="text-gray-500">{t("debt_equity_ratio")}</dt>
+            <dd className="text-gray-900 font-medium" data-testid="deal-field-debt_equity_ratio">
+              {deal.debt_equity_ratio != null ? (
+                <>
+                  {fmt.number(deal.debt_equity_ratio, 2)}
+                  <span className="block text-gray-500 font-normal">{t("debt_equity_ratio_note")}</span>
+                </>
+              ) : unavailable}
+            </dd>
+          </div>
         </dl>
+        {flags}
       </Section>
 
       {isInstrument && (
@@ -164,16 +205,6 @@ export function DealDetailView({ deal, history, reviewHref }: { deal: DealDetail
               row(f, deal[f] ? formatDay(deal[f] ?? null, locale) : null, Boolean(deal[f])),
             )}
           </dl>
-          {deal.validation_flags && deal.validation_flags.length > 0 && (
-            <ul className="space-y-1 text-xs" data-testid="deal-validation-flags">
-              {deal.validation_flags.map((f) => (
-                <li key={f.code} className="p-2 rounded-lg border border-amber-800/60 bg-amber-950/30 text-amber-200">
-                  <span className="font-semibold">{tFlag.has(f.code) ? tFlag(f.code) : f.code}</span>
-                  <span className="block text-amber-300/80">{f.detail}</span>
-                </li>
-              ))}
-            </ul>
-          )}
         </Section>
       )}
 
@@ -185,14 +216,14 @@ export function DealDetailView({ deal, history, reviewHref }: { deal: DealDetail
             {deal.participants.map((p) => {
               const s = byId.get(p.deal_source_id);
               return (
-                <li key={p.id} className="p-3 rounded-xl border border-gray-800 bg-gray-950/40" data-testid="deal-participant">
-                  <span className="px-1.5 py-0.5 mr-2 rounded bg-gray-800 text-[10px] text-gray-300 uppercase">{labels.role(p.role)}</span>
+                <li key={p.id} className="p-3 rounded-xl border border-gray-200 bg-gray-50" data-testid="deal-participant">
+                  <span className="px-1.5 py-0.5 mr-2 rounded bg-gray-100 text-[10px] text-gray-700 uppercase">{labels.role(p.role)}</span>
                   {p.institution_id ? (
-                    <Link href={`/institutions/${p.institution_id}`} className="font-semibold text-emerald-300 hover:underline">
+                    <Link href={`/institutions/${p.institution_id}`} className="font-semibold text-emerald-700 hover:underline">
                       {p.institution_name ?? p.participant_name}
                     </Link>
                   ) : (
-                    <span className="font-semibold text-gray-100">{p.participant_name}</span>
+                    <span className="font-semibold text-gray-900">{p.participant_name}</span>
                   )}
                   <span className="block text-gray-500 mt-1">
                     {p.institution_id
@@ -201,11 +232,11 @@ export function DealDetailView({ deal, history, reviewHref }: { deal: DealDetail
                         ? t("entity", { name: p.entity_name ?? p.participant_name })
                         : t("not_in_directory")}
                     {p.commitment_amount !== null && <> · {t("commitment")} {amount(p.commitment_amount, p.commitment_currency, null)}</>}
-                    {s && <> · <a href={`#deal-source-${s.id}`} className="hover:text-emerald-300">{t("page", { page: p.page_number ?? s.page_number })}</a></>}
+                    {s && <> · <a href={`#deal-source-${s.id}`} className="hover:text-emerald-700">{t("page", { page: p.page_number ?? s.page_number })}</a></>}
                     {p.extraction_method && <> · {t(`extraction_methods.${p.extraction_method}`)}</>}
                   </span>
                   {p.excerpt && (
-                    <blockquote className="mt-1 text-gray-300 italic border-l-2 border-gray-700 pl-2" data-testid="deal-participant-excerpt">
+                    <blockquote className="mt-1 text-gray-700 italic border-l-2 border-gray-300 pl-2" data-testid="deal-participant-excerpt">
                       {p.excerpt}
                     </blockquote>
                   )}
@@ -219,11 +250,11 @@ export function DealDetailView({ deal, history, reviewHref }: { deal: DealDetail
       <Section title={t("timeline")} testId="deal-timeline">
         <ol className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
           {dates.map((f) => (
-            <li key={f} className="p-3 rounded-xl border border-gray-800 bg-gray-950/40">
+            <li key={f} className="p-3 rounded-xl border border-gray-200 bg-gray-50">
               <div className="text-gray-500">{tf(f)}</div>
-              <div className="text-gray-100 font-medium" data-testid={`deal-field-${f}`}>
+              <div className="text-gray-900 font-medium" data-testid={`deal-field-${f}`}>
                 {deal[f] ? formatDay(deal[f], locale) : <span className="text-gray-500">{t("not_published")}</span>}
-                {deal[f] && <FieldSources ids={prov[f]} byId={byId} />}
+                {deal[f] && <FieldSources ids={prov[f]} byId={byId} quotes={quotes[f]} />}
               </div>
             </li>
           ))}
@@ -235,11 +266,11 @@ export function DealDetailView({ deal, history, reviewHref }: { deal: DealDetail
           {row("project_name", deal.project_name, deal.project_name !== null)}
           <div>
             <dt className="text-gray-500">{labels.role("borrower")}</dt>
-            <dd className="text-gray-100 font-medium">{borrowers.length ? borrowers.map((p) => p.participant_name).join(", ") : unavailable}</dd>
+            <dd className="text-gray-900 font-medium">{borrowers.length ? borrowers.map((p) => p.participant_name).join(", ") : unavailable}</dd>
           </div>
           <div>
             <dt className="text-gray-500">{labels.role("sponsor")}</dt>
-            <dd className="text-gray-100 font-medium">{sponsors.length ? sponsors.map((p) => p.participant_name).join(", ") : unavailable}</dd>
+            <dd className="text-gray-900 font-medium">{sponsors.length ? sponsors.map((p) => p.participant_name).join(", ") : unavailable}</dd>
           </div>
         </dl>
       </Section>
@@ -255,10 +286,10 @@ export function DealDetailView({ deal, history, reviewHref }: { deal: DealDetail
           {deal.filing_agent_raw && (
             <div>
               <dt className="text-gray-500">{tf("filing_agent_raw")}</dt>
-              <dd className="text-gray-100 font-medium" data-testid="deal-field-filing_agent_raw">
+              <dd className="text-gray-900 font-medium" data-testid="deal-field-filing_agent_raw">
                 {deal.filing_agent_raw}
                 <span className="block text-gray-500 font-normal">{t("filing_agent_note")}</span>
-                <FieldSources ids={prov.filing_agent_raw} byId={byId} />
+                <FieldSources ids={prov.filing_agent_raw} byId={byId} quotes={quotes.filing_agent_raw} />
               </dd>
             </div>
           )}
@@ -266,9 +297,9 @@ export function DealDetailView({ deal, history, reviewHref }: { deal: DealDetail
       </Section>
 
       <Section title={t("guarantees")} testId="deal-guarantees">
-        <p className="text-xs text-gray-100" data-testid="deal-field-guarantees">
+        <p className="text-xs text-gray-900" data-testid="deal-field-guarantees">
           {text(deal.guarantees)}
-          {deal.guarantees && <FieldSources ids={prov.guarantees} byId={byId} />}
+          {deal.guarantees && <FieldSources ids={prov.guarantees} byId={byId} quotes={quotes.guarantees} />}
         </p>
       </Section>
 
@@ -282,10 +313,10 @@ export function DealDetailView({ deal, history, reviewHref }: { deal: DealDetail
         )}
         {deal.merged_deals.length > 0 && (
           <div className="space-y-2" data-testid="deal-merged">
-            <h3 className="text-xs font-semibold text-gray-300">{t("merged_deals")}</h3>
+            <h3 className="text-xs font-semibold text-gray-700">{t("merged_deals")}</h3>
             {deal.merged_deals.map((m) => (
               <div key={m.id} className="space-y-1">
-                <Link href={`/deals/${m.id}`} className="text-xs text-emerald-300 hover:underline">{m.title}</Link>
+                <Link href={`/deals/${m.id}`} className="text-xs text-emerald-700 hover:underline">{m.title}</Link>
                 <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   {m.sources.map((s) => <SourceCard key={s.id} s={s} fieldLabel={labels.field} />)}
                 </ul>
@@ -302,20 +333,20 @@ export function DealDetailView({ deal, history, reviewHref }: { deal: DealDetail
         ) : (
           <ul className="space-y-2 text-xs">
             {deal.duplicates.map((c) => (
-              <li key={c.id} className="p-3 rounded-xl border border-gray-800 bg-gray-950/40" data-testid="deal-duplicate">
-                <div className={c.state === "duplicate_candidate" ? "text-amber-300 font-semibold" : "text-gray-200 font-semibold"}>
+              <li key={c.id} className="p-3 rounded-xl border border-gray-200 bg-gray-50" data-testid="deal-duplicate">
+                <div className={c.state === "duplicate_candidate" ? "text-amber-700 font-semibold" : "text-gray-800 font-semibold"}>
                   {tDup(`state.${c.state}`, { actor: c.decided_by ?? MISSING })}
                 </div>
-                <div className="text-gray-400 mt-1">
+                <div className="text-gray-500 mt-1">
                   {tDup("other")}{" "}
-                  <Link href={`/deals/${c.other_deal_id}`} className="text-emerald-300 hover:underline">
+                  <Link href={`/deals/${c.other_deal_id}`} className="text-emerald-700 hover:underline">
                     {c.other_deal_title ?? c.other_deal_id}
                   </Link>
                 </div>
                 <div className="text-gray-500 mt-1">
                   {tDup("criteria")} {c.matched_criteria.map(labels.criterion).join(" · ")}
                 </div>
-                {c.decision_reason && <p className="mt-1 text-gray-300 italic">{c.decision_reason}</p>}
+                {c.decision_reason && <p className="mt-1 text-gray-700 italic">{c.decision_reason}</p>}
               </li>
             ))}
           </ul>

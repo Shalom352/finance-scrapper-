@@ -54,10 +54,10 @@ export function DuplicateDecisionForm({
   const errorKey = (s: number) => (s === 404 || s === 409 || s === 422 ? String(s) : "other");
 
   return (
-    <div className="mt-2 p-3 rounded-xl border border-gray-800 bg-gray-950/60 space-y-2" data-testid="dup-decide">
-      <div className="text-xs font-semibold text-white">{t("title")}</div>
+    <div className="mt-2 p-3 rounded-xl border border-gray-200 bg-gray-50 space-y-2" data-testid="dup-decide">
+      <div className="text-xs font-semibold text-gray-900">{t("title")}</div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <label className="text-[11px] text-gray-400">
+        <label className="text-[11px] text-gray-500">
           {t("decision")}
           <select value={decision} onChange={(e) => setDecision(e.target.value as DuplicateDecision)} className={selectCls}
             data-testid="dup-decision">
@@ -65,7 +65,7 @@ export function DuplicateDecisionForm({
           </select>
         </label>
         {needsPrimary && (
-          <label className="text-[11px] text-gray-400">
+          <label className="text-[11px] text-gray-500">
             {t("primary")}
             <select value={primary} onChange={(e) => setPrimary(e.target.value)} className={selectCls} data-testid="dup-primary">
               <option value={dealId}>{dealTitle}</option>
@@ -73,12 +73,12 @@ export function DuplicateDecisionForm({
             </select>
           </label>
         )}
-        <label className="text-[11px] text-gray-400">
+        <label className="text-[11px] text-gray-500">
           {ta("actor")}
           <input value={actor} onChange={(e) => setActor(e.target.value)} maxLength={255} placeholder={ta("actor_placeholder")}
             className={selectCls} data-testid="dup-actor" />
         </label>
-        <label className="text-[11px] text-gray-400">
+        <label className="text-[11px] text-gray-500">
           {ta("reason")}
           <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder={ta("reason_placeholder")}
             className={selectCls} data-testid="dup-reason" />
@@ -86,18 +86,18 @@ export function DuplicateDecisionForm({
       </div>
       {!confirming ? (
         <button type="button" disabled={!ready || busy} onClick={() => setConfirming(true)} data-testid="dup-submit"
-          className="px-3 py-1.5 rounded-lg border border-gray-700 text-xs text-gray-200 hover:border-emerald-500 disabled:opacity-40">
+          className="min-h-10 px-3 py-1.5 rounded-lg border border-gray-300 text-xs text-gray-800 hover:border-emerald-500 disabled:opacity-40">
           {t("submit")}
         </button>
       ) : (
-        <div role="alertdialog" aria-modal="true" aria-label={t("title")} className="p-3 rounded-lg border border-amber-800/60 bg-amber-950/30 space-y-2">
-          <p className="text-xs text-amber-200">{t("confirm")}</p>
+        <div role="alertdialog" aria-modal="true" aria-label={t("title")} className="p-3 rounded-lg border border-amber-200 bg-amber-50 space-y-2">
+          <p className="text-xs text-amber-700">{t("confirm")}</p>
           <div className="flex gap-2">
             <button type="button" onClick={submit} disabled={busy} data-testid="dup-confirm-yes"
-              className="px-3 py-1.5 rounded-lg bg-emerald-700 text-white text-xs font-semibold disabled:opacity-40">
+              className="min-h-10 px-3 py-1.5 rounded-lg bg-emerald-700 text-white text-xs font-semibold disabled:opacity-40">
               {ta("confirm_yes")}
             </button>
-            <button type="button" onClick={() => setConfirming(false)} className="px-3 py-1.5 rounded-lg bg-gray-800 text-gray-200 text-xs">
+            <button type="button" onClick={() => setConfirming(false)} className="min-h-10 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-800 text-xs">
               {ta("confirm_no")}
             </button>
           </div>
@@ -105,7 +105,7 @@ export function DuplicateDecisionForm({
       )}
       {!ready && <p className="text-[11px] text-gray-500">{ta("need_fields")}</p>}
       {error !== null && (
-        <p role="alert" className="text-xs text-rose-200" data-testid="dup-error">{ta(`errors.${errorKey(error)}`)}</p>
+        <p role="alert" className="text-xs text-rose-700" data-testid="dup-error">{ta(`errors.${errorKey(error)}`)}</p>
       )}
     </div>
   );

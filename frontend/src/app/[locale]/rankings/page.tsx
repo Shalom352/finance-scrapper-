@@ -92,11 +92,11 @@ function RankingsContent() {
   return (
     <div className="space-y-6 animate-fade-in pb-12">
       <div>
-        <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">{t("title")}</h1>
-        <p className="text-xs text-gray-400 mt-1">{t("subtitle")}</p>
+        <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">{t("title")}</h1>
+        <p className="text-xs text-gray-500 mt-1">{t("subtitle")}</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3 p-4 rounded-2xl border border-gray-800 bg-gray-900/40">
+      <div data-guide="rankings" className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3 p-4 rounded-2xl border border-gray-200 bg-white">
         <div className="sm:col-span-2">
           <IndicatorSelect
             label={t("filters.metric")}
@@ -110,7 +110,7 @@ function RankingsContent() {
             }
           />
         </div>
-        <label className="text-[11px] text-gray-400 font-medium">
+        <label className="text-[11px] text-gray-500 font-medium">
           {t("filters.year")}
           <select value={p.year ?? ""} onChange={(e) => set({ year: e.target.value, page: null })} className={selectCls}>
             <option value="">{t("filters.latest_year")}</option>
@@ -121,7 +121,7 @@ function RankingsContent() {
             ))}
           </select>
         </label>
-        <label className="text-[11px] text-gray-400 font-medium">
+        <label className="text-[11px] text-gray-500 font-medium">
           {t("filters.country")}
           <select value={p.country} onChange={(e) => set({ country: e.target.value, page: null })} className={selectCls}>
             <option value={UMOA}>{t("filters.umoa")}</option>
@@ -132,7 +132,7 @@ function RankingsContent() {
             ))}
           </select>
         </label>
-        <label className="text-[11px] text-gray-400 font-medium">
+        <label className="text-[11px] text-gray-500 font-medium">
           {t("filters.scope")}
           <select value={p.scope} onChange={(e) => set({ scope: e.target.value, page: null })} className={selectCls}>
             {DATA_SCOPES.map((s) => (
@@ -142,7 +142,7 @@ function RankingsContent() {
             ))}
           </select>
         </label>
-        <label className="text-[11px] text-gray-400 font-medium">
+        <label className="text-[11px] text-gray-500 font-medium">
           {t("filters.period")}
           <select value={p.period} onChange={(e) => set({ period: e.target.value, page: null })} className={selectCls}>
             {PERIOD_TYPES.filter((pt) => supportsPeriodType(p.metric, pt)).map((pt) => (
@@ -152,7 +152,7 @@ function RankingsContent() {
             ))}
           </select>
         </label>
-        <label className="text-[11px] text-gray-400 font-medium">
+        <label className="text-[11px] text-gray-500 font-medium">
           {t("filters.order")}
           <select value={p.order} onChange={(e) => set({ order: e.target.value, page: null })} className={selectCls}>
             <option value="desc">{t("filters.order_desc")}</option>
@@ -171,7 +171,7 @@ function RankingsContent() {
         <>
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h2 className="text-lg font-bold text-white" data-testid="ranking-heading">
+              <h2 className="text-lg font-bold text-gray-900" data-testid="ranking-heading">
                 {indicatorLabel(result.metric_code)} —{" "}
                 {result.country_code === UMOA ? t("filters.umoa") : tCountries(result.country_code)}
                 {result.period_year !== null ? ` — ${result.period_year}` : ""}
@@ -208,7 +208,7 @@ function RankingsContent() {
           </div>
 
           {(result.status === "needs_review" || result.status === "unavailable") && (
-            <div role="alert" data-testid="ranking-blocked" className="p-4 rounded-2xl border border-amber-800/60 bg-amber-950/30 text-sm text-amber-200">
+            <div role="alert" data-testid="ranking-blocked" className="p-4 rounded-2xl border border-amber-200 bg-amber-50 text-sm text-amber-700">
               <strong className="block">{t(result.status === "needs_review" ? "blocked_needs_review" : "blocked_unavailable")}</strong>
               <span className="text-xs">{reason(result.reason)}</span>
             </div>
@@ -236,9 +236,9 @@ function RankingsContent() {
           <UnavailableList entries={result.unavailable} />
 
           {history && (
-            <div className="p-4 rounded-2xl border border-gray-800 bg-gray-900/40 space-y-3">
+            <div className="p-4 rounded-2xl border border-gray-200 bg-white space-y-3">
               <div className="flex justify-end">
-                <button onClick={() => set({ institution: null })} className="text-xs text-gray-400 hover:text-white">
+                <button onClick={() => set({ institution: null })} className="text-xs text-gray-500 hover:text-gray-900">
                   ✕ {t("history_close")}
                 </button>
               </div>

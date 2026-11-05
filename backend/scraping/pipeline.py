@@ -10,7 +10,7 @@ Guarantees:
   - Safe error handling and status tracking.
 """
 import time
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from datetime import UTC, datetime
 from typing import Any
 
@@ -126,19 +126,40 @@ class ScrapingPipeline:
         source_name: str,
         db: AsyncSession | None = None,
         limit: int | None = None,
+        years: list[int] | None = None,
+        on_progress: Callable[[int, int], Awaitable[None]] | None = None,
     ) -> list[DiscoveredDocument]:
         """
         Execute discovery for a given official source connector.
 
-        If a database session is provided, saves new documents to the database.
+        ``years``: only documents whose period is confirmed in this set are kept. Unknown-year
+        documents are omitted for year-bounded runs. If a database session is provided, saves
+        matching new documents to the database.
         """
         connector = self.get_connector(source_name)
         start_time = time.perf_counter()
 
-        logger.info("discovery_started", source=connector.source_short_name, limit=limit)
+        logger.info("discovery_started", source=connector.source_short_name, limit=limit, years=years)
 
         async with httpx.AsyncClient(timeout=float(get_settings().scraper_timeout)) as client:
-            discovered = await connector.discover(client, limit=limit)
+            if isinstance(connector, UMOATitresConnector):
+                discovered = await connector.discover(client, limit=limit, years=years, on_progress=on_progress)
+            else:
+                discovered = await connector.discover(client, limit=limit, years=years)
+        if years:
+            wanted = set(years)
+            before_filter = len(discovered)
+            unknown_year = sum(d.period_year is None for d in discovered)
+            discovered = [d for d in discovered if d.period_year in wanted]
+            logger.info(
+                "discovery_year_filter_applied",
+                source=connector.source_short_name,
+                years=sorted(wanted),
+                found=before_filter,
+                kept=len(discovered),
+                rejected=before_filter - len(discovered),
+                unknown_year_rejected=unknown_year,
+            )
 
         duration = time.perf_counter() - start_time
         logger.info(
@@ -161,38 +182,45 @@ class ScrapingPipeline:
     ) -> list[Document]:
         """Persist discovered documents to PostgreSQL with download_status='pending'."""
         # Find the official source row
+        # short_name is not unique in the schema: the oldest row wins (stable), never a crash.
         res = await db.execute(
             select(Source).where(
                 Source.short_name == source_short_name,
                 Source.deleted_at.is_(None),
-            )
+            ).order_by(Source.created_at, Source.id).limit(1)
         )
-        source_row = res.scalar_one_or_none()
+        source_row = res.scalars().first()
         if not source_row:
-            # Fallback search by name
+            # Fallback search by name: used only when it designates ONE source (never a guess between two).
             res = await db.execute(
                 select(Source).where(
                     Source.name.ilike(f"%{source_short_name}%"),
                     Source.deleted_at.is_(None),
-                )
+                ).limit(2)
             )
-            source_row = res.scalar_one_or_none()
+            found = res.scalars().all()
+            source_row = found[0] if len(found) == 1 else None
 
         if not source_row:
             logger.warning("source_record_not_found_in_db", source_short_name=source_short_name)
             return []
 
         registered: list[Document] = []
+        seen_urls: set[str] = set()
 
         for doc_item in documents:
-            # Idempotency check: see if document with this URL already exists
+            if doc_item.url in seen_urls:  # the same URL twice in one batch is registered once
+                continue
+            seen_urls.add(doc_item.url)
+            # Idempotency check: see if document with this URL already exists (a republished file may
+            # share its URL with an older version: the oldest row is the reference).
             existing_res = await db.execute(
                 select(Document).where(
                     Document.url == doc_item.url,
                     Document.deleted_at.is_(None),
-                )
+                ).order_by(Document.created_at, Document.id).limit(1)
             )
-            existing_doc = existing_res.scalar_one_or_none()
+            existing_doc = existing_res.scalars().first()
 
             if existing_doc:
                 logger.debug("document_already_registered", url=doc_item.url, doc_id=existing_doc.id)
@@ -231,6 +259,7 @@ class ScrapingPipeline:
         db: AsyncSession,
         source_short_name: str | None = None,
         limit: int | None = None,
+        years: list[int] | None = None,
     ) -> list[tuple[Document, DownloadResult, StorageResult | None]]:
         """
         Download documents that have download_status = 'pending'.
@@ -248,6 +277,8 @@ class ScrapingPipeline:
         )
         if source_short_name:
             query = query.join(Document.source).where(Source.short_name == source_short_name)
+        if years:
+            query = query.where(Document.period_year.in_(years))
 
         if limit:
             query = query.limit(limit)
@@ -261,6 +292,7 @@ class ScrapingPipeline:
 
         logger.info("starting_downloads", count=len(pending_docs))
         results: list[tuple[Document, DownloadResult, StorageResult | None]] = []
+        batch_hashes: dict[str, str] = {}
 
         async with httpx.AsyncClient(timeout=float(get_settings().scraper_timeout)) as client:
             for doc in pending_docs:
@@ -286,21 +318,37 @@ class ScrapingPipeline:
                 )
 
                 # 3. Deduplication check in DB
-                dup_res = await db.execute(
-                    select(Document).where(
-                        Document.file_hash == storage_result.file_hash,
-                        Document.id != doc.id,
-                        Document.deleted_at.is_(None),
+                existing_document_id = batch_hashes.get(storage_result.file_hash)
+                if existing_document_id is None:
+                    dup_res = await db.execute(
+                        select(Document).where(
+                            Document.file_hash == storage_result.file_hash,
+                            Document.id != doc.id,
+                        )
                     )
-                )
-                existing_with_same_hash = dup_res.scalar_one_or_none()
-                if existing_with_same_hash:
+                    existing_with_same_hash = dup_res.scalar_one_or_none()
+                    existing_document_id = existing_with_same_hash.id if existing_with_same_hash else None
+                if existing_document_id:
                     logger.info(
                         "duplicate_content_hash_detected",
                         doc_id=doc.id,
-                        existing_id=existing_with_same_hash.id,
+                        existing_id=existing_document_id,
                         hash=storage_result.file_hash,
                     )
+                    duplicate_message = (
+                        f"Duplicate PDF content; already stored as document {existing_document_id}."
+                    )
+                    doc.download_status = "failed"
+                    doc.error_message = duplicate_message
+                    results.append((doc, DownloadResult(
+                        url=doc.url,
+                        success=False,
+                        error_message=duplicate_message,
+                        is_duplicate=True,
+                    ), None))
+                    continue
+
+                batch_hashes[storage_result.file_hash] = doc.id
 
                 # 4. Update Document row
                 doc.download_status = "downloaded"
@@ -321,6 +369,7 @@ class ScrapingPipeline:
         db: AsyncSession,
         document_id: str | None = None,
         limit: int | None = None,
+        years: list[int] | None = None,
     ) -> list[tuple[Document, Any]]:
         """
         Parse downloaded PDF documents, analyze structure, and update database.
@@ -335,6 +384,8 @@ class ScrapingPipeline:
             query = query.where(Document.id == document_id)
         else:
             query = query.where(Document.extraction_status == "pending")
+        if years:
+            query = query.where(Document.period_year.in_(years))
 
         if limit:
             query = query.limit(limit)
@@ -383,6 +434,7 @@ class ScrapingPipeline:
         db: AsyncSession,
         document_id: str | None = None,
         limit: int | None = None,
+        years: list[int] | None = None,
     ) -> list[tuple[Document, list[Any]]]:
         """
         Extract tabular financial metrics from parsed documents and populate financial_data.
@@ -412,6 +464,8 @@ class ScrapingPipeline:
             # extractor (name-guessing resolver) must never re-read them.
             query = query.where(Document.document_scope.not_in(
                 ("regulatory_aggregate", "institution_specific", "reference_listing")))
+        if years:
+            query = query.where(Document.period_year.in_(years))
 
         if limit:
             query = query.limit(limit)
@@ -474,13 +528,20 @@ class ScrapingPipeline:
                         brvm_entity_id = brvm_entity.id if brvm_entity else None
                         brvm_looked_up = True
 
-                    extracted_points = market_extractor.extract_brvm_boc(
-                        pdf_path=str(abs_path),
-                        document_id=doc.id,
-                        source_id=doc.source_id,
-                        entity_id=brvm_entity_id,
-                        period_year=doc.period_year or utcnow().year,
-                    )
+                    # The year comes from the document (period, else publication date), never from today:
+                    # a bulletin without a known year is not read rather than dated wrong.
+                    boc_year = doc.period_year or (doc.published_at.year if doc.published_at else None)
+                    if boc_year is None:
+                        logger.warning("brvm_boc_year_unknown", document_id=doc.id, title=doc.title)
+                        doc.error_message = "BRVM bulletin: period year unknown — not extracted (never assumed)"
+                    else:
+                        extracted_points = market_extractor.extract_brvm_boc(
+                            pdf_path=str(abs_path),
+                            document_id=doc.id,
+                            source_id=doc.source_id,
+                            entity_id=brvm_entity_id,
+                            period_year=boc_year,
+                        )
                 elif source_short_name == "UMOA-Titres":
                     if sovereign_entity_map is None:
                         sovereign_ents = (
@@ -502,13 +563,18 @@ class ScrapingPipeline:
                                 if cntry:
                                     sovereign_entity_map[cntry.code] = ent.id
 
-                    extracted_points = market_extractor.extract_umoa_titres_auction(
-                        pdf_path=str(abs_path),
-                        document_id=doc.id,
-                        source_id=doc.source_id,
-                        entity_map=sovereign_entity_map,
-                        period_year=doc.period_year or utcnow().year,
-                    )
+                    auction_year = doc.period_year or (doc.published_at.year if doc.published_at else None)
+                    if auction_year is None:
+                        logger.warning("umoa_titres_year_unknown", document_id=doc.id, title=doc.title)
+                        doc.error_message = "UMOA-Titres notice: period year unknown — not extracted (never assumed)"
+                    else:
+                        extracted_points = market_extractor.extract_umoa_titres_auction(
+                            pdf_path=str(abs_path),
+                            document_id=doc.id,
+                            source_id=doc.source_id,
+                            entity_map=sovereign_entity_map,
+                            period_year=auction_year,
+                        )
                 else:
                     # Traditional banking documents (BCEAO, CB-UMOA, Banks)
                     extracted_points = await extractor.extract_from_parsed_document(

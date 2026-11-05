@@ -5,28 +5,67 @@
     "keywords": "UMOA, UEMOA, BCEAO, banques, données financières, Afrique de l'Ouest, transactions"
   },
   "nav": {
-    "home": "Tableau de bord",
+    "home": "Vue d'ensemble",
+    "deals": "Transactions",
+    "rankings": "Classements",
     "institutions": "Institutions",
+    "sources": "Sources",
+    "documents": "Sources",
+    "data_quality": "À vérifier",
+    "targeting": "Ciblage",
+    "syndication": "Syndication",
+    "settings": "Paramètres",
     "countries": "Pays UMOA",
     "analytics": "Analyses & Ratios",
-    "documents": "Documents",
     "search": "Recherche",
-    "rankings": "Classements",
     "comparisons": "Comparaisons",
-    "financial_data": "Données financières",
-    "data_quality": "Qualité des données",
-    "deals": "Transactions",
-    "targeting": "Ciblage"
+    "financial_data": "Données financières"
   },
   "sidebar": {
+    "navigation_label": "Navigation principale",
+    "groups": {
+      "activity": "Activité",
+      "data": "Données",
+      "analysis": "Analyses",
+      "management": "Qualité et réglages"
+    },
     "notice_title": "Sources officielles",
     "notice_body": "Données issues des publications BCEAO, Commission Bancaire de l'UMOA et rapports des établissements. Une donnée absente est affichée « — »."
   },
   "topbar": {
     "open_menu": "Ouvrir le menu de navigation",
-    "search_placeholder": "Rechercher une banque, un document..."
+    "search_placeholder": "Rechercher une banque, un deal, un ISIN, un document…",
+    "guide": "Guide",
+    "open_guide": "Ouvrir le guide d’utilisation"
   },
-  "footer": {
+  "guide": {
+    "eyebrow": "Découvrir la plateforme",
+    "title": "Bienvenue dans UMOA Banking Intelligence",
+    "intro": "Parcourez les pages de la plateforme et découvrez à quoi servent leurs principaux filtres et outils.",
+    "step_count": "Étape {current} sur {total}",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "skip": "Passer le guide",
+    "finish": "Terminer",
+    "close": "Fermer le guide",
+    "target_loading": "Ouverture de la page et repérage de ses commandes…",
+    "steps": {
+      "overview": { "title": "Vue d’ensemble", "body": "La page d’accueil résume les indicateurs collectés, les agrégats régionaux et la couverture. Choisissez l’exercice pour voir les données publiées cette année-là : l’année en cours et la précédente sont proposées automatiquement." },
+      "search": { "title": "Recherche globale", "body": "Recherchez une banque par son nom ou son sigle, une transaction, un ISIN, une source ou un document. Ouvrez un résultat pour consulter sa fiche." },
+      "deals": { "title": "Transactions", "body": "Filtrez les opérations recensées par pays, type, année ou statut. Ouvrez une transaction pour consulter les sources et les éléments de preuve associés." },
+      "targeting": { "title": "Ciblage des financeurs", "body": "Décrivez un besoin par pays, secteur et type d’opération. La page présente les banques et institutions avec leurs critères documentés; une information inconnue reste indiquée comme telle." },
+      "syndication": { "title": "Syndication", "body": "Suivez les mandats, les prêteurs, les conditions et les contacts saisis en interne. Ces informations sont confidentielles et réservées à l’équipe autorisée." },
+      "institutions": { "title": "Répertoire des institutions", "body": "Filtrez les établissements par nom, pays ou statut. Ouvrez une fiche pour voir les états financiers, les ratios, les graphiques et les documents associés." },
+      "countries": { "title": "Pays de l’UMOA", "body": "Comparez les agrégats et la couverture des huit pays. Ouvrez un pays pour consulter ses établissements et les parts de marché disponibles." },
+      "financial_data": { "title": "Données financières", "body": "Explorez les postes financiers par établissement, exercice, périmètre et période. Consultez le statut de qualité et la provenance pour retrouver le document source." },
+      "documents": { "title": "Centre documentaire", "body": "Retrouvez les publications collectées en filtrant par type et par exercice. Les colonnes indiquent l’état du téléchargement et de l’extraction." },
+      "rankings": { "title": "Classements descriptifs", "body": "Classez les valeurs publiées selon un indicateur, un exercice et un périmètre. Le classement décrit les chiffres disponibles et ne constitue pas une appréciation qualitative." },
+      "analytics": { "title": "Analyses et ratios", "body": "Consultez les ratios, les évolutions annuelles et les agrégats sectoriels. Les calculs s’appuient sur les exercices et observations effectivement disponibles." },
+      "comparisons": { "title": "Comparaisons", "body": "Sélectionnez plusieurs établissements pour examiner leurs indicateurs sur un même exercice. Les valeurs manquantes restent visibles comme indisponibles." },
+      "data_quality": { "title": "Qualité des données", "body": "Examinez les données signalées, les valeurs divergentes et leur provenance. La file de révision permet de vérifier les éléments avant de les qualifier." },
+      "settings": { "title": "Collectes et paramètres", "body": "Choisissez une source et un périmètre, puis lancez une collecte. Vous pouvez sélectionner une année complète, suivre l’exécution en direct et consulter l’historique. Une exécution bloquée depuis plus de six heures est automatiquement clôturée en échec pour libérer le lancement suivant." }
+    }
+  },  "footer": {
     "disclaimer": "Données issues de publications officielles. Aucune extrapolation ni interpolation : une valeur absente est affichée « — »."
   },
   "common": {
@@ -36,10 +75,21 @@
     "empty_title": "Aucune donnée disponible",
     "empty": "Aucune observation ne correspond aux critères sélectionnés.",
     "fiscal_year": "Exercice",
+    "choose_fiscal_year": "Choisir un exercice",
+    "missing_year_data": "Aucune donnée financière n'est encore disponible pour {year}.",
+    "missing_aggregate_data": "Aucun agrégat bancaire exploitable n'est disponible pour {year}. Les données peuvent être absentes ou encore en attente de qualification.",
+    "aggregate_load_error": "Les agrégats de {year} n'ont pas pu être chargés : le service de données ne répond pas pour le moment. Réessaie dans quelques instants.",
+    "open_collection_settings": "Ouvrir Paramètres pour lancer la collecte →",
     "pagination": {
       "range": "Affichage de {start} à {end} sur {total} entrées",
       "previous": "Précédent",
       "next": "Suivant"
+    },
+    "sort": {
+      "label": "Trier par",
+      "asc": "Croissant",
+      "desc": "Décroissant",
+      "page_note": "Le tri s'applique aux lignes de la page affichée."
     }
   },
   "status": {
@@ -344,9 +394,10 @@
   },
   "search": {
     "title": "Recherche globale",
-    "subtitle": "Institutions, groupes bancaires, sources et documents collectés.",
-    "placeholder": "Rechercher une banque, un groupe, une source ou un document...",
+    "subtitle": "Institutions (avec sigles et anciens noms), transactions et ISIN, groupes bancaires, sources et documents.",
+    "placeholder": "Banque, sigle, transaction, ISIN, source ou document…",
     "submit": "Rechercher",
+    "query_min_length": "Saisissez au moins 2 caractères.",
     "empty_title": "Aucun résultat",
     "empty": "Aucune donnée ne correspond à « {query} ».",
     "results_for": "Résultats pour « {query} »",
@@ -356,7 +407,12 @@
     "groups_found": "Groupes bancaires",
     "col_title": "Titre",
     "col_type": "Type",
-    "col_year": "Exercice"
+    "col_year": "Exercice",
+    "deals_found": "Transactions",
+    "show_more": "Voir plus ({shown} sur {total})",
+    "loading_more": "Chargement…",
+    "open_institution": "Voir l’établissement",
+    "more_error": "Impossible de charger la suite des résultats. Réessayez."
   },
   "analytics": {
     "title": "Analyses financières & ratios",
@@ -613,7 +669,8 @@
       "status": "Statut",
       "source": "Source",
       "source_title": "Afficher la provenance complète",
-      "page": "p. {page}"
+      "page": "p. {page}",
+      "source_value_pending": "Valeur source — normalisation à compléter"
     },
     "qualification": {
       "authoritative": "Valeur retenue",
@@ -621,7 +678,11 @@
       "conflict": "Valeurs divergentes non résolues",
       "needs_review": "Non certifiée (à réviser)",
       "rejected": "Rejetée — non utilisée",
-      "missing_value": "Valeur non renseignée"
+      "missing_value": "Valeur non renseignée",
+      "normalization_pending": "Montant extrait, unité ou normalisation à compléter",
+      "normalization_pending": "Montant extrait, unité ou normalisation à compléter",
+      "scope_unconfirmed": "Périmètre individuel ou consolidé non confirmé par le document",
+      "scope_provisional": "à confirmer"
     },
     "export": {
       "button": "Exporter en CSV",
@@ -720,7 +781,10 @@
       "by": "par {actor}",
       "unknown_actor": "identifiant non renseigné",
       "value_change": "Valeur : {before} → {after}",
-      "created": "création"
+      "created": "création",
+      "sort_date": "Date",
+      "sort_action": "Action",
+      "sort_status": "Statut"
     },
     "actions": {
       "title": "Décision",
@@ -755,6 +819,7 @@
       "verify": "Vérification",
       "reject": "Rejet",
       "import": "Import structuré",
+      "source_enrichment": "Complément automatique depuis une source officielle",
       "mark_same_deal": "Même transaction",
       "mark_distinct": "Transactions distinctes",
       "mark_same_deal_multi_source": "Même transaction (plusieurs sources)"
@@ -772,7 +837,7 @@
       "open": "Examiner",
       "duplicates_title": "Doublons potentiels — à revoir",
       "duplicates_empty": "Aucun doublon potentiel ouvert.",
-      "duplicates_hint": "Un doublon potentiel n'est qu'une hypothèse : des critères explicites concordent, rien n'est fusionné ni supprimé avant la décision d'une personne."
+      "duplicates_hint": "Les doublons exacts sont fusionnés automatiquement avec leurs sources conservées. Les opérations distinctes (référence, coupon ou échéance différents) restent séparées ; seuls les cas ambigus restent à examiner."
     },
     "deal_review": {
       "back": "Retour à la file des transactions",
@@ -781,8 +846,14 @@
     }
   },
   "deals": {
-    "title": "Transactions",
-    "subtitle": "Opérations de financement enregistrées par import structuré à partir de documents officiels. Les conditions non publiées restent non disponibles.",
+    "title": "Transactions UMOA",
+    "subtitle": "Deals annoncés et financements documentés.",
+    "import_button": "Importer un deal",
+    "kpi_deals_tracked": "Deals suivis",
+    "kpi_published_amount": "Montant publié",
+    "kpi_to_review": "À vérifier",
+    "sources_title": "Dernières sources",
+    "sources_link": "Voir toutes les sources",
     "import_note": "Les transactions sont ajoutées uniquement par import structuré citant un document, une source et une page. Aucune extraction automatique.",
     "count": "{total, plural, =0 {Aucune transaction} one {# transaction} other {# transactions}}",
     "empty_title": "Aucune transaction",
@@ -796,8 +867,8 @@
       "currency": "Devise",
       "status": "Statut",
       "participant_role": "Rôle du participant",
-      "borrower": "Emprunteur",
-      "arranger": "Arrangeur",
+      "borrower": "Emprunteur / émetteur",
+      "arranger": "Arrangeur / chef de file",
       "all": "Tous",
       "text_placeholder": "Nom ou identifiant",
       "include_merged": "Inclure les transactions rattachées à une autre",
@@ -817,6 +888,7 @@
     },
     "types": {
       "term_loan": "Prêt à terme",
+      "credit_line": "Ligne de crédit / de refinancement",
       "syndicated_loan": "Prêt syndiqué",
       "project_finance": "Financement de projet",
       "trade_finance": "Financement du commerce",
@@ -958,14 +1030,32 @@
         "yield_rate": "Rendement moyen pondéré",
         "use_of_proceeds": "Utilisation des fonds",
         "use_of_proceeds_categories": "Catégories d'utilisation",
-        "filing_agent_raw": "SGI déclarante (API AMF)"
+        "filing_agent_raw": "SGI déclarante (API AMF)",
+        "debt_amount": "Dette",
+        "equity_amount": "Fonds propres (equity)",
+        "debt_type": "Nature de la dette"
+      },
+      "debt_equity_ratio": "Ratio dette / fonds propres",
+      "debt_equity_ratio_note": "Calculé à partir des deux montants publiés",
+      "debt_types": {
+        "senior_loan": "Prêt senior",
+        "subordinated_loan": "Prêt subordonné",
+        "mezzanine": "Mezzanine",
+        "convertible": "Convertible",
+        "credit_line": "Ligne de crédit / de refinancement",
+        "guarantee": "Garantie",
+        "bond": "Obligation"
       },
       "instrument": "Titre public (adjudication)",
       "entity": "Entité : {name}",
       "validation_flags": {
         "global_total_rounded": "Total global imprimé arrondi (montants de tranche conservés)",
         "issuer_label_truncated": "Libellé d'émetteur tronqué — pays confirmé par l'ISIN",
-        "page_lists_buyback_securities": "Lignes de rachat de la page ignorées (justifiées par la page de rachat du PDF)"
+        "page_lists_buyback_securities": "Lignes de rachat de la page ignorées (justifiées par la page de rachat du PDF)",
+        "dfi_own_commitment_only": "Montant = financement de l'institution seule (coût total du projet non publié sur la page)",
+        "pre_approval_disclosure": "Divulgué avant approbation / signature : l'opération peut ne pas aboutir",
+        "program_level_amount": "Montant d'un programme, pas de la ligne de cette contrepartie : non repris",
+        "listing_notice_only": "Annonce de cotation BRVM : montant, ISIN et arrangeur non publiés à cet endroit"
       },
       "use_of_proceeds": "Utilisation des fonds",
       "filing_agent_note": "Champ brut de l'API AMF : la SGI qui a saisi le régulateur. Ce n'est pas un rôle.",
@@ -983,7 +1073,8 @@
         "issuer_official": "Communiqué officiel",
         "issuer_press_release": "Communiqué de l'émetteur",
         "regulator_index": "Index AMF (métadonnées)",
-        "press_reported": "Presse (à recouper)"
+        "press_reported": "Presse (à recouper)",
+        "dfi_official": "Institution de financement (site officiel)"
       },
       "proceeds_categories": {
         "budget_financing": "Financement du budget",
@@ -997,7 +1088,9 @@
         "social": "Social",
         "privatisation": "Privatisation",
         "other": "Autre"
-      }
+      },
+      "single_source": "Source unique",
+      "single_source_hint": "Une seule source publie cette transaction : elle n’est pas corroborée par une seconde source."
     },
     "duplicates": {
       "title": "Doublons potentiels",
@@ -1012,7 +1105,13 @@
         "deal_type": "Même type de transaction",
         "participants": "Participant commun",
         "instrument": "Même titre (ISIN et date de valeur)",
-        "issuer": "Même émetteur"
+        "issuer": "Même émetteur",
+        "counterparty": "Même contrepartie (emprunteur / émetteur)",
+        "isin": "Même ISIN (date de valeur différente ou absente)",
+        "label_issuer": "Même émetteur dans l'intitulé",
+        "coupon": "Même coupon publié",
+        "tenor_years": "Mêmes années d'émission et d'échéance",
+        "undated_isin": "Même ISIN, l’une des deux sans date de valeur (article, index)"
       },
       "state": {
         "duplicate_candidate": "Doublon potentiel — à revoir",
@@ -1033,6 +1132,12 @@
         "submit": "Enregistrer la décision",
         "done": "Décision enregistrée."
       }
+    },
+    "recent_sources_desc": {
+      "bceao": "Communiqués et statistiques régionales",
+      "brvm": "Avis, prospectus et communiqués",
+      "umoa_titres": "Résultats d'adjudications et documents d'émission",
+      "ifc": "Projets et financements en Afrique de l'Ouest"
     }
   },
   "targeting": {
@@ -1116,6 +1221,9 @@
       "real_estate": "Immobilier",
       "financial_services": "Services financiers",
       "public_finance": "Finances publiques",
+      "climate": "Climat et environnement",
+      "health_education": "Santé et éducation",
+      "tourism": "Tourisme",
       "other": "Autre"
     }
   },
@@ -1156,5 +1264,318 @@
     "cancel": "Annuler",
     "done": "Validation automatique retirée.",
     "error": "Le retrait a échoué (la ligne a peut-être changé) : rechargez la page."
+  },
+  "settings": {
+    "title": "Paramètres — collecte de données",
+    "subtitle": "Lancez une collecte sur les sources officielles, suivez son exécution en direct et consultez l'historique des exécutions.",
+    "refresh": "Actualiser",
+    "load_error": "Impossible de charger les exécutions. Vérifiez que l'API est disponible.",
+    "status": {
+      "running": "En cours",
+      "completed": "Terminée",
+      "partial_failure": "Succès partiel",
+      "failed": "Échec",
+      "skipped_concurrent": "Ignorée (exécution concurrente)"
+    },
+    "triggers": {
+      "scheduled": "Planifiée",
+      "manual": "Manuelle",
+      "cli": "Ligne de commande"
+    },
+    "sources": {
+      "all": "Toutes les sources",
+      "bceao": "BCEAO",
+      "cb-umoa": "Commission Bancaire de l'UMOA",
+      "brvm": "BRVM",
+      "umoa-titres": "UMOA-Titres",
+      "amf-umoa": "AMF-UMOA (index des opérations)",
+      "ifc": "IFC (divulgations de projets)",
+      "boad": "BOAD (projets approuvés)",
+      "proparco": "Proparco (carte des projets)",
+      "bidc": "BIDC (annonces officielles de financement)",
+      "press": "Presse financière (Sika Finance, Ecofin, Financial Afrik)"
+    },
+    "kpi": {
+      "title": "Indicateurs clés",
+      "last_run": "Dernière collecte",
+      "never": "Aucune",
+      "docs_found": "Documents trouvés",
+      "docs_new": "Nouveaux documents",
+      "docs_failed": "Documents en échec",
+      "points": "Points extraits",
+      "to_review": "Points à vérifier",
+      "last_run_hint": "Dernière exécution",
+      "observations": "Observations stockées",
+      "verified": "Observations vérifiées",
+      "needs_review": "Observations à vérifier",
+      "deals": "Transactions",
+      "api": "API et base de données",
+      "api_ok": "Disponibles",
+      "api_down": "Indisponibles",
+      "success_rate": "Taux de succès",
+      "avg_duration": "Durée moyenne",
+      "sample_hint": "Sur les {count} exécutions de la page d'historique"
+    },
+    "trigger": {
+      "title": "Lancer une collecte",
+      "source": "Source",
+      "year": "Année à collecter",
+      "year_hint": "Période historique configurée",
+      "configured_period": "la période historique configurée",
+      "year_range": "Collecte sur toute l’année {year} (du 1er janvier au 31 décembre).",
+      "limit": "Limite par source",
+      "limit_hint": "De 1 à 100, vide : sans limite",
+      "force": "Forcer le retraitement des documents déjà connus",
+      "submit": "Lancer la collecte",
+      "confirm_title": "Confirmer le lancement",
+      "confirm_body": "Une collecte « {source} » ({scope}) couvrant {period} va démarrer en arrière-plan. Elle peut durer plusieurs minutes.",
+      "confirm": "Confirmer",
+      "cancel": "Annuler",
+      "running_block": "Une collecte est déjà en cours : attendez qu'elle se termine avant d'en lancer une autre.",
+      "started": "Collecte lancée. Son état s'actualise ci-dessous.",
+      "error": "Le lancement a échoué. Vérifiez que l'API est disponible.",
+      "invalid_year": "Année entre 1900 et 2100.",
+      "invalid_limit": "Limite entre 1 et 100.",
+      "scope": "Portée",
+      "scope_all": "États financiers et deals",
+      "scope_financial": "États financiers bancaires",
+      "scope_deals": "Deals uniquement",
+      "since": "Deals publiés à partir du",
+      "until": "Deals publiés jusqu’au",
+      "since_hint": "Optionnel",
+      "invalid_dates": "La date de fin doit être égale ou postérieure à la date de début.",
+      "scope_not_available": "Cette source n'a pas de collecte pour cette portée.",
+      "deals_summary": "Deals : {created} créé(s), {already} déjà connu(s), {duplicates} doublon(s) potentiel(s)"
+    },
+    "live": {
+      "abort": "Marquer comme échouée",
+      "abort_hint": "Si ce traitement ne progresse plus (processus arrêté, serveur redémarré), clôturez-le pour pouvoir relancer une collecte.",
+      "abort_confirm": "Confirmer : marquer l'exécution comme échouée",
+      "abort_cancel": "Annuler",
+      "abort_error": "Impossible de clôturer cette exécution. Réessayez ou consultez les journaux.",
+      "title_running": "Exécution en cours",
+      "title_last": "Dernière exécution",
+      "none": "Aucune exécution enregistrée.",
+      "started": "Démarrée le {date}",
+      "elapsed": "Temps écoulé : {time}",
+      "duration": "Durée : {time}",
+      "duration_unknown": "Inconnue",
+      "polling": "Actualisation automatique toutes les {seconds} s",
+      "trigger": "Déclencheur",
+      "years": "Années cibles",
+      "sources_checked": "Sources vérifiées",
+      "duration_at_least": "au moins {time}",
+      "deals_partial": "Au moins {created} créées · {enriched} complétées · {known} déjà connues",
+      "deals_progress": "Transactions : {created} créées · {enriched} complétées · {known} déjà connues",
+      "deal_fields_added": "{count} champ(s) complété(s)",
+      "not_finalized": "Non finalisé",
+      "current_task": "En cours : {task}",
+      "pages_progress": "Pages d’adjudication : {done}/{total}",
+      "phases": {
+        "discovery": "Recherche des publications",
+        "download": "Téléchargement des documents",
+        "parsing": "Lecture des documents",
+        "extraction": "Extraction des données",
+        "deal_collection": "Collecte des transactions",
+        "finalizing": "Finalisation"
+      },
+      "docs_found": "Trouvés",
+      "docs_new": "Nouveaux",
+      "docs_downloaded": "Téléchargés",
+      "docs_skipped": "Ignorés",
+      "docs_failed": "En échec",
+      "points": "Points extraits",
+      "to_review": "À vérifier",
+      "errors": "Erreurs ({count})",
+      "no_errors": "Aucune erreur signalée.",
+      "summary": "Résumé"
+    },
+    "history": {
+      "title": "Historique des exécutions",
+      "empty": "Aucune exécution enregistrée.",
+      "date": "Date",
+      "trigger": "Déclencheur",
+      "status": "Statut",
+      "duration": "Durée",
+      "duration_at_least": "≥ {time}",
+      "duration_unknown": "Inconnue",
+      "not_finalized": "Non finalisé",
+      "partial_result": "L’exécution s’est interrompue avant l’enregistrement des compteurs finaux. Les résultats peuvent être incomplets ou inconnus ; l’affichage ne permet pas de conclure qu’aucune donnée n’a été collectée.",
+      "docs": "Documents",
+      "docs_detail": "{found} trouvés · {new} nouveaux · {failed} en échec",
+      "points": "Points extraits",
+      "deals": "Transactions",
+      "deal_stats": "{created} créées · {enriched} complétées · {known} déjà connues",
+      "deal_stats_partial": "Au moins {created} créées · {enriched} complétées · {known} déjà connues",
+      "deal_fields_added": "{count} champ(s) complété(s)",
+      "deferred": "{count} fiche(s) reportée(s)",
+      "to_review": "À vérifier",
+      "errors": "Erreurs",
+      "details": "Détails",
+      "hide": "Masquer",
+      "years": "Années : {years}"
+    }
+  },
+  "syndication": {
+    "title": "Syndication",
+    "subtitle": "Suivi interne des deals arrangés par TOMASTEED : institutions sollicitées, appétit, engagements et conditions, tels que saisis dans le fichier de syndication ou dans la plateforme. Données internes, jamais publiées.",
+    "confidential": "Données internes TOMASTEED (dont des données personnelles) : accès restreint, ne pas diffuser.",
+    "search": "Rechercher (deal, institution, contact)",
+    "not_set": "non renseigné",
+    "not_linked": "à rattacher à l'annuaire",
+    "empty": "Aucune donnée de syndication",
+    "empty_hint": "Importez le fichier de suivi depuis Paramètres → Importer le suivi de syndication.",
+    "yes": "Oui",
+    "no": "Non",
+    "tabs": {
+      "deals": "Deals",
+      "lenders": "Cartographie des prêteurs",
+      "terms": "Conditions de financement",
+      "contacts": "Contacts"
+    },
+    "columns": {
+      "deal": "Deal",
+      "country": "Pays",
+      "status": "Statut",
+      "approached": "Sollicités",
+      "interested": "Intéressés",
+      "committed": "Engagés",
+      "declined": "Déclinés",
+      "updated": "MAJ du fichier",
+      "institution": "Institution",
+      "type": "Type",
+      "countries": "Pays",
+      "deals": "Deals",
+      "tickets": "Tickets",
+      "maturities": "Maturités",
+      "ticket": "Engagement",
+      "rate": "Taux",
+      "arrangement_fee": "Commission d'arrangement",
+      "commitment_fee": "Commission d'engagement",
+      "maturity": "Maturité",
+      "name": "Nom",
+      "function": "Fonction",
+      "email": "E-mail",
+      "phone": "Téléphone",
+      "dataroom": "Accès data room",
+      "stage": "Stade",
+      "appetite": "Appétit",
+      "dossier": "État du dossier",
+      "nda": "NDA (envoi → réception)",
+      "next_steps": "Prochaines étapes"
+    },
+    "statuses": {
+      "prospect": "Prospect",
+      "active": "En cours",
+      "on_hold": "En pause",
+      "closed_won": "Mandat exécuté",
+      "closed_lost": "Abandonné"
+    },
+    "stages": {
+      "approached": "Sollicité",
+      "interested": "Intéressé",
+      "declined": "Décliné",
+      "term_sheet": "Term sheet",
+      "committed": "Engagé",
+      "disbursed": "Décaissé",
+      "withdrawn": "Retiré"
+    },
+    "lender_types": {
+      "dfi": "DFI",
+      "bank": "Banque",
+      "guarantor": "Garant",
+      "investor": "Investisseur",
+      "other": "Autre"
+    },
+    "origins": {
+      "excel_import": "fichier Excel",
+      "manual": "saisie plateforme"
+    },
+    "contact_fields": {
+      "institution_name": "Institution",
+      "full_name": "Nom",
+      "job_title": "Fonction",
+      "email": "E-mail",
+      "phone": "Téléphone"
+    },
+    "detail": {
+      "back": "Retour à la syndication",
+      "not_found": "Deal introuvable.",
+      "counterparties": "Institutions sollicitées",
+      "no_counterparty": "Aucune institution sollicitée pour l'instant.",
+      "history": "historique ({count})",
+      "add_event": "Enregistrer un événement",
+      "edit": "Modifier le deal",
+      "notes": "Notes",
+      "save": "Enregistrer",
+      "saved": "Enregistré.",
+      "save_error": "L'enregistrement a échoué.",
+      "edit_hint": "Une modification faite ici est conservée : si le prochain fichier Excel apporte une autre valeur pour le même champ, l'import vous demandera laquelle garder.",
+      "contacts": "Contacts",
+      "no_contact": "Aucun contact.",
+      "add_contact": "Ajouter le contact",
+      "remove": "Retirer",
+      "file_date": "fichier du {date}",
+      "edited": "modifié dans la plateforme",
+      "remove_confirm": "Confirmer le retrait",
+      "remove_cancel": "Annuler"
+    },
+    "import": {
+      "title": "Importer le suivi de syndication",
+      "hint": "Déposez la dernière version du fichier Excel « Suivi de Syndication ». Un aperçu montre ce qui sera créé, mis à jour ou en conflit ; rien n'est écrit avant votre confirmation.",
+      "file": "Fichier .xlsx",
+      "preview": "Analyser le fichier",
+      "recompute": "Recalculer l'aperçu",
+      "apply": "Confirmer l'import",
+      "applied": "Import enregistré.",
+      "already_imported": "Ce fichier exact a déjà été importé.",
+      "preview_error": "Le fichier n'a pas pu être analysé (structure non reconnue ou API indisponible).",
+      "apply_error": "L'import a échoué : rien n'a été écrit.",
+      "not_set": "non renseignée",
+      "not_mapped": "— ne pas importer cette feuille —",
+      "detail_sheets": "Feuilles de suivi détaillé",
+      "detail_sheets_hint": "Indiquez à quel deal se rapporte chaque feuille de suivi détaillé (elle n'est jamais rattachée par devinette), puis recalculez l'aperçu.",
+      "unresolved": "{count} institution(s) non rattachée(s) à l'annuaire",
+      "unresolved_hint": "Elles sont importées avec leur nom tel qu'écrit. Pour les rattacher, ajoutez un alias exact dans reference/syndication_aliases.json.",
+      "conflicts": "{count} conflit(s) à trancher",
+      "conflicts_hint": "Ces valeurs ont été modifiées dans la plateforme ET dans le fichier depuis le dernier import. Choisissez laquelle garder ; l'autre reste dans l'historique.",
+      "keep_platform": "Garder la plateforme",
+      "keep_excel": "Prendre l'Excel",
+      "decide_first": "Tranchez les {count} conflit(s) restant(s)",
+      "counts": {
+        "mandates": "Deals",
+        "events": "Événements institutions",
+        "contacts": "Contacts",
+        "file_date": "Date de MAJ du fichier"
+      },
+      "actions": {
+        "create": "à créer",
+        "update": "à mettre à jour",
+        "unchanged": "inchangés",
+        "conflict": "en conflit"
+      },
+      "history": {
+        "file": "Fichier",
+        "file_date": "MAJ du fichier",
+        "status": "Statut",
+        "actor": "Par"
+      },
+      "status": {
+        "preview": "aperçu",
+        "applied": "importé",
+        "discarded": "abandonné"
+      }
+    },
+    "import_title": "Importer le fichier de suivi (Excel)"
+  },
+  "errors": {
+    "not_found_title": "Page introuvable",
+    "not_found_body": "Cette page ou cet élément n’existe pas, ou n’est plus disponible.",
+    "back_home": "Retour à l’accueil",
+    "search": "Rechercher",
+    "error_title": "Une erreur est survenue",
+    "error_body": "La page n’a pas pu s’afficher. Réessayez ; si le problème persiste, signalez la référence ci-dessous.",
+    "retry": "Réessayer",
+    "reference": "Référence : {digest}"
   }
 }

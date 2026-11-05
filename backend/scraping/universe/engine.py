@@ -21,6 +21,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.constants.discovery import HUMAN_ONLY_GAP_TYPES, UMOA_COUNTRY_CODES
+from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.models.discovery import DiscoveryRound, DiscoveryRun
 from scraping.universe.coverage import CoverageSnapshot, compute_coverage
@@ -28,6 +29,7 @@ from scraping.universe.documents import DocumentRegistrar
 from scraping.universe.gaps import GapQueue
 from scraping.universe.http import OfficialFetcher
 from scraping.universe.resolution import EntityResolver
+from scraping.universe.search import BraveSearchProvider
 from scraping.universe.strategies.base import DiscoveryContext, DiscoveryStrategy, StrategyResult
 from scraping.universe.strategies.institution_documents import (
     BrvmIssuerFilingsStrategy,
@@ -54,6 +56,20 @@ def utcnow() -> datetime:
 
 def default_strategies() -> list[DiscoveryStrategy]:
     """Ordered by source priority (regulator first, secondary last)."""
+    settings = get_settings()
+    search_provider = (BraveSearchProvider(settings.brave_search_api_key)
+                       if settings.discovery_search_provider == "brave" and settings.brave_search_api_key
+                       and settings.discovery_search_storage_rights_confirmed else None)
+    search_strategy = SecondaryVerifiedStrategy(
+        search_provider, max_results=settings.discovery_search_results_per_entity,
+        max_entities=settings.discovery_search_max_entities_per_run,
+    )
+    if settings.discovery_search_provider == "brave" and not settings.brave_search_api_key:
+        search_strategy.disabled_reason = "DISCOVERY_SEARCH_PROVIDER=brave requires BRAVE_SEARCH_API_KEY"
+    elif settings.discovery_search_provider == "brave" and not settings.discovery_search_storage_rights_confirmed:
+        search_strategy.disabled_reason = (
+            "Brave results are stored as candidate URLs; confirm API storage rights before enabling"
+        )
     return [
         BceaoReferenceListStrategy(),
         CbUmoaReferenceListStrategy(),
@@ -64,7 +80,7 @@ def default_strategies() -> list[DiscoveryStrategy]:
         OfficialWebsiteCrawlStrategy(),
         BrvmIssuerFilingsStrategy(),
         BrvmMarketListingsStrategy(),
-        SecondaryVerifiedStrategy(),
+        search_strategy,
     ]
 
 

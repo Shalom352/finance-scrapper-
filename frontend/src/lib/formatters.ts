@@ -60,6 +60,18 @@ const COMPACT_UNITS: Record<AppLocale, { billion: string; million: string; thous
   en: { billion: "bn", million: "M", thousand: "k" },
 };
 
+const UNIT_SCALE: Record<string, number> = { units: 1, thousands: 1e3, millions: 1e6, billions: 1e9 };
+
+/**
+ * Value of a published amount: figure x scale of its unit ("4 431,25 millions" -> 4 431 250 000).
+ * Null for an unknown unit (never guessed).
+ */
+export function amountValue(figure: number | null | undefined, unit: string | null | undefined): number | null {
+  if (isMissing(figure)) return null;
+  const scale = UNIT_SCALE[unit ?? "units"];
+  return scale === undefined ? null : figure * scale;
+}
+
 export function formatCompactCurrency(
   value: number | null | undefined,
   currency: string | null | undefined,
@@ -119,10 +131,13 @@ export function formatDate(dateStr: string | null | undefined, locale: string = 
   if (!dateStr) return MISSING;
   const d = new Date(dateStr);
   if (Number.isNaN(d.getTime())) return MISSING;
+  // Month in letters: "02/10/2026" reads 2 Oct in French and Feb 10 in English; "2 oct. 2026" / "Oct 2, 2026"
+  // cannot be misread. A date-only value ("2026-10-02") is a calendar day: shown in UTC, never shifted.
   return new Intl.DateTimeFormat(intlLocale(locale), {
     year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
+    month: "short",
+    day: "numeric",
+    ...(/^d{4}-d{2}-d{2}$/.test(dateStr) ? { timeZone: "UTC" } : {}),
   }).format(d);
 }
 

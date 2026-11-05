@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.document import Document
 from app.models.financial_data import FinancialData
+from app.models.review_event import FinancialDataReviewEvent
 from scraping.pipeline import PROTECTED_STATUSES
 from scraping.quality.checks import merge_flags
 from scraping.universe.documents import DocumentRegistrar
@@ -60,13 +61,21 @@ async def reread_units(db: AsyncSession, registrar: DocumentRegistrar, *, dry_ru
         stated = {(v.metric_code, v.year, v.raw.replace(" ", "")): v for v in parsed.values}
         for r in rows:
             v = stated.get((r.metric_code, r.period_year, (r.value_original or "").replace(" ", "")))
-            if v is None or (v.unit, v.currency) == (r.unit_original, r.currency_original):
+            if v is None:
+                continue
+            after_value = (v.value * v.multiplier) if v.multiplier is not None else None
+            unit_changed = (v.unit, v.currency) != (r.unit_original, r.currency_original)
+            normalization_changed = (
+                r.value_normalized != after_value
+                or r.unit_normalized != ("absolute" if after_value is not None else None)
+                or r.currency_normalized != v.currency
+            )
+            if not unit_changed and not normalization_changed:
                 continue
             if r.status in PROTECTED_STATUSES:
                 report.protected_skipped += 1
                 continue
             before = (r.unit_original, r.value_normalized)
-            after_value = (v.value * v.multiplier) if v.multiplier is not None else None
             report.corrected.append({"data_id": r.id, "document": (doc.title or "")[:80], "metric": r.metric_code,
                                      "year": r.period_year, "raw": r.value_original,
                                      "unit": f"{before[0]} -> {v.unit}",
@@ -83,6 +92,11 @@ async def reread_units(db: AsyncSession, registrar: DocumentRegistrar, *, dry_ru
                     f"normalized {before[1]} -> {after_value}")
             r.quality_flags = merge_flags(kept, [{"code": "unit_reread", "detail": note}])
             r.notes = f"{r.notes} | {note}"[:4000] if r.notes else note
+            db.add(FinancialDataReviewEvent(
+                financial_data_id=r.id, action="source_enrichment",
+                previous_status=r.status, new_status=r.status, reason=note,
+                actor="automatic-source-reread:v1", value_before=before[1], value_after=after_value,
+            ))
     if dry_run:
         await db.rollback()
     else:
@@ -173,6 +187,11 @@ async def corroborate_with_fascicle(db: AsyncSession, *, dry_run: bool = True) -
             detail = f"unit '{UNIT_BY_FACTOR[k]}' established: {r.value_original} x {k} agrees with {where} = {ref_value}"
             r.quality_flags = merge_flags(flags, [{"code": "unit_corroborated", "detail": detail}])
             r.notes = f"{r.notes} | {detail}"[:4000] if r.notes else detail
+            db.add(FinancialDataReviewEvent(
+                financial_data_id=r.id, action="source_enrichment",
+                previous_status=r.status, new_status=r.status, reason=detail,
+                actor="automatic-fascicle-corroboration:v1", value_before=None, value_after=raw * k,
+            ))
             report.unit_set.append({"data_id": r.id, "metric": r.metric_code, "year": r.period_year,
                                     "raw": r.value_original, "unit": UNIT_BY_FACTOR[k]})
         elif not _agrees(Decimal(str(r.value_normalized)), ref_value):
@@ -183,6 +202,12 @@ async def corroborate_with_fascicle(db: AsyncSession, *, dry_run: bool = True) -
             r.scope_evidence_class, r.scope_reason_code = "C", CORROBORATION_REASON
             r.scope_evidence = f"value equal to {where}; the fascicle publishes per-entity (individual) statements"
             r.scope = r.consolidation_scope = "individual"
+            db.add(FinancialDataReviewEvent(
+                financial_data_id=r.id, action="source_enrichment",
+                previous_status=r.status, new_status=r.status, reason=f"scope established: {where}",
+                actor="automatic-fascicle-corroboration:v1",
+                value_before=r.value_normalized, value_after=r.value_normalized,
+            ))
             report.scope_set.append({"data_id": r.id, "metric": r.metric_code, "year": r.period_year})
     if dry_run:
         await db.rollback()

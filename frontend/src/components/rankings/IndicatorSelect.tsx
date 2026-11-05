@@ -7,7 +7,7 @@ import { useRatioDefinitions } from "@/lib/useRatioDefinitions";
 import { GROWTH_INDICATORS, RATIO_INDICATORS, VOLUME_INDICATORS } from "@/lib/rankings";
 
 const selectCls =
-  "mt-1 w-full px-3 py-2 rounded-xl border border-gray-800 bg-gray-950 text-xs text-gray-200 focus:border-emerald-500 focus:outline-none";
+  "mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500 focus:outline-none shadow-xs";
 
 /**
  * User-facing label of a rankable indicator. Internal codes (DEPOTS_ACTIFS, growth_pnb…)
@@ -31,7 +31,7 @@ export function IndicatorSelect({ value, onChange, label }: { value: string; onC
   const indicatorLabel = useIndicatorLabel();
 
   return (
-    <label className="text-[11px] text-gray-400 font-medium">
+    <label className="text-[11px] text-gray-500 font-medium">
       {label}
       <select value={value} onChange={(e) => onChange(e.target.value)} className={selectCls}>
         <optgroup label={t("groups.metric")}>

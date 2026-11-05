@@ -4,8 +4,8 @@ UMOA-Titres auction ingestion: emission pages -> compte rendu PDF -> sovereign_b
 Network and database orchestration around the pure parsers of ``umoa_titres_auctions``.
 Deals are written ONLY through the Phase 13 importer (``import_deals``): needs_review,
 field-level provenance, audit event, duplicate candidates. One import per auction (all its
-OAT tranches or none). Re-running is idempotent: tranches whose ingestion_key already exists
-are counted as already imported and nothing is written for them (no document either).
+OAT tranches or none). Re-running is idempotent: existing tranches can receive newly available
+NULL fields with source provenance while existing values remain unchanged.
 
 Every URL of the index receives exactly ONE outcome, so the funnel always reconciles:
 index -> out of scope / in scope -> page failed / BAT only / OAT pages -> ... -> produced.
@@ -15,6 +15,7 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import date
+from collections.abc import Awaitable, Callable
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,7 +25,7 @@ from app.models.country import Country
 from app.models.deal import Deal
 from app.models.entity import Entity
 from app.models.source import Source
-from scraping.deals.importer import DealImportError, import_deals, validate_records
+from scraping.deals.importer import DealImportError, enrich_existing_deals, import_deals, validate_records
 from scraping.deals.umoa_titres_auctions import (
     INDEX_URL,
     LayoutError,
@@ -80,6 +81,8 @@ class IngestionReport:
     urls_discovered: int = 0
     outcomes: dict[str, tuple[str, str | None]] = field(default_factory=dict)  # url -> (outcome, detail)
     deals_created: int = 0
+    deals_enriched: int = 0
+    fields_enriched: int = 0
     deal_ids: list[str] = field(default_factory=list)
     already_imported: int = 0  # tranches whose ingestion_key already existed
     tranches_skipped: Counter = field(default_factory=Counter)
@@ -144,7 +147,8 @@ class IngestionReport:
         return {
             "since": self.since.isoformat(), "until": self.until.isoformat() if self.until else None,
             "funnel": self.funnel(),
-            "deals_created": self.deals_created, "already_imported_tranches": self.already_imported,
+            "deals_created": self.deals_created, "deals_enriched": self.deals_enriched,
+            "fields_enriched": self.fields_enriched, "already_imported_tranches": self.already_imported,
             "tranches_skipped": dict(self.tranches_skipped), "duplicate_candidates": self.duplicate_candidates,
             "documents_registered": self.documents_registered,
             "validation_flags": dict(self.validation_flags),
@@ -185,7 +189,8 @@ class UmoaTitresAuctionIngestor:
         return emission_urls(res.text)
 
     async def run(self, db: AsyncSession, *, since: date, until: date | None = None,
-                  urls: list[str] | None = None) -> IngestionReport:
+                  urls: list[str] | None = None,
+                  on_progress: Callable[[IngestionReport], Awaitable[None]] | None = None) -> IngestionReport:
         report = IngestionReport(since=since, until=until)
         source = (await db.execute(select(Source).where(Source.name == SOURCE_NAME))).scalar_one_or_none()
         if source is None:
@@ -200,6 +205,12 @@ class UmoaTitresAuctionIngestor:
             known = slug_date(url)
             if known is not None and (known < since or (until is not None and known > until)):
                 report.set(url, "out_of_scope_slug_date", str(known))
+                if on_progress:
+                    try:
+                        await on_progress(report)
+                    except Exception as err:
+                        logger.warning("umoa_titres_progress_update_failed", error=str(err))
+                        await db.rollback()
                 continue
             try:
                 source = await db.get(Source, source_id)  # identity map, or one SELECT after a rollback
@@ -216,6 +227,12 @@ class UmoaTitresAuctionIngestor:
                 # stays "idle in transaction" during the HTTP requests of the next auction.
                 if db.in_transaction():
                     await db.commit()
+            if on_progress:
+                try:
+                    await on_progress(report)
+                except Exception as err:
+                    logger.warning("umoa_titres_progress_update_failed", error=str(err))
+                    await db.rollback()
         return report
 
     async def _auction(self, db, url, known, source, sovereigns, report: IngestionReport) -> None:
@@ -285,13 +302,12 @@ class UmoaTitresAuctionIngestor:
             report.set(url, "no_oat_issued")
             return
         keys = [r["ingestion_key"] for r in draft.records]
-        existing = set((await db.execute(
-            select(Deal.ingestion_key).where(Deal.ingestion_key.in_(keys), Deal.deleted_at.is_(None))
-        )).scalars())
+        existing_rows = (await db.execute(
+            select(Deal).where(Deal.ingestion_key.in_(keys), Deal.deleted_at.is_(None))
+        )).scalars().all()
+        existing_by_key = {row.ingestion_key: row for row in existing_rows}
+        existing = set(existing_by_key)
         report.already_imported += len(existing)
-        if all(k in existing for k in keys):
-            report.set(url, "already_imported", f"{len(keys)} tranche(s)")
-            return
 
         auction_year = reports[0].auction_date.year if reports[0].auction_date else None
         entity_id = draft.records[0]["participants"][0]["entity_id"]
@@ -312,20 +328,38 @@ class UmoaTitresAuctionIngestor:
         page_doc.document.file_format = "html"
 
         final = build(pdf_doc.document.id, page_doc.document.id)
-        records = [r for r in final.records if r["ingestion_key"] not in existing]
+        records = validate_records(final.records)
+        existing_records = [
+            (existing_by_key[r.ingestion_key], r) for r in records if r.ingestion_key in existing_by_key
+        ]
+        new_records = [r for r in records if r.ingestion_key not in existing_by_key]
         try:
-            imported = await import_deals(
-                db, validate_records(records), actor=self.actor, origin=f"UMOA-Titres auction results {url}"
-            )
+            enriched_deals, enriched_fields = await enrich_existing_deals(db, existing_records, actor=self.actor)
+            if new_records:
+                imported = await import_deals(
+                    db, new_records, actor=self.actor, origin=f"UMOA-Titres auction results {url}"
+                )
+            else:
+                imported = None
+                await db.commit()
         except DealImportError as err:
+            # The two documents registered above (flushed, not committed) would otherwise be committed by
+            # the run loop without any deal: rolled back with the refused import (audit 22/10/2026, M2).
+            await db.rollback()
             report.set(url, "import_refused", "; ".join(f"{i.field}:{i.code}" for i in err.issues)[:500])
             return
-        report.set(url, "produced", f"{len(imported.created_ids)} deal(s)")
+        created = len(imported.created_ids) if imported else 0
+        report.set(url, "produced" if created or enriched_deals else "already_imported",
+                   f"{created} created; {enriched_deals} enriched")
         report.documents_registered += int(pdf_doc.is_new) + int(page_doc.is_new)  # committed with the deals
-        report.deals_created += len(imported.created_ids)
-        report.deal_ids.extend(imported.created_ids)
-        report.duplicate_candidates += len(imported.duplicate_candidates)
+        report.deals_enriched += enriched_deals
+        report.fields_enriched += enriched_fields
+        if imported:
+            report.deals_created += len(imported.created_ids)
+            report.deal_ids.extend(imported.created_ids)
+            report.duplicate_candidates += len(imported.duplicate_candidates)
         for r in records:
-            report.deals_by_country[r["country_code"]] += 1
-            for f in r.get("validation_flags", []):
-                report.validation_flags[f["code"]] += 1
+            if r.country_code:
+                report.deals_by_country[r.country_code] += 1
+            for flag in r.validation_flags:
+                report.validation_flags[flag.code] += 1

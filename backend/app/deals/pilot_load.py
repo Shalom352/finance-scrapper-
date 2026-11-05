@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Any
 
 PILOT_APPLICATION_NAME = "umoa_pilot_load"
-MIN_PILOT_REVISION = 16
+MIN_PILOT_REVISION = 20  # the deal model writes the columns of 0020 (field excerpts, debt / equity)
 
 
 def normalize_text(value: str) -> str:
@@ -298,7 +298,8 @@ async def main_async() -> int:
             verified = await verify_target_database(db, expect_db=args.expect_db,
                                                     url_source=database_url_source(get_settings()))
             if (revision_number(verified.alembic_version) or 0) < MIN_PILOT_REVISION:
-                raise TargetDatabaseError(f"ABANDON: alembic {verified.alembic_version!r}, 0016 minimum requise.")
+                raise TargetDatabaseError(
+                    f"ABANDON: alembic {verified.alembic_version!r}, {MIN_PILOT_REVISION:04d} minimum requise.")
             print(verified.message(), flush=True)
             report = await load(db, manifest, files_root=files_root, actor=args.actor, dry_run=args.dry_run)
     except TargetDatabaseError as err:

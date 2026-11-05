@@ -28,6 +28,7 @@ class BaseSourceConnector(ABC):
         self,
         client: httpx.AsyncClient,
         limit: int | None = None,
+        years: list[int] | None = None,
     ) -> list[DiscoveredDocument]:
         """
         Discover official documents published by this source.
@@ -35,10 +36,16 @@ class BaseSourceConnector(ABC):
         Args:
             client: Async HTTP client.
             limit: Maximum number of documents to return.
+            years: Optional calendar years; documents outside this scope are rejected as soon as their year is known.
 
         Returns:
             List of DiscoveredDocument instances.
         """
+
+    @staticmethod
+    def matches_requested_years(doc: DiscoveredDocument, years: list[int] | None) -> bool:
+        """Return whether a document has a confirmed year in the requested scope."""
+        return not years or doc.period_year in set(years)
 
     async def fetch_and_parse_page(
         self,

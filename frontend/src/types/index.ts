@@ -53,6 +53,7 @@ export interface Country {
 export interface SourceList {
   id: string;
   name: string;
+  url?: string | null;
   short_name?: string | null;
   source_type: string;
   priority: number;
@@ -101,6 +102,10 @@ export interface Document {
   title: string;
   document_type: string;
   institution_id?: string | null;
+  entity_id?: string | null;
+  document_scope?: string | null;
+  text_layer_status?: string | null;
+  reporting_year?: number | null;
   source_id: string;
   url?: string | null;
   period_year?: number | null;
@@ -140,7 +145,8 @@ export type ObservationQualification =
   | "conflict"
   | "needs_review"
   | "rejected"
-  | "missing_value";
+  | "missing_value"
+  | "normalization_pending";
 
 export interface FinancialDataExplorerItem extends FinancialDataPoint {
   institution_name: string | null;
@@ -150,6 +156,9 @@ export interface FinancialDataExplorerItem extends FinancialDataPoint {
   document_id: string | null;
   document_title: string | null;
   page_number: number | null;
+  scope_evidence_class: string | null;
+  scope_reason_code: string | null;
+  scope_evidence: string | null;
   qualification: ObservationQualification | null;
   authoritative_data_id: string | null;
 }
@@ -433,10 +442,24 @@ export interface ComparisonResult {
 // ============================================================
 
 /** Backend `SearchResults` (app/api/v1/search.py) — no metrics are indexed. */
+export interface DealSearchHit {
+  id: string;
+  title: string;
+  isin?: string | null;
+  deal_type?: string | null;
+  status: string;
+  country_code?: string | null;
+}
+
+export type SearchType = "institutions" | "deals" | "banking_groups" | "sources" | "documents";
+
 export interface SearchResults {
   query: string;
+  /** Sum of the real totals per type (each list holds one page). */
   total: number;
+  totals: Record<SearchType, number>;
   institutions: Institution[];
+  deals: DealSearchHit[];
   banking_groups: BankingGroupList[];
   sources: SourceList[];
   documents: Document[];
@@ -775,6 +798,7 @@ export type DuplicateDecision = "same_deal" | "distinct_deals" | "same_deal_mult
 
 export const DEAL_TYPES = [
   "term_loan",
+  "credit_line",
   "syndicated_loan",
   "project_finance",
   "trade_finance",
@@ -919,6 +943,11 @@ export interface DealDetail extends DealListItem {
   grace_period_months: number | null;
   fees: string | null;
   guarantees: string | null;
+  /** Debt / equity as published (migration 0020); the ratio only from both published amounts. */
+  debt_amount?: number | null;
+  equity_amount?: number | null;
+  debt_type?: string | null;
+  debt_equity_ratio?: number | null;
   financial_close_date: string | null;
   closing_date: string | null;
   auction_reference?: string | null;
@@ -941,9 +970,16 @@ export interface DealDetail extends DealListItem {
   participants: DealParticipant[];
   sources: DealSource[];
   field_provenance: Record<string, string[]>;
+  /** Quotation of each source attesting a field (migration 0020), when recorded. */
+  field_excerpts?: Record<string, FieldExcerpt[]>;
   duplicates: DealDuplicate[];
   merged_deals: MergedDeal[];
   allowed_actions: ReviewAction[];
+}
+
+export interface FieldExcerpt {
+  deal_source_id: string;
+  excerpt: string;
 }
 
 export interface DealCurrencyTotal {
@@ -976,6 +1012,7 @@ export interface DealAnalytics {
 
 export type IngestionStatus = "running" | "completed" | "partial_failure" | "failed" | "skipped_concurrent";
 export type IngestionTrigger = "scheduled" | "manual" | "cli";
+export type IngestionPhase = "discovery" | "download" | "parsing" | "extraction" | "deal_collection" | "finalizing";
 
 export interface IngestionRun {
   id: string;
@@ -983,6 +1020,11 @@ export interface IngestionRun {
   status: IngestionStatus;
   target_years: string | null;
   sources_checked: number;
+  sources_total: number;
+  current_phase: IngestionPhase | null;
+  current_source: string | null;
+  current_items_done: number;
+  current_items_total: number;
   documents_found: number;
   documents_new: number;
   documents_downloaded: number;
@@ -992,8 +1034,14 @@ export interface IngestionRun {
   data_points_needing_review: number;
   started_at: string;
   finished_at: string | null;
+  last_progress_at: string | null;
   duration_seconds: number | null;
+  duration_is_lower_bound: boolean;
+  duration_unknown: boolean;
+  results_incomplete: boolean;
   errors: Array<{ source?: string; phase?: string; error: string }> | null;
+  /** Deal collection phase: {source key: report summary}; "_errors" lists the failed sources. */
+  deal_summary?: Record<string, unknown> | null;
   summary_text: string | null;
   created_at: string;
 }
@@ -1012,6 +1060,9 @@ export const SECTORS = [
   "real_estate",
   "financial_services",
   "public_finance",
+  "climate",
+  "health_education",
+  "tourism",
   "other",
 ] as const;
 export type Sector = (typeof SECTORS)[number];
@@ -1078,4 +1129,145 @@ export interface AutoValidation {
   revoked_by?: string;
   revoked_at?: string;
   revoke_reason?: string;
+}
+
+
+// ============================================================
+// Syndication tracker (internal TOMASTEED data, migration 0022)
+// ============================================================
+
+export type ConflictDecision = "platform" | "excel";
+export type StageBucket = "approached" | "interested" | "committed" | "declined";
+
+export interface SyndicationDeal {
+  id: string;
+  code: string;
+  title: string;
+  client_name: string;
+  country_code: string | null;
+  country_code_raw: string | null;
+  status: string;
+  stage_raw: string | null;
+  sector: string | null;
+  deal_type: string | null;
+  amount: number | string | null;
+  currency: string | null;
+  notes: string | null;
+  origin: "excel_import" | "manual";
+  last_updated_from_file: string | null;
+  manually_edited_at: string | null;
+  counterparties: number;
+  counts: Record<StageBucket, number>;
+}
+
+export interface SyndicationEvent {
+  id: string;
+  counterparty_name: string;
+  institution_id: string | null;
+  entity_id: string | null;
+  stage: string;
+  lender_type: string | null;
+  appetite: boolean | null;
+  amount: number | string | null;
+  currency: string | null;
+  amount_text: string | null;
+  rate_text: string | null;
+  arrangement_fee_text: string | null;
+  commitment_fee_text: string | null;
+  maturity_text: string | null;
+  dossier_status_raw: string | null;
+  nda_sent_on: string | null;
+  nda_received_on: string | null;
+  next_steps: string | null;
+  notes: string | null;
+  contact_date: string | null;
+  origin: "excel_import" | "manual";
+  recorded_by: string;
+  created_at: string;
+}
+
+export interface SyndicationCounterpartyState extends SyndicationEvent {
+  history: SyndicationEvent[];
+}
+
+export interface SyndicationContact {
+  id: string;
+  institution_name: string;
+  institution_id: string | null;
+  entity_id: string | null;
+  full_name: string | null;
+  job_title: string | null;
+  email: string | null;
+  phone: string | null;
+  last_interaction_on: string | null;
+  context: string | null;
+  mandate_id: string | null;
+  dataroom_access: boolean;
+  notes: string | null;
+  origin: "excel_import" | "manual";
+  manually_edited_at: string | null;
+}
+
+export interface SyndicationDealDetail extends SyndicationDeal {
+  counterparty_states: SyndicationCounterpartyState[];
+  contacts: SyndicationContact[];
+}
+
+export interface SyndicationLender {
+  name: string;
+  institution_id: string | null;
+  entity_id: string | null;
+  lender_types: string[];
+  countries: string[];
+  deals: { id: string; title: string; stage: string }[];
+  tickets: string[];
+  maturities: string[];
+  stages: Record<string, number>;
+}
+
+export interface SyndicationTerm {
+  institution: string;
+  lender_type: string | null;
+  deal_id: string;
+  deal: string;
+  country: string | null;
+  amount_text: string | null;
+  rate_text: string | null;
+  arrangement_fee_text: string | null;
+  commitment_fee_text: string | null;
+  maturity_text: string | null;
+}
+
+export interface SyndicationConflict {
+  id: string;
+  kind: "mandate" | "event" | "contact";
+  label: string;
+  field: string;
+  platform: unknown;
+  excel_before: unknown;
+  excel_now: unknown;
+}
+
+export interface SyndicationImport {
+  id: string;
+  file_name: string;
+  file_updated_on: string | null;
+  status: "preview" | "applied" | "discarded";
+  actor: string;
+  created_at: string;
+  applied_at: string | null;
+  counts: {
+    mandates?: Record<string, number>;
+    events?: Record<string, number>;
+    contacts?: Record<string, number>;
+    conflicts?: number;
+    unresolved_names?: number;
+  } | null;
+  conflicts?: SyndicationConflict[];
+  unresolved_names?: string[];
+  detail_sheets?: Record<string, string | null>;
+  ignored_sheets?: Record<string, string>;
+  warnings?: string[];
+  sheet_mapping?: Record<string, string>;
+  mandates?: { code: string; title: string; action: string; updates: string[] }[];
 }

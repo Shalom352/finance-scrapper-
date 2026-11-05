@@ -26,7 +26,7 @@ export function FinancialBarChart({ items, title, isPercent = false, currency = 
 
   if (known.length === 0) {
     return (
-      <div className={`p-6 text-center text-xs text-gray-500 rounded-2xl border border-gray-800 ${className}`}>
+      <div className={`p-6 text-center text-xs text-gray-500 rounded-2xl border border-gray-200 ${className}`}>
         {title ? `${title} — ` : ""}
         {t("no_data")}
       </div>
@@ -36,8 +36,8 @@ export function FinancialBarChart({ items, title, isPercent = false, currency = 
   const maxAbs = Math.max(...known.map((it) => Math.abs(it.value)), Number.EPSILON);
 
   return (
-    <div className={`flex flex-col gap-3 rounded-2xl border border-gray-800 bg-gray-900/40 p-5 ${className}`}>
-      {title && <h4 className="text-sm font-semibold text-gray-200">{title}</h4>}
+    <div className={`flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-5 ${className}`}>
+      {title && <h4 className="text-sm font-semibold text-gray-800">{title}</h4>}
 
       <div className="space-y-3 pt-1">
         {items.map((item, idx) => {
@@ -46,17 +46,17 @@ export function FinancialBarChart({ items, title, isPercent = false, currency = 
 
           return (
             <div key={idx} className="flex flex-col gap-1">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-300 font-medium truncate max-w-[240px]">
+              <div className="flex items-start justify-between gap-3 text-xs">
+                <span className="min-w-0 text-gray-700 font-medium break-words">
                   {item.label}
-                  {item.sublabel && <span className="text-gray-400 font-normal ml-1.5">({item.sublabel})</span>}
+                  {item.sublabel && <span className="text-gray-500 font-normal ml-1.5">({item.sublabel})</span>}
                 </span>
-                <span className={`font-semibold ${negative ? "text-rose-400" : "text-emerald-400"}`}>
+                <span className={`shrink-0 whitespace-nowrap font-semibold ${negative ? "text-rose-700" : "text-emerald-700"}`}>
                   {isPercent ? fmt.percent(item.value, 1) : fmt.compact(item.value, currency)}
                 </span>
               </div>
 
-              <div className="w-full h-2 rounded-full bg-gray-800 overflow-hidden">
+              <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
                 {item.value !== null && (
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${

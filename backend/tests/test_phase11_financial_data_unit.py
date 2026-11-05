@@ -140,8 +140,9 @@ def test_export_too_large_error_carries_total():
 
 def test_new_routes_are_declared_before_the_id_route():
     from app.main import create_app
+    from tests.route_inventory import iter_routes
 
-    paths = [r.path for r in create_app().routes]
+    paths = [r.path for r in iter_routes(create_app())]
     idx = paths.index("/api/v1/financial-data/{data_id}")
     assert paths.index("/api/v1/financial-data/export") < idx
     assert paths.index("/api/v1/financial-data/facets") < idx

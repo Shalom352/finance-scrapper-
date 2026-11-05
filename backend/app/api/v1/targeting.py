@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.constants.deals import DEAL_TYPES, ISO_4217_CURRENCIES, SECTORS
+from app.core.internal_auth import require_internal
 from app.db.session import get_db_session
 from app.models.country import Country
 from app.models.mandate import Mandate
@@ -113,7 +114,8 @@ async def targeting(
     )
 
 
-@router.get("/mandates", summary="Internal mandates and institutions approached", response_model=list[MandateRead])
+@router.get("/mandates", summary="Internal mandates and institutions approached", response_model=list[MandateRead],
+            dependencies=[Depends(require_internal)])
 async def mandates(db: AsyncSession = Depends(get_db_session)) -> list[MandateRead]:
     rows = (await db.execute(
         select(Mandate, Country.code).outerjoin(Country, Country.id == Mandate.country_id)

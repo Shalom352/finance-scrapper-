@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.constants.deals import FINANCING_ROLES, POSITIVE_STAGES
@@ -176,7 +176,8 @@ async def _participations(db: AsyncSession, column, ids: list[str]) -> dict[str,
         .join(Deal, Deal.id == DealParticipant.deal_id)
         .outerjoin(Country, Country.id == Deal.country_id)
         .where(column.in_(ids), DealParticipant.role.in_(FINANCING_ROLES), Deal.deleted_at.is_(None),
-               Deal.status != "rejected", Deal.merged_into_deal_id.is_(None))
+               DealParticipant.extraction_method == "text", Deal.status != "rejected",
+               Deal.merged_into_deal_id.is_(None))
     )).all()
     out: dict[str, list] = defaultdict(list)
     for p, d, cc in rows:
@@ -190,7 +191,10 @@ async def _latest_equity(db: AsyncSession, institution_ids: list[str]) -> dict[s
     rows = (await db.execute(select(FinancialData).where(
         FinancialData.institution_id.in_(institution_ids), FinancialData.metric_code == EQUITY_METRIC,
         FinancialData.scope == "individual", FinancialData.period_type == "annual",
-        FinancialData.status != "rejected", FinancialData.value_normalized.is_not(None),
+        FinancialData.status.notin_(("rejected", "needs_review")),
+        or_(FinancialData.scope_evidence_class.is_(None),
+            FinancialData.scope_evidence_class.in_(("A", "B", "C"))),
+        FinancialData.value_normalized.is_not(None),
         FinancialData.deleted_at.is_(None)))).scalars().all()
     best: dict[str, FinancialData] = {}
     for fd in rows:

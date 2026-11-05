@@ -19,6 +19,8 @@ from app.core.logging import get_logger
 logger = get_logger(__name__)
 
 UMOA_TITRES_LOCK = "umoa_titres_run"
+# Discovery engine (audit 22/10/2026, D2): the CLI and the scheduler never run two engines at once.
+DISCOVERY_LOCK = "discovery_run"
 # application_name of the dedicated lock connection (pg_stat_activity), distinct from the run's own.
 LOCK_APPLICATION_NAME_SUFFIX = ":lock"
 

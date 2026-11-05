@@ -39,6 +39,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         port=settings.backend_port,
     )
 
+    # A run left "running" by the previous process (restart, crash) would block every next run
+    try:
+        from app.db.session import AsyncSessionLocal
+        from app.services.ingestion import expire_stale_runs
+
+        async with AsyncSessionLocal() as session:
+            await expire_stale_runs(session)
+    except Exception as err:  # the API starts even when the database is not reachable yet
+        logger.warning("stale_run_check_failed", error=str(err))
+
     # Start background ingestion scheduler if enabled
     from app.services.scheduler import get_ingestion_scheduler
     scheduler = get_ingestion_scheduler()
@@ -51,8 +61,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     yield
 
-    discovery_scheduler.stop()
-    scheduler.stop()
+    await discovery_scheduler.stop()
+    await scheduler.stop()
+    from app.db.engine import engine
+    await engine.dispose()
     logger.info("application_shutdown")
 
 
@@ -131,6 +143,7 @@ def create_app() -> FastAPI:
     from app.api.v1.rankings import router as rankings_router
     from app.api.v1.search import router as search_router
     from app.api.v1.sources import router as sources_router
+    from app.api.v1.syndication import router as syndication_router
     from app.api.v1.targeting import router as targeting_router
 
     app.include_router(countries_router)
@@ -148,6 +161,7 @@ def create_app() -> FastAPI:
     app.include_router(deals_router)
     app.include_router(ingestion_router)
     app.include_router(targeting_router)
+    app.include_router(syndication_router)
 
     from app.core.exceptions import register_exception_handlers
     register_exception_handlers(app)

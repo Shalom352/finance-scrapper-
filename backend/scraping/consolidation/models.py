@@ -46,6 +46,7 @@ class ObservationSummary(BaseModel):
     period_label: str | None = None
     # Accounting scope ("individual" / "consolidated"); None when unknown.
     scope: str | None = None
+    scope_evidence_class: str | None = None
     value_original: str
     unit_original: str | None = None
     currency_original: str | None = None

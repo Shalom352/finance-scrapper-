@@ -1,19 +1,20 @@
 """
 Rounds 4-7 — market infrastructure, official links, institution websites, secondary sources.
 
-Policy (Phase 15): official channels only. No search engine, no URL guessed from a bank name.
+Official sources take priority. Optional search leads remain candidates until a person confirms ownership;
+no URL is guessed from a bank name.
   - brvm_market_listings       : BRVM listed-company pages (market infrastructure, priority 4);
   - official_links_in_documents: website links printed in official documents / pages already
                                  collected for the entity (candidate → verified by content);
   - official_website_crawl     : bounded, robots.txt-aware crawl of VERIFIED websites for
                                  annual reports / financial statements (ACTIVE once a PDF is stored);
-  - secondary_verified         : disabled by policy (kept in the plan so the report shows it).
+  - secondary_verified         : optional storage-rights-gated web-search leads (candidate only).
 """
 from __future__ import annotations
 
 import re
 from datetime import UTC, datetime
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, unquote, urljoin, urlparse
 
 from sqlalchemy import select
 
@@ -22,8 +23,8 @@ from app.models.country import Country
 from app.models.discovery import DocumentEntity, EntitySource
 from app.models.document import Document
 from app.models.entity import Entity
-from scraping.universe.http import extract_links, html_to_text
-from scraping.universe.normalize import core_key, name_key, normalize_name
+from scraping.universe.http import extract_links, extract_sitemap_entries, html_to_text, is_pdf_url
+from scraping.universe.normalize import core_key, country_codes_in, name_key, normalize_name
 from scraping.universe.strategies.base import DiscoveryContext, DiscoveryStrategy, StrategyResult
 from scraping.universe.strategies.reference_lists import get_source
 
@@ -42,6 +43,12 @@ async def upsert_entity_source(ctx: DiscoveryContext, *, entity_id: str, role: s
     now = utcnow()
     rank = {"RETIRED": 0, "BLOCKED": 1, "CANDIDATE": 2, "VERIFIED": 3, "ACTIVE": 4}
     if existing is not None:
+        if existing.lifecycle_status == "RETIRED" and status == "CANDIDATE":
+            # A human-retired search lead must not reappear as a candidate on the next scheduled run.
+            existing.last_checked_at = now
+            existing.last_http_status = http_status
+            await ctx.db.flush()
+            return False
         if rank[status] >= rank.get(existing.lifecycle_status, 0) or status == "BLOCKED":
             existing.lifecycle_status = status
         existing.last_checked_at = now
@@ -323,13 +330,25 @@ async def verify_website(ctx: DiscoveryContext, entity: Entity, country_code: st
     if site["status"] != "FETCHED":
         return {"status": site["status"], "evidence": site["evidence"], "http_status": site["http_status"]}
     page = site["text"]
-    names = {name_key(entity.canonical_name), core_key(entity.canonical_name)}
-    if entity.short_name:
-        names.add(normalize_name(entity.short_name))
-    hit = next((n for n in names if n and len(n) >= 4 and f" {n} " in page), None)
-    if hit:
+    full = name_key(entity.canonical_name)
+    if full and len(full) >= 4 and f" {full} " in page:
         return {"status": "VERIFIED", "http_status": site["http_status"],
-                "evidence": f"final URL {site['final_url']} mentions '{hit}'"}
+                "evidence": f"final URL {site['final_url']} mentions '{full}'"}
+    # The name without its country ("ECOBANK", "SOCIETE GENERALE") is also printed by the group site and
+    # by every sister bank (audit 22/10/2026, D3): it verifies the site only together with the entity's
+    # country on the same page, and only if no OTHER UMOA country is named there.
+    short = {core_key(entity.canonical_name)}
+    if entity.short_name:
+        short.add(normalize_name(entity.short_name))
+    hit = next((n for n in short if n and len(n) >= 4 and f" {n} " in page), None)
+    countries = country_codes_in(page)
+    if hit and country_code and countries == {country_code}:
+        return {"status": "VERIFIED", "http_status": site["http_status"],
+                "evidence": f"final URL {site['final_url']} mentions '{hit}' and its country {country_code} only"}
+    if hit:
+        return {"status": "CANDIDATE", "http_status": site["http_status"],
+                "evidence": f"final URL {site['final_url']} mentions '{hit}' but countries {sorted(countries) or '-'} "
+                            f"(expected {country_code} alone): group or sister site, to confirm by a human"}
     return {"status": "CANDIDATE", "http_status": site["http_status"],
             "evidence": f"final URL {site['final_url']} does not mention the entity name"}
 
@@ -337,11 +356,30 @@ async def verify_website(ctx: DiscoveryContext, entity: Entity, country_code: st
 # ====================================================================== website crawl
 _REPORT_WORDS = ("RAPPORT ANNUEL", "ANNUAL REPORT", "ETATS FINANCIERS", "FINANCIAL STATEMENTS", "COMPTES ANNUELS",
                  "PILIER 3", "PILLAR 3", "RESULTATS FINANCIERS", "BILAN")
+_REPORT_KEYS = tuple(normalize_name(word) for word in _REPORT_WORDS)
+_YEAR_RE = re.compile(r"(?<!\d)(?:19|20)\d{2}(?!\d)")
+
+
+def _pdf_filename_hint(url: str) -> str:
+    """Filename evidence only; never infer a reporting year from an upload directory."""
+    parsed = urlparse(url)
+    parts = [unquote(parsed.path.rsplit("/", 1)[-1])]
+    parts.extend(unquote(value) for _key, value in parse_qsl(parsed.query) if ".pdf" in value.lower())
+    return " ".join(part for part in parts if part)
+
+
+def _is_report_candidate(label: str, url: str, years: set[str]) -> bool:
+    evidence = normalize_name(f"{label} {_pdf_filename_hint(url)}")
+    if not any(word in evidence for word in _REPORT_KEYS):
+        return False
+    years_in_evidence = set(_YEAR_RE.findall(evidence))
+    # Yearless filenames remain eligible; the stored period stays unknown.
+    return not years or not years_in_evidence or bool(years & years_in_evidence)
 
 
 class OfficialWebsiteCrawlStrategy(DiscoveryStrategy):
     code = "official_website_crawl"
-    description = ("Bounded crawl of VERIFIED / ACTIVE official websites (same domain, depth 2, keyword-guided "
+    description = ("Bounded crawl of VERIFIED / ACTIVE official websites (same domain, sitemaps, depth 2, keyword-guided "
                    "navigation, robots.txt, page / size caps) for annual reports and financial statements")
     priority = 3
     handles = frozenset({"DOCUMENT_NOT_FOUND"})
@@ -349,6 +387,8 @@ class OfficialWebsiteCrawlStrategy(DiscoveryStrategy):
     max_depth = 2
     max_pdfs_per_site = 12
     max_pdf_bytes = 30_000_000
+    max_sitemaps_per_site = 8
+    max_sitemap_urls_per_site = 5_000
 
     async def run(self, ctx: DiscoveryContext, targets) -> StrategyResult:
         result = StrategyResult(targets=len(targets))
@@ -360,17 +400,65 @@ class OfficialWebsiteCrawlStrategy(DiscoveryStrategy):
         result.details["verified_websites"] = len(sites)
         per_site = []
         for site in sites:
-            stored, pages = await self._crawl(ctx, site, result)
-            per_site.append({"site": site.url, "pages_visited": pages, "pdfs_stored": stored})
+            per_site.append(await self._crawl(ctx, site, result))
         result.details["sites"] = per_site
         return result
 
-    async def _crawl(self, ctx, site: EntitySource, result: StrategyResult) -> tuple[int, int]:
+    async def _crawl(self, ctx, site: EntitySource, result: StrategyResult) -> dict[str, object]:
         years = {str(y) for y in ctx.target_years}
-        host = urlparse(site.url).netloc
+        host = urlparse(site.url).netloc.lower()
+
+        def is_same_host(url: str) -> bool:
+            parsed = urlparse(url)
+            return parsed.scheme.lower() in ("http", "https") and parsed.netloc.lower() == host
+
         queue: list[tuple[str, int]] = [(site.url, 0)]
         seen: set[str] = set()
         pdfs: list[tuple[str, str]] = []
+        sitemap_lookup = getattr(ctx.fetcher, "sitemap_urls", None)
+        sitemap_queue = await sitemap_lookup(site.url) if sitemap_lookup else []
+        sitemap_queue = [url for url in sitemap_queue if is_same_host(url)][:self.max_sitemaps_per_site]
+        sitemap_requests = len(sitemap_queue)
+        if sitemap_lookup and not sitemap_queue:
+            sitemap_queue = [urljoin(site.url, "/sitemap.xml")]
+            sitemap_requests = 1
+        seen_sitemaps: set[str] = set()
+        sitemap_url_count = 0
+        sitemap_fetch_failures = 0
+        sitemap_blocked = 0
+        page_fetch_failures = 0
+        page_non_html = 0
+        page_blocked = 0
+
+        # Sitemaps find reports that are not linked from the bounded home-page crawl.
+        while sitemap_queue and len(seen_sitemaps) < self.max_sitemaps_per_site:
+            sitemap_url = sitemap_queue.pop(0)
+            if sitemap_url in seen_sitemaps or not is_same_host(sitemap_url):
+                continue
+            seen_sitemaps.add(sitemap_url)
+            if not await ctx.fetcher.allowed_by_robots(sitemap_url):
+                result.blocked_entity_ids.add(site.entity_id)
+                sitemap_blocked += 1
+                continue
+            sitemap = await ctx.fetcher.get(sitemap_url)
+            if not sitemap.ok:
+                sitemap_fetch_failures += 1
+                continue
+            is_index, entries = extract_sitemap_entries(sitemap.content or b"", sitemap.final_url or sitemap_url)
+            if is_index:
+                sitemap_queue.extend(loc for loc, _title in entries
+                                     if is_same_host(loc) and loc not in seen_sitemaps)
+                continue
+            for location, title in entries:
+                sitemap_url_count += 1
+                if sitemap_url_count > self.max_sitemap_urls_per_site:
+                    break
+                if is_same_host(location) and is_pdf_url(location) and _is_report_candidate(title, location, years):
+                    filename = _pdf_filename_hint(location)
+                    pdfs.append((location, title or filename))
+            if sitemap_url_count > self.max_sitemap_urls_per_site:
+                break
+
         while queue and len(seen) < self.max_pages_per_site:
             url, depth = queue.pop(0)
             if url in seen:
@@ -378,28 +466,66 @@ class OfficialWebsiteCrawlStrategy(DiscoveryStrategy):
             seen.add(url)
             if not await ctx.fetcher.allowed_by_robots(url):
                 result.blocked_entity_ids.add(site.entity_id)
+                page_blocked += 1
                 continue
             res = await ctx.fetcher.get(url)
-            if not res.ok or "html" not in (res.content_type or "html"):
+            if not res.ok:
+                page_fetch_failures += 1
+                continue
+            if "html" not in (res.content_type or "html"):
+                page_non_html += 1
                 continue
             for link, anchor in extract_links(res.text, res.final_url or url):
-                if urlparse(link).netloc != host:
+                if not is_same_host(link):
                     continue  # same domain only
-                label = normalize_name(f"{anchor} {link.rsplit('/', 1)[-1]}")
-                if link.lower().endswith(".pdf"):
-                    if any(w in label for w in _REPORT_WORDS) and (not years or any(y in label for y in years)):
+                if is_pdf_url(link):
+                    if _is_report_candidate(anchor, link, years):
                         pdfs.append((link, anchor))
-                elif depth < self.max_depth and any(w in label for w in _NAV_WORDS):
-                    queue.append((link, depth + 1))
+                else:
+                    label = normalize_name(unquote(f"{anchor} {link}"))
+                    if depth < self.max_depth and any(w in label for w in _NAV_WORDS):
+                        queue.append((link, depth + 1))
         stored = 0
-        for link, anchor in list(dict.fromkeys(pdfs))[: self.max_pdfs_per_site]:
+        pdf_fetch_failures = 0
+        invalid_pdfs = 0
+        oversized_pdfs = 0
+        pdf_blocked = 0
+        pdfs_by_url: dict[str, str] = {}
+        for link, title in pdfs:
+            if link not in pdfs_by_url or len(title) > len(pdfs_by_url[link]):
+                pdfs_by_url[link] = title
+        unique_pdfs = list(pdfs_by_url.items())
+        target_year_order = [str(year) for year in ctx.target_years]
+
+        def candidate_priority(candidate: tuple[str, str]) -> tuple[int, int]:
+            label = normalize_name(f"{candidate[1]} {_pdf_filename_hint(candidate[0])}")
+            found_years = set(_YEAR_RE.findall(label))
+            for index, year in enumerate(target_year_order):
+                if year in found_years:
+                    return 0, index
+            return 1, 0  # Unknown-period candidates remain eligible after requested years.
+
+        unique_pdfs.sort(key=candidate_priority)
+        for link, anchor in unique_pdfs[: self.max_pdfs_per_site]:
+            if not await ctx.fetcher.allowed_by_robots(link):
+                result.blocked_entity_ids.add(site.entity_id)
+                pdf_blocked += 1
+                continue
             res = await ctx.fetcher.get(link)
-            if not res.ok or not res.is_pdf or len(res.content or b"") > self.max_pdf_bytes:
+            if not res.ok:
+                pdf_fetch_failures += 1
+                continue
+            if not res.is_pdf:
+                invalid_pdfs += 1
+                continue
+            if len(res.content or b"") > self.max_pdf_bytes:
+                oversized_pdfs += 1
                 continue
             own = await _own_publication_source(ctx, site)
             registered = await ctx.registrar.register_pdf(
-                ctx.db, source=own, url=link, content=res.content, title=anchor or link.rsplit("/", 1)[-1],
-                document_type="annual_report", period_year=_year(f"{anchor} {link.rsplit('/', 1)[-1]}"),
+                ctx.db, source=own, url=link, content=res.content,
+                title=anchor or _pdf_filename_hint(link),
+                document_type="annual_report", period_year=_year(f"{anchor} {_pdf_filename_hint(link)}"),
                 entity_id=site.entity_id, document_scope="institution_specific",
             )
             result.new_documents += int(registered.is_new)
@@ -419,7 +545,25 @@ class OfficialWebsiteCrawlStrategy(DiscoveryStrategy):
                 document_id=registered.document.id,
             )
             stored += 1
-        return stored, len(seen)
+        outcome = "downloaded" if stored else (
+            "no_matching_pdf_links" if not unique_pdfs else
+            "blocked_by_robots" if pdf_blocked and not (pdf_fetch_failures or invalid_pdfs or oversized_pdfs) else
+            "pdf_fetch_or_validation_failed"
+        )
+        if len(unique_pdfs) > self.max_pdfs_per_site:
+            outcome += "; pdf_limit_reached"
+        return {
+            "entity_id": site.entity_id, "site": site.url, "outcome": outcome,
+            "pages_visited": len(seen), "page_limit_reached": bool(queue),
+            "page_fetch_failures": page_fetch_failures, "page_non_html": page_non_html,
+            "page_blocked": page_blocked,
+            "sitemaps_requested": sitemap_requests, "sitemaps_checked": len(seen_sitemaps),
+            "sitemap_url_count": sitemap_url_count, "sitemap_fetch_failures": sitemap_fetch_failures,
+            "sitemap_blocked": sitemap_blocked, "candidate_pdfs": len(pdfs),
+            "unique_candidate_pdfs": len(unique_pdfs), "pdfs_attempted": min(len(unique_pdfs), self.max_pdfs_per_site),
+            "pdfs_stored": stored, "pdf_fetch_failures": pdf_fetch_failures,
+            "invalid_pdfs": invalid_pdfs, "oversized_pdfs": oversized_pdfs, "pdf_blocked": pdf_blocked,
+        }
 
 
 _NAV_WORDS = ("RAPPORT", "FINANC", "INVESTISSEUR", "INVESTOR", "PUBLICATION", "DOCUMENT", "RESULTAT", "ANNUAL",
@@ -449,14 +593,70 @@ def _year(text: str) -> int | None:
     return years.pop() if len(years) == 1 else None  # several different years: not guessed
 
 
-# ====================================================================== secondary (disabled)
+# ====================================================================== secondary search candidates
 class SecondaryVerifiedStrategy(DiscoveryStrategy):
     code = "secondary_verified"
-    description = "Verified secondary sources (press, aggregators)"
+    description = "Optional web-search leads; pages remain candidates until official ownership is confirmed"
     priority = 7
     handles = frozenset({"SOURCE_NOT_FOUND", "DOCUMENT_NOT_FOUND"})
-    enabled = False
-    disabled_reason = "disabled by policy for this phase: official channels only, no search provider"
 
-    async def run(self, ctx: DiscoveryContext, targets) -> StrategyResult:  # pragma: no cover - disabled
-        return StrategyResult(targets=len(targets))
+    def __init__(self, provider=None, *, max_results: int = 5, max_entities: int = 20) -> None:
+        self.provider = provider
+        self.max_results = max_results
+        self.max_entities = max_entities
+        self.enabled = provider is not None
+        self.disabled_reason = None if self.enabled else "no search provider configured; set provider and credentials"
+
+    async def run(self, ctx: DiscoveryContext, targets) -> StrategyResult:
+        result = StrategyResult(targets=len(targets))
+        if self.provider is None:
+            return result
+        entity_ids = list(dict.fromkeys(gap.entity_id for gap in targets if gap.entity_id))[:self.max_entities]
+        known_site = set((await ctx.db.execute(select(EntitySource.entity_id).where(
+            EntitySource.entity_id.in_(entity_ids), EntitySource.link_role == "official_website",
+            EntitySource.lifecycle_status.in_(("CANDIDATE", "VERIFIED", "ACTIVE")),
+            EntitySource.deleted_at.is_(None),
+        ))).scalars().all()) if entity_ids else set()
+        outcome = {"entities_queried": 0, "results_returned": 0, "pages_matching_name": 0,
+                   "candidate_links_recorded": 0, "errors": 0, "human_officiality_review_required": True}
+        for entity_id in entity_ids:
+            if entity_id in known_site:
+                continue
+            indexed = ctx.resolver.entities.get(entity_id)
+            if indexed is None:
+                continue
+            entity = await ctx.db.get(Entity, entity_id)
+            if entity is None:
+                continue
+            query = f'"{indexed.canonical_name}" official website {indexed.country_code or ""}'
+            outcome["entities_queried"] += 1
+            try:
+                candidates = await self.provider.search(query, country_code=indexed.country_code,
+                                                        limit=self.max_results)
+            except Exception as err:
+                outcome["errors"] += 1
+                result.errors.append({"entity_id": entity_id,
+                                      "error": f"search provider {type(err).__name__}: {str(err)[:300]}"})
+                continue
+            outcome["results_returned"] += len(candidates)
+            for url in candidates:
+                if is_pdf_url(url) or not await ctx.fetcher.allowed_by_robots(url, follow_redirects=False):
+                    continue
+                # Do not follow a search-result redirect; it could cross into a different domain.
+                fetched = await ctx.fetcher.get(url, follow_redirects=False)
+                page = f" {normalize_name(html_to_text(fetched.text))} " if fetched.ok else ""
+                labels = {normalize_name(entity.canonical_name), core_key(entity.canonical_name)}
+                if not page or not any(label and len(label) >= 4 and f" {label} " in page for label in labels):
+                    continue
+                outcome["pages_matching_name"] += 1
+                created = await upsert_entity_source(
+                    ctx, entity_id=entity_id, role="official_website", url=url, source_id=None,
+                    status="CANDIDATE", method=self.code,
+                    evidence=("Web search lead; fetched page contains the institution name, but official domain "
+                              "ownership still requires human confirmation; redirects were not followed."),
+                    http_status=fetched.status_code,
+                )
+                outcome["candidate_links_recorded"] += int(created)
+                result.sources_found += int(created)
+        result.details["search"] = outcome
+        return result

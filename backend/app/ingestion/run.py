@@ -3,15 +3,17 @@ UMOA Banking Intelligence — CLI Ingestion Runner Entrypoint
 
 Enables execution via:
     python -m app.ingestion.run [--year 2026] [--historical-years 5] [--source bceao] [--limit 10] [--force]
+    python -m app.ingestion.run --source boad --scope deals --since 2025-01-01
 """
 
 import argparse
 import asyncio
 import sys
+from datetime import date
 
 from app.core.logging import configure_logging, get_logger
 from app.db.session import AsyncSessionLocal
-from app.services.ingestion import IngestionService
+from app.services.ingestion import IngestionService, get_target_years
 
 logger = get_logger(__name__)
 
@@ -23,10 +25,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--source",
-        choices=["all", "bceao", "cb-umoa", "brvm", "umoa-titres"],
+        choices=["all", "bceao", "cb-umoa", "brvm", "umoa-titres", "amf-umoa", "ifc", "boad", "proparco", "bidc", "press"],
         default="all",
         help="Official data source to ingest from",
     )
+    parser.add_argument(
+        "--scope",
+        choices=["all", "financial", "deals"],
+        default="all",
+        help="Phases to run: bank statements (financial), deal collection (deals) or both",
+    )
+    parser.add_argument("--since", type=date.fromisoformat, default=None,
+                        help="Deals: first publication / modification date (default: configured lookback)")
+    parser.add_argument("--until", type=date.fromisoformat, default=None,
+                        help="Deals: last publication / modification date")
     parser.add_argument(
         "--year",
         type=int,
@@ -65,13 +77,14 @@ async def main_async() -> int:
     args = parser.parse_args()
 
     sources = None if args.source == "all" else [args.source]
-    target_years = [args.year] if args.year else None
+    # --year wins; else --historical-years (else the setting) gives current year + N previous years.
+    target_years = [args.year] if args.year else get_target_years(historical_years=args.historical_years)
 
     print("\n================================================================================")
     print("UMOA Banking Intelligence — Ingestion Pipeline (app.ingestion.run)")
     print("================================================================================")
-    print(f"Source(s)       : {args.source.upper()}")
-    print(f"Target year(s)  : {target_years or f'Current + {args.historical_years or 5} historical years'}")
+    print(f"Source(s)       : {args.source.upper()} (scope: {args.scope})")
+    print(f"Target year(s)  : {', '.join(str(y) for y in target_years)}")
     print(f"Limit/source    : {args.limit or 'Unlimited'}")
     print(f"Trigger type    : {args.trigger_type}")
     print(f"Force execution : {args.force}\n")
@@ -85,6 +98,9 @@ async def main_async() -> int:
             sources=sources,
             limit_per_source=args.limit,
             force=args.force,
+            scope=args.scope,
+            deal_since=args.since,
+            deal_until=args.until,
         )
 
     print(f"\n[+] Status      : {run.status.upper()}")
@@ -95,6 +111,11 @@ async def main_async() -> int:
     print(f"[+] Downloaded  : {run.documents_downloaded}")
     print(f"[+] Extracted   : {run.data_points_extracted}")
     print(f"[+] Summary     : {run.summary_text}")
+    for key, summary in (run.deal_summary or {}).items():
+        if not key.startswith("_"):
+            print(f"[+] Deals {key:<11}: created {summary.get('deals_created', 0)}, "
+                  f"already imported {summary.get('already_imported', 0)}, "
+                  f"duplicate candidates {summary.get('duplicate_candidates', 0)}")
 
     if run.errors:
         print(f"\n[!] Errors ({len(run.errors)}):")
